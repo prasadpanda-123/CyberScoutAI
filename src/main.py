@@ -1,7 +1,7 @@
 """
 Main CLI entry point for CyberScout AI.
 
-Handles command-line flags (--version, --health, --config-check, --db-check)
+Handles command-line flags (--version, --health, --config-check, --db-check, --run-once, --daemon, --dry-run, --scheduler-status, --metrics, --email-test)
 and manages application startup & shutdown execution.
 """
 
@@ -14,6 +14,8 @@ from src.core.config import config
 from src.core.health import HealthMonitor
 from src.core.version import format_banner, get_version_info
 from src.database.connection import DatabaseManager
+from src.automation.engine import AutomationEngine
+from src.notifier.email_client import EmailClient
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -41,6 +43,37 @@ def build_parser() -> argparse.ArgumentParser:
         "--db-check",
         action="store_true",
         help="Verify SQLite database connectivity and schema integrity.",
+    )
+    # Phase 9 Automation Extensions
+    parser.add_argument(
+        "--run-once",
+        action="store_true",
+        help="Execute one complete scan & pipeline iteration.",
+    )
+    parser.add_argument(
+        "--daemon",
+        action="store_true",
+        help="Run automation engine daemon scheduler loops continuously.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Run full collection and ranking cycle but bypass DB writes and email dispatching.",
+    )
+    parser.add_argument(
+        "--scheduler-status",
+        action="store_true",
+        help="Inspect scheduler registration queues and current execution status.",
+    )
+    parser.add_argument(
+        "--metrics",
+        action="store_true",
+        help="Display performance timings for the last completed run.",
+    )
+    parser.add_argument(
+        "--email-test",
+        action="store_true",
+        help="Sends a test notification email digest.",
     )
     return parser
 
@@ -84,11 +117,34 @@ def main(args_list: list | None = None) -> int:
         print(json.dumps(result.to_dict(), indent=2))
         return 0 if result.status else 1
 
+    # Automation Engine Integrations
+    if args.email_test:
+        client = EmailClient()
+        res = client.send_daily_digest()
+        print(json.dumps(res, indent=2))
+        return 0 if res.get("status") == "success" else 1
+
+    if args.scheduler_status or args.metrics:
+        engine = AutomationEngine()
+        # Mock or retrieve basic status metadata
+        print(json.dumps(engine.status(), indent=2))
+        return 0
+
+    if args.run_once:
+        engine = AutomationEngine()
+        res = engine.run_once(dry_run=args.dry_run)
+        print(json.dumps(res, indent=2))
+        return 0
+
+    if args.daemon:
+        engine = AutomationEngine()
+        engine.run_forever(dry_run=args.dry_run)
+        return 0
+
     # Default execution: run full application bootstrap and graceful shutdown
     app = CyberScoutApp()
     try:
         app.startup()
-        # Infrastructure integration verified; pipeline execution will hook here in future phases.
         app.shutdown()
         return 0
     except Exception:

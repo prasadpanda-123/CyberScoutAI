@@ -1,0 +1,15 @@
+# Scheduler Configuration for CyberScout AI
+
+enabled: true
+mode: daemon
+run_on_startup: true
+
+schedule:
+  type: daily             # daily, hourly, 6_hours, weekly, custom
+  time: "08:00"           # daily/weekly target time
+  timezone: "local"
+  interval_seconds: 3600  # for custom/hourly
+
+retry:
+  attempts: 3
+  backoff_seconds: 60
