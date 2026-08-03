@@ -1,0 +1,16 @@
+<table border="0" cellpadding="10" cellspacing="0" width="100%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 25px;">
+  <tr>
+    <td width="33%" align="center" style="border-right: 1px solid #e2e8f0;">
+      <span style="font-size: 24px; font-weight: 700; color: #1e3a8a;">{{ stats.total_opportunities }}</span><br>
+      <span style="font-size: 11px; color: #64748b; text-transform: uppercase;">Total Active</span>
+    </td>
+    <td width="33%" align="center" style="border-right: 1px solid #e2e8f0;">
+      <span style="font-size: 24px; font-weight: 700; color: #b91c1c;">{{ stats.high_priority_count or 0 }}</span><br>
+      <span style="font-size: 11px; color: #64748b; text-transform: uppercase;">High Priority</span>
+    </td>
+    <td width="33%" align="center">
+      <span style="font-size: 24px; font-weight: 700; color: #0d9488;">{{ stats.average_score }}</span><br>
+      <span style="font-size: 11px; color: #64748b; text-transform: uppercase;">Avg Score</span>
+    </td>
+  </tr>
+</table>

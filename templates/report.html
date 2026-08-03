@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <!-- SUMMARY CARD -->
+  {% include 'summary.html' %}
+
+  <!-- METRICS SUMMARY -->
+  {% include 'statistics.html' %}
+
+  <!-- OPPORTUNITY CATEGORIES -->
+  {% for category_name, opportunities in categories.items() %}
+    {% if opportunities %}
+      {% include 'category.html' %}
+    {% endif %}
+  {% endfor %}
+{% endblock %}

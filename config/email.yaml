@@ -1,0 +1,11 @@
+# Email Notifier Settings for CyberScout AI
+
+sender: "cyberscout-alerts@example.com"
+recipient: "user@example.com"
+smtp_host: "smtp.example.com"
+smtp_port: 587
+tls: true
+max_items: 20
+retry_count: 3
+subject_template: "CyberScout AI Alert - Today's Cybersecurity Opportunities"
+daily_send_time: "08:00"

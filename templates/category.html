@@ -1,0 +1,49 @@
+<div style="margin-bottom: 25px;">
+  <h2 style="font-size: 18px; font-weight: 700; color: #1e3a8a; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; margin: 0 0 15px 0; text-transform: capitalize;">
+    {{ category_name | replace('_', ' ') }}
+  </h2>
+  {% for opp in opportunities %}
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 12px; overflow: hidden;">
+    <tr>
+      <td style="padding: 15px;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <td>
+              <span style="display: inline-block; padding: 2px 8px; font-size: 10px; font-weight: 700; border-radius: 4px; background-color: #e0f2fe; color: #0369a1; text-transform: uppercase;">
+                Score: {{ opp.score }}
+              </span>
+              {% if opp.raw_data and opp.raw_data.priority %}
+              <span style="display: inline-block; padding: 2px 8px; font-size: 10px; font-weight: 700; border-radius: 4px; background-color: #fef2f2; color: #991b1b; text-transform: uppercase; margin-left: 5px;">
+                {{ opp.raw_data.priority }}
+              </span>
+              {% endif %}
+            </td>
+            <td align="right" style="font-size: 11px; color: #64748b;">
+              {% if opp.deadline %}
+              <span style="color: #b91c1c; font-weight: 600;">Deadline: {{ opp.deadline }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2" style="padding-top: 10px;">
+              <h4 style="margin: 0 0 5px 0; font-size: 15px; font-weight: 700;">
+                <a href="{{ opp.url }}" style="color: #0284c7; text-decoration: none;">{{ opp.title }}</a>
+              </h4>
+              <p style="margin: 0; font-size: 12px; color: #475569; line-height: 1.5;">
+                {{ opp.description or 'No description provided.' }}
+              </p>
+            </td>
+          </tr>
+          {% if opp.raw_data and opp.raw_data.recommendation_reason %}
+          <tr>
+            <td colspan="2" style="padding-top: 10px; font-size: 11px; color: #0f766e; font-style: italic;">
+              💡 {{ opp.raw_data.recommendation_reason }}
+            </td>
+          </tr>
+          {% endif %}
+        </table>
+      </td>
+    </tr>
+  </table>
+  {% endfor %}
+</div>
