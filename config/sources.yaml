@@ -1,0 +1,296 @@
+# sources.yaml
+# Static configuration for collectors.
+# Runtime state such as last_run_status belongs in the database, not here.
+# collection_method: rss | api | html | playwright
+# default_category maps to the taxonomy in keywords.yaml and the architecture docs.
+
+sources:
+
+  - id: github_search
+    name: "GitHub Search API"
+    collection_method: api
+    supports_search: true
+    supports_rss: false
+    requires_login: true
+    requires_playwright: false
+    official: true
+    trust_score: 0.92
+    maintenance_level: stable
+    update_frequency: daily
+    max_requests_per_run: 30
+    request_delay_ms: 1000
+    base_url: "https://api.github.com/search/repositories"
+    default_category: security_tool
+    priority: P0
+    enabled: true
+
+  - id: ctftime
+    name: "CTFtime"
+    collection_method: api
+    supports_search: false
+    supports_rss: false
+    requires_login: false
+    requires_playwright: false
+    official: false
+    trust_score: 0.86
+    maintenance_level: stable
+    update_frequency: daily
+    max_requests_per_run: 5
+    request_delay_ms: 1500
+    base_url: "https://ctftime.org/api/v1/events/"
+    default_category: hackathon
+    priority: P0
+    enabled: true
+
+  - id: hackernews_rss
+    name: "The Hacker News"
+    collection_method: rss
+    supports_search: false
+    supports_rss: true
+    requires_login: false
+    requires_playwright: false
+    official: false
+    trust_score: 0.81
+    maintenance_level: stable
+    update_frequency: hourly
+    max_requests_per_run: 1
+    request_delay_ms: 2000
+    base_url: "https://feeds.feedburner.com/TheHackersNews"
+    default_category: news
+    priority: P0
+    enabled: true
+
+  - id: bleepingcomputer_rss
+    name: "BleepingComputer"
+    collection_method: rss
+    supports_search: false
+    supports_rss: true
+    requires_login: false
+    requires_playwright: false
+    official: false
+    trust_score: 0.79
+    maintenance_level: stable
+    update_frequency: hourly
+    max_requests_per_run: 1
+    request_delay_ms: 2000
+    base_url: "https://www.bleepingcomputer.com/feed/"
+    default_category: news
+    priority: P0
+    enabled: true
+
+  - id: krebsonsecurity_rss
+    name: "Krebs on Security"
+    collection_method: rss
+    supports_search: false
+    supports_rss: true
+    requires_login: false
+    requires_playwright: false
+    official: false
+    trust_score: 0.83
+    maintenance_level: stable
+    update_frequency: daily
+    max_requests_per_run: 1
+    request_delay_ms: 2000
+    base_url: "https://krebsonsecurity.com/feed/"
+    default_category: news
+    priority: P1
+    enabled: true
+
+  - id: darkreading_rss
+    name: "Dark Reading"
+    collection_method: rss
+    supports_search: false
+    supports_rss: true
+    requires_login: false
+    requires_playwright: false
+    official: false
+    trust_score: 0.78
+    maintenance_level: stable
+    update_frequency: daily
+    max_requests_per_run: 1
+    request_delay_ms: 2000
+    base_url: "https://www.darkreading.com/rss.xml"
+    default_category: news
+    priority: P1
+    enabled: true
+
+  - id: portswigger_academy
+    name: "PortSwigger Web Security Academy"
+    collection_method: html
+    supports_search: false
+    supports_rss: false
+    requires_login: false
+    requires_playwright: false
+    official: true
+    trust_score: 0.9
+    maintenance_level: stable
+    update_frequency: weekly
+    max_requests_per_run: 1
+    request_delay_ms: 2500
+    base_url: "https://portswigger.net/web-security/all-topics"
+    default_category: course
+    priority: P0
+    enabled: true
+
+  - id: tryhackme
+    name: "TryHackMe (free rooms)"
+    collection_method: html
+    supports_search: false
+    supports_rss: false
+    requires_login: false
+    requires_playwright: false
+    official: true
+    trust_score: 0.88
+    maintenance_level: stable
+    update_frequency: weekly
+    max_requests_per_run: 1
+    request_delay_ms: 2500
+    base_url: "https://tryhackme.com/hacktivities?tab=all&difficulty=&type=free"
+    default_category: course
+    priority: P0
+    enabled: true
+
+  - id: hackthebox_academy
+    name: "HackTheBox Academy (free modules)"
+    collection_method: html
+    supports_search: false
+    supports_rss: false
+    requires_login: false
+    requires_playwright: false
+    official: true
+    trust_score: 0.87
+    maintenance_level: stable
+    update_frequency: weekly
+    max_requests_per_run: 1
+    request_delay_ms: 2500
+    base_url: "https://academy.hackthebox.com/catalogue"
+    default_category: course
+    priority: P0
+    enabled: true
+
+  - id: cisco_netacad
+    name: "Cisco Networking Academy"
+    collection_method: html
+    supports_search: false
+    supports_rss: false
+    requires_login: false
+    requires_playwright: false
+    official: true
+    trust_score: 0.92
+    maintenance_level: stable
+    update_frequency: monthly
+    max_requests_per_run: 1
+    request_delay_ms: 2500
+    base_url: "https://www.netacad.com/courses/all-courses?free=true"
+    default_category: course
+    priority: P1
+    enabled: false
+
+  - id: unstop
+    name: "Unstop (competitions, India)"
+    collection_method: html
+    supports_search: false
+    supports_rss: false
+    requires_login: false
+    requires_playwright: false
+    official: false
+    trust_score: 0.72
+    maintenance_level: experimental
+    update_frequency: weekly
+    max_requests_per_run: 1
+    request_delay_ms: 3000
+    base_url: "https://unstop.com/hackathons?category=cybersecurity"
+    default_category: hackathon
+    priority: P1
+    enabled: false
+
+  - id: devpost
+    name: "Devpost"
+    collection_method: html
+    supports_search: false
+    supports_rss: false
+    requires_login: false
+    requires_playwright: false
+    official: false
+    trust_score: 0.74
+    maintenance_level: experimental
+    update_frequency: weekly
+    max_requests_per_run: 1
+    request_delay_ms: 3000
+    base_url: "https://devpost.com/hackathons?challenge_type[]=online"
+    default_category: hackathon
+    priority: P1
+    enabled: false
+
+  - id: internshala
+    name: "Internshala"
+    collection_method: playwright
+    supports_search: false
+    supports_rss: false
+    requires_login: false
+    requires_playwright: true
+    official: false
+    trust_score: 0.7
+    maintenance_level: experimental
+    update_frequency: weekly
+    max_requests_per_run: 1
+    request_delay_ms: 4000
+    base_url: "https://internshala.com/internships/cyber-security-internship"
+    default_category: internship
+    priority: P2
+    enabled: false
+
+  - id: youtube_johnhammond
+    name: "John Hammond (YouTube)"
+    collection_method: rss
+    supports_search: false
+    supports_rss: true
+    requires_login: false
+    requires_playwright: false
+    official: false
+    trust_score: 0.68
+    maintenance_level: experimental
+    update_frequency: weekly
+    max_requests_per_run: 1
+    request_delay_ms: 3000
+    base_url: "https://www.youtube.com/feeds/videos.xml?channel_id=REPLACE_WITH_CHANNEL_ID"
+    default_category: tutorial
+    priority: P1
+    enabled: false
+
+  - id: arxiv_cs_cr
+    name: "arXiv cs.CR"
+    collection_method: rss
+    supports_search: false
+    supports_rss: true
+    requires_login: false
+    requires_playwright: false
+    official: true
+    trust_score: 0.85
+    maintenance_level: stable
+    update_frequency: weekly
+    max_requests_per_run: 1
+    request_delay_ms: 2000
+    base_url: "http://export.arxiv.org/rss/cs.CR"
+    default_category: research_paper
+    priority: P3
+    enabled: false
+
+  - id: linkedin_jobs
+    name: "LinkedIn Jobs"
+    collection_method: html
+    supports_search: false
+    supports_rss: false
+    requires_login: true
+    requires_playwright: false
+    official: false
+    trust_score: 0.6
+    maintenance_level: deprecated
+    update_frequency: monthly
+    max_requests_per_run: 1
+    request_delay_ms: 5000
+    base_url: null
+    default_category: internship
+    priority: P3
+    enabled: false
+    notes: "High ToS risk. Consider saved-search email alerts instead of automated collection."

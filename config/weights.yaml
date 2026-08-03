@@ -1,0 +1,43 @@
+# weights.yaml
+# Additive scoring model for the Ranking Engine (Phase 5/7).
+# See research/intelligence_strategy.md for detection-method rationale.
+
+scoring:
+  free: 40
+  certificate_offered: 20
+  remote: 20
+  beginner_friendly: 15
+  recognized_provider: 20
+  deadline_soon_days: 7        # window that counts as "soon"
+  deadline_soon_bonus: 10
+  duplicate_penalty: -100
+
+# Minimum total score required for an item to be included in the email.
+email_inclusion_threshold: 50
+
+# Soft per-category cap to keep the digest balanced (see intelligence_strategy.md #4).
+category_cap_per_email: 5
+
+# Max total items in a single daily email, after category balancing.
+max_items_per_email: 25
+
+# Category priority order used when resolving ambiguous multi-keyword matches
+# (most specific first, "news" is the fallback default).
+category_priority:
+  - certification
+  - internship
+  - hackathon
+  - scholarship
+  - course
+  - workshop
+  - webinar
+  - conference
+  - research_paper
+  - github_repository
+  - security_tool
+  - tutorial
+  - news
+
+# Deduplication similarity threshold (Levenshtein ratio, 0-1) for near-duplicate titles.
+dedup_title_similarity_threshold: 0.9
+dedup_window_days: 7

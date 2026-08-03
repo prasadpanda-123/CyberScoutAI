@@ -1,0 +1,11 @@
+# Core Dependencies
+pyyaml>=6.0.1
+python-dotenv>=1.0.1
+
+# Data Ingestion & Web Scraping (Future Phases)
+requests>=2.31.0
+beautifulsoup4>=4.12.3
+playwright>=1.42.0
+
+# Testing & Quality Assurance
+pytest>=8.0.0

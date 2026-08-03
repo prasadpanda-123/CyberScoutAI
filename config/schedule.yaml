@@ -1,0 +1,40 @@
+# schedule.yaml
+# Drives both the GitHub Actions cron expression and any local
+# Windows Task Scheduler / cron fallback setup (Phase 8).
+
+automation:
+  primary_method: github_actions
+  fallback_method: windows_task_scheduler
+
+github_actions:
+  # Runs every 6 hours: 00:00, 06:00, 12:00, 18:00 UTC
+  cron: "0 */6 * * *"
+  workflow_file: ".github/workflows/cyberscout.yml"
+  steps:
+    - collect
+    - process
+    - store
+    - generate_email
+    - send_email
+  timeout_minutes: 15
+  concurrency_group: "cyberscout-pipeline"
+  cancel_in_progress: true
+
+windows_task_scheduler:
+  trigger: "Daily"
+  time: "08:00"
+  repeat_interval_hours: 6
+  command: "python main.py --run-pipeline"
+
+email_delivery:
+  send_time_local: "08:00"        # daily digest send time, IST
+  timezone: "Asia/Kolkata"
+  digest_frequency: daily          # daily | every_run
+  # If digest_frequency is 'every_run', an email is attempted each of the
+  # 4 daily automation runs, but only sent if new qualifying items exist
+  # since the last email (checked against EmailHistory table).
+
+retry_policy:
+  max_retries: 2
+  retry_delay_minutes: 5
+  on_failure: log_and_continue     # never let one source's failure block the whole run
