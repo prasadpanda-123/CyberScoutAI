@@ -1,0 +1,79 @@
+# Source Capabilities Registry for CyberScout AI
+
+sources:
+  github_search:
+    name: "GitHub Search API"
+    supports_search: true
+    supports_api: true
+    supports_rss: false
+    authentication_required: false
+    priority: 1
+    supported_categories:
+      - github_repository
+      - security_tool
+      - ctf
+    rate_limit_requests_per_minute: 30
+    preferred_collector: "GithubSearchCollector"
+
+  ctftime:
+    name: "CTFtime Events API"
+    supports_search: false
+    supports_api: true
+    supports_rss: false
+    authentication_required: false
+    priority: 1
+    supported_categories:
+      - ctf
+    rate_limit_requests_per_minute: 60
+    preferred_collector: "CtftimeCollector"
+
+  thehackernews:
+    name: "The Hacker News RSS"
+    supports_search: false
+    supports_api: false
+    supports_rss: true
+    authentication_required: false
+    priority: 2
+    supported_categories:
+      - security_news
+      - blog
+    rate_limit_requests_per_minute: 120
+    preferred_collector: "GenericRSSCollector"
+
+  bleepingcomputer:
+    name: "BleepingComputer RSS"
+    supports_search: false
+    supports_api: false
+    supports_rss: true
+    authentication_required: false
+    priority: 2
+    supported_categories:
+      - security_news
+    rate_limit_requests_per_minute: 120
+    preferred_collector: "GenericRSSCollector"
+
+  portswigger_academy:
+    name: "PortSwigger Web Security Academy"
+    supports_search: true
+    supports_api: false
+    supports_rss: false
+    authentication_required: false
+    priority: 2
+    supported_categories:
+      - course
+      - certification
+    rate_limit_requests_per_minute: 10
+    preferred_collector: "HtmlScraperCollector"
+
+  tryhackme:
+    name: "TryHackMe Free Content"
+    supports_search: true
+    supports_api: false
+    supports_rss: false
+    authentication_required: false
+    priority: 2
+    supported_categories:
+      - course
+      - ctf
+    rate_limit_requests_per_minute: 10
+    preferred_collector: "HtmlScraperCollector"

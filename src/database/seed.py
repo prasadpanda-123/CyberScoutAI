@@ -62,10 +62,11 @@ class SeedManager:
         categories = keywords_cfg.get("categories", keywords_cfg)
         count = 0
         if isinstance(categories, dict):
-            for domain, terms in categories.items():
-                if isinstance(terms, list):
-                    for term_item in terms:
-                        term_str = term_item if isinstance(term_item, str) else term_item.get("term")
+            for domain, domain_obj in categories.items():
+                terms_list = domain_obj.get("terms", []) if isinstance(domain_obj, dict) else domain_obj
+                if isinstance(terms_list, list):
+                    for term_item in terms_list:
+                        term_str = term_item if isinstance(term_item, str) else term_item.get("term") if isinstance(term_item, dict) else None
                         if term_str:
                             kw = Keyword(term=term_str.strip().lower(), domain=domain)
                             self.kw_repo.save_keyword(kw)

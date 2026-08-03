@@ -16,12 +16,14 @@ class SearchQuery:
     Model representing a collection request query.
     """
 
-    source_id: str
-    collection_method: str
-    target_url: str
+    source_id: str = "custom"
+    collection_method: str = "rss"
+    target_url: str = ""
     query_params: Dict[str, str] = field(default_factory=dict)
     headers: Dict[str, str] = field(default_factory=dict)
     category: str = "other"
+    query_text: str = ""
+    keywords: List[str] = field(default_factory=list)
 
     def full_url(self) -> str:
         """Returns full URL with query parameters appended."""

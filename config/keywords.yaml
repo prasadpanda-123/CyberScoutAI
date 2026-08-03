@@ -1,162 +1,52 @@
-# keywords.yaml
-# Structured keyword taxonomy consumed by Search Intelligence (Phase 2)
-# and Opportunity Intelligence / categorization (Phase 5).
-# See research/keyword_taxonomy.md for full rationale.
+# CyberScout AI Taxonomy Keywords Configuration
 
-core_cybersecurity:
-  offensive_security:
-    - penetration testing
-    - pentest
-    - red team
-    - ethical hacking
-    - exploit development
-    - vulnerability research
-    - social engineering
+categories:
+  cybersecurity:
+    priority: 1.0
+    terms:
+      - term: "soc"
+        alias: "security operations center"
+        priority: 1.0
+      - term: "siem"
+        priority: 0.9
+      - term: "threat hunting"
+        priority: 0.9
+      - term: "blue team"
+        priority: 0.95
+      - term: "pentest"
+        alias: "penetration testing"
+        priority: 1.0
+      - term: "malware"
+        alias: "malware analysis"
+        priority: 0.9
+      - term: "osint"
+        priority: 0.85
+      - term: "incident response"
+        priority: 0.9
 
-  defensive_security:
-    - blue team
-    - SOC
-    - SIEM
-    - threat hunting
-    - incident response
-    - DFIR
-    - digital forensics
-    - malware analysis
-    - reverse engineering
-    - threat intelligence
-
-  purple_team_grc:
-    - purple team
-    - GRC
-    - risk assessment
-    - security auditing
-    - ISO 27001
-    - NIST
-    - PCI-DSS
-    - SOC 2
-
-  application_web_security:
-    - OWASP
-    - OWASP Top 10
-    - web application security
-    - Burp Suite
-    - API security
-    - secure code review
-    - DevSecOps
-    - CI/CD security
-
-  network_security:
-    - Nmap
-    - Wireshark
-    - firewall
-    - IDS
-    - IPS
-    - VPN
-    - Active Directory
-    - Zero Trust
-
-  offensive_tooling:
-    - Metasploit
-    - Nessus
-    - OpenVAS
-    - OSINT
-    - Shodan
-    - Maltego
-    - theHarvester
-
-  cloud_security:
-    - cloud security
-    - CSPM
-    - AWS security
-    - Azure security
-    - GCP security
-    - container security
-    - Kubernetes security
-    - IAM
-
-related_technical:
   programming:
-    - Python
-    - C
-    - C++
-    - Java
-    - Go
-    - Rust
-    - Bash
-    - PowerShell
+    priority: 0.8
+    terms:
+      - term: "python"
+        priority: 0.8
+      - term: "go"
+        priority: 0.75
+      - term: "rust"
+        priority: 0.75
+      - term: "bash"
+        priority: 0.7
 
-  networking:
-    - TCP/IP
-    - DNS
-    - Linux
-    - Windows
-    - CCNA
-    - routing
-    - switching
-    - subnetting
-
-  cloud_infrastructure:
-    - AWS
-    - Azure
-    - Google Cloud
-    - Docker
-    - Kubernetes
-    - Terraform
-
-opportunity_types:
-  - internship
-  - remote internship
-  - paid internship
-  - fellowship
-  - apprenticeship
-  - scholarship
-  - free course
-  - free certification
-  - hackathon
-  - CTF
-  - capture the flag
-  - webinar
-  - workshop
-  - bootcamp
-  - conference
-  - open source
-  - GitHub repository
-  - security tool
-  - research paper
-
-qualifiers:
-  - free
-  - 100% free
-  - beginner-friendly
-  - remote
-  - work from home
-  - deadline
-  - apply by
-  - certificate of completion
-  - limited seats
-  - early bird
-
-recognized_providers:
-  - TryHackMe
-  - HackTheBox
-  - PortSwigger
-  - Cisco
-  - Microsoft
-  - Google
-  - AWS
-  - CompTIA
-  - EC-Council
-  - Offensive Security
-  - SANS
-  - GIAC
-  - ISC2
-  - CNCF
-
-synonym_map:
-  internship: ["intern program", "internship opportunity", "summer intern"]
-  certification: ["cert", "certificate program", "credentialing"]
-  free: ["no-cost", "complimentary", "zero-cost"]
-  ctf: ["capture the flag", "wargame", "hacking challenge"]
-  hackathon: ["hack event", "coding challenge"]
-  red_team: ["offensive security team", "attacker simulation"]
-  blue_team: ["defensive security team", "SOC team"]
+  networking_cloud:
+    priority: 0.85
+    terms:
+      - term: "linux"
+        priority: 0.85
+      - term: "aws"
+        alias: "aws security"
+        priority: 0.85
+      - term: "azure"
+        priority: 0.8
+      - term: "docker"
+        priority: 0.8
+      - term: "kubernetes"
+        priority: 0.8

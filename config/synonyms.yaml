@@ -1,0 +1,34 @@
+# Synonym Mappings and Aliases for CyberScout AI
+
+synonyms:
+  soc:
+    - security operations center
+    - soc analyst
+    - blue team analyst
+    - tier 1 soc
+  ctf:
+    - capture the flag
+    - ctf challenge
+    - jeopardy ctf
+    - attack defense ctf
+  pentest:
+    - penetration testing
+    - ethical hacking
+    - offensive security
+    - red teaming
+  malware:
+    - malware analysis
+    - reverse engineering
+    - threat intelligence
+  osint:
+    - open source intelligence
+    - threat intelligence
+  cloud_security:
+    - aws security
+    - azure security
+    - gcp security
+    - cloud devsecops
+  devsecops:
+    - application security
+    - appsec
+    - ci/cd security

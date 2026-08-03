@@ -1,0 +1,41 @@
+# Search Query Templates for CyberScout AI
+
+templates:
+  internship:
+    - "{keyword} internship"
+    - "{keyword} internship remote"
+    - "{keyword} internship India"
+    - "{keyword} student opportunity"
+  course:
+    - "{keyword} free course"
+    - "{keyword} online course"
+    - "{keyword} tutorial"
+    - "{keyword} training"
+  certification:
+    - "{keyword} certification"
+    - "{keyword} free certification"
+    - "{keyword} voucher"
+    - "{keyword} exam prep"
+  scholarship:
+    - "{keyword} scholarship"
+    - "{keyword} fellowship"
+    - "{keyword} grant"
+  hackathon:
+    - "{keyword} hackathon"
+    - "{keyword} challenge"
+    - "{keyword} competition"
+  ctf:
+    - "{keyword} ctf"
+    - "{keyword} capture the flag"
+    - "{keyword} ctf event"
+  webinar:
+    - "{keyword} webinar"
+    - "{keyword} workshop"
+    - "{keyword} bootcamp"
+  github_repository:
+    - "{keyword} github"
+    - "{keyword} security tool"
+    - "awesome {keyword}"
+  youtube_tutorial:
+    - "{keyword} youtube tutorial"
+    - "{keyword} guide for beginners"

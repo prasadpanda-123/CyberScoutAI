@@ -1,0 +1,29 @@
+# Search Weights and Priority Multipliers for CyberScout AI
+
+category_weights:
+  internship: 1.0
+  scholarship: 0.95
+  certification: 0.90
+  ctf: 0.85
+  course: 0.80
+  hackathon: 0.80
+  webinar: 0.75
+  github_repository: 0.70
+  security_news: 0.60
+  other: 0.50
+
+keyword_weights:
+  soc: 1.0
+  pentest: 1.0
+  malware: 0.9
+  cloud_security: 0.9
+  devsecops: 0.85
+  osint: 0.8
+  python: 0.75
+
+source_weights:
+  github_search: 1.0
+  ctftime: 0.95
+  thehackernews: 0.85
+  bleepingcomputer: 0.85
+  cisa_alerts: 0.90
