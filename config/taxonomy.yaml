@@ -1,0 +1,33 @@
+# Taxonomy Categories and Tags Configuration for CyberScout AI
+
+categories:
+  - internship
+  - course
+  - certification
+  - scholarship
+  - workshop
+  - conference
+  - hackathon
+  - ctf
+  - research
+  - security_news
+  - github_repository
+  - security_tool
+
+tags:
+  - OWASP
+  - Python
+  - SOC
+  - Cloud
+  - AWS
+  - Azure
+  - Linux
+  - Malware
+  - CTF
+  - OSINT
+  - DevSecOps
+  - Pentest
+  - Kubernetes
+  - Docker
+  - Go
+  - Rust

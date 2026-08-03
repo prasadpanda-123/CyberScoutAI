@@ -1,0 +1,6 @@
+# Response Cache Settings for CyberScout AI
+
+enabled: true
+backend: "sqlite" # sqlite or memory
+ttl_seconds: 3600 # 1 hour default TTL
+db_name: "collector_cache.db"

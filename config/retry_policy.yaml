@@ -1,0 +1,11 @@
+# HTTP Retry Policy Configuration for CyberScout AI
+
+max_attempts: 3
+initial_delay_seconds: 1.0
+backoff_factor: 2.0
+status_codes_to_retry:
+  - 429
+  - 500
+  - 502
+  - 503
+  - 504

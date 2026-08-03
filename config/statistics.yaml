@@ -1,0 +1,4 @@
+# Statistics Aggregation Configuration for CyberScout AI
+
+auto_aggregate_daily: true
+track_provider_reputation_shifts: true

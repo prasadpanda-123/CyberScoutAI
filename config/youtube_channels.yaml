@@ -1,0 +1,30 @@
+# YouTube RSS Channels Configuration for CyberScout AI
+
+channels:
+  ippsec:
+    name: "IppSec"
+    channel_id: "UCa6TeYZ265fvuCTv035PDfA"
+    rss_url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCa6TeYZ265fvuCTv035PDfA"
+    default_category: "course"
+    enabled: true
+
+  liveoverflow:
+    name: "LiveOverflow"
+    channel_id: "UClcE-kVhqyiHCcjYwcpfj9w"
+    rss_url: "https://www.youtube.com/feeds/videos.xml?channel_id=UClcE-kVhqyiHCcjYwcpfj9w"
+    default_category: "course"
+    enabled: true
+
+  john_hammond:
+    name: "John Hammond"
+    channel_id: "UCVeW9qkBjo3zoCaDTg0LYKw"
+    rss_url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCVeW9qkBjo3zoCaDTg0LYKw"
+    default_category: "course"
+    enabled: true
+
+  david_bombal:
+    name: "David Bombal"
+    channel_id: "UC9x0AN7BWHpCDHSm9NiJFJQ"
+    rss_url: "https://www.youtube.com/feeds/videos.xml?channel_id=UC9x0AN7BWHpCDHSm9NiJFJQ"
+    default_category: "course"
+    enabled: true

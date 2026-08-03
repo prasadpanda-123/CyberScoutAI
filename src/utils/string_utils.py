@@ -27,17 +27,28 @@ def clean_text(text: Optional[str]) -> str:
     return cleaned.strip()
 
 
+def clean_html(text: Optional[str]) -> str:
+    """Strips HTML markup tags from text."""
+    if not text:
+        return ""
+    return re.sub(r"<[^>]+>", " ", text).strip()
+
+
+def normalize_whitespace(text: Optional[str]) -> str:
+    """Collapses consecutive whitespaces into a single space."""
+    if not text:
+        return ""
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def truncate_string(text: Optional[str], max_length: int = 2000, suffix: str = "...") -> str:
     """
     Truncates a string to a specified length, appending suffix if truncated.
 
     Args:
         text: Input string.
-        max_length: Maximum allowed length.
-        suffix: Trailing indicator string.
 
-    Returns:
-        Truncated string.
+    ...
     """
     if not text:
         return ""

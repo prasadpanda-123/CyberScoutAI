@@ -1,0 +1,14 @@
+# Provider Alias Mappings for CyberScout AI
+
+providers:
+  github: "GitHub"
+  cisa: "CISA"
+  owasp: "OWASP"
+  ctftime: "CTFtime"
+  sans: "SANS Institute"
+  google: "Google"
+  microsoft: "Microsoft"
+  tryhackme: "TryHackMe"
+  hackthebox: "Hack The Box"
+  portswigger: "PortSwigger"
+  youtube: "YouTube"

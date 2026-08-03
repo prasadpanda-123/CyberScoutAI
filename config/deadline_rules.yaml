@@ -1,0 +1,6 @@
+# Deadline Urgency Thresholds for CyberScout AI
+
+windows:
+  urgent_days: 3
+  upcoming_days: 14
+  long_term_days: 30

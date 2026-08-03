@@ -1,69 +1,67 @@
 """
-Abstract Base Collector Interface for CyberScout AI.
-
-All concrete source collectors must implement this interface.
-Reference: docs/architecture/collector_contract.md
+Abstract Base Collector Contract for CyberScout AI Collection Framework.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from src.models.opportunity import Opportunity
-from src.models.search_models import SearchQuery, SearchResult
+from src.collectors.result import CollectorResult
+from src.intelligence.planner_models import SearchTask
 
 
 class BaseCollector(ABC):
     """
-    Abstract Base Class defining the contract for all CyberScout collectors.
+    Abstract Base Class for all CyberScout AI collectors.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.config = config or {}
+    def __init__(self, source_id: str):
+        self.source_id = source_id
+        self.is_initialized = False
 
     @property
     @abstractmethod
-    def source_id(self) -> str:
-        """Unique identifier of the target collector source."""
+    def collector_name(self) -> str:
+        """Human-readable display name for the collector."""
         pass
 
-    @property
-    @abstractmethod
-    def collection_method(self) -> str:
-        """Ingestion protocol/type (rss, api, html, playwright)."""
-        pass
+    def initialize(self) -> None:
+        """Initializes collector resources (HTTP client, session, dependencies)."""
+        self.is_initialized = True
 
     @abstractmethod
-    def validate_config(self) -> bool:
+    def collect(self, task: SearchTask) -> CollectorResult:
         """
-        Validates required configuration parameters for the collector.
-
-        Returns:
-            True if configuration is valid, False otherwise.
-        """
-        pass
-
-    @abstractmethod
-    def collect(self, query: Optional[SearchQuery] = None) -> SearchResult:
-        """
-        Executes raw opportunity discovery and extraction for the source.
+        Executes raw data collection for a planned SearchTask.
 
         Args:
-            query: Optional SearchQuery target.
+            task: Validated SearchTask instance emitted by Phase 2 SearchPlanner.
 
         Returns:
-            SearchResult containing raw fetched items and execution status.
+            Standardized CollectorResult instance.
         """
         pass
 
-    @abstractmethod
-    def parse_to_opportunities(self, result: SearchResult) -> List[Opportunity]:
+    def validate(self, raw_data: Any) -> bool:
         """
-        Parses raw extracted items into canonical Opportunity model instances.
+        Validates raw collected payload before parsing.
+
+        Returns:
+            True if valid, False otherwise.
+        """
+        return raw_data is not None
+
+    def normalize(self, raw_item: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Normalizes raw item dictionary into canonical Opportunity schema fields.
 
         Args:
-            result: SearchResult object containing raw items.
+            raw_item: Individual item dictionary.
 
         Returns:
-            List of standardized Opportunity objects.
+            Normalized item dictionary.
         """
-        pass
+        return raw_item
+
+    def shutdown(self) -> None:
+        """Cleans up collector resources on completion or application shutdown."""
+        self.is_initialized = False

@@ -1,0 +1,19 @@
+# Rule-based Classification Configuration for CyberScout AI
+
+rules:
+  internship:
+    keywords: ["internship", "intern", "trainee", "fellowship"]
+  course:
+    keywords: ["course", "tutorial", "training", "guide", "learn", "bootcamp"]
+  certification:
+    keywords: ["certification", "cert", "voucher", "exam", "accredited"]
+  scholarship:
+    keywords: ["scholarship", "grant", "financial aid", "funding"]
+  hackathon:
+    keywords: ["hackathon", "challenge", "competition"]
+  ctf:
+    keywords: ["ctf", "capture the flag", "jeopardy", "attack-defense"]
+  github_repository:
+    keywords: ["github", "repository", "repo", "stargazers"]
+  security_news:
+    keywords: ["advisory", "vulnerability", "breach", "exploit", "cve", "news"]

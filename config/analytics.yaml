@@ -1,0 +1,11 @@
+# Analytics Configuration for CyberScout AI
+
+windows:
+  daily_days: 1
+  weekly_days: 7
+  monthly_days: 30
+
+top_rank_limits:
+  providers: 10
+  categories: 10
+  skills: 10

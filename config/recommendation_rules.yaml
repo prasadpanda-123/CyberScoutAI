@@ -1,0 +1,15 @@
+# Recommendation Rules Configuration for CyberScout AI
+
+rules:
+  free_cert:
+    condition: "free AND certificate"
+    reason: "Free Opportunity with Accredited Certificate"
+  top_provider:
+    condition: "trusted_provider"
+    reason: "Surfaced from Industry Recognized Provider"
+  urgent_deadline:
+    condition: "deadline_soon"
+    reason: "Deadline Approaching Soon - Action Required"
+  ctf_event:
+    condition: "ctf_competition"
+    reason: "Upcoming Capture The Flag (CTF) Competition"

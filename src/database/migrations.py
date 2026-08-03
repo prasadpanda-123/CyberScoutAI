@@ -33,6 +33,44 @@ MIGRATIONS: List[Migration] = [
         SELECT 1;
         """,
     ),
+    Migration(
+        version=2,
+        description="Knowledge Base & Historical Intelligence Schema v2",
+        sql="""
+        CREATE TABLE IF NOT EXISTS trend_snapshots (
+            id TEXT PRIMARY KEY,
+            snapshot_date TEXT NOT NULL,
+            metric_name TEXT NOT NULL,
+            metric_value TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS provider_statistics (
+            provider_name TEXT PRIMARY KEY,
+            total_opportunities INTEGER DEFAULT 0,
+            active_opportunities INTEGER DEFAULT 0,
+            average_score REAL DEFAULT 0.0,
+            last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS opportunity_history (
+            id TEXT PRIMARY KEY,
+            opportunity_id TEXT NOT NULL,
+            change_type TEXT NOT NULL,
+            old_value TEXT,
+            new_value TEXT,
+            recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (opportunity_id) REFERENCES opportunities(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS retention_logs (
+            id TEXT PRIMARY KEY,
+            action_taken TEXT NOT NULL,
+            records_affected INTEGER DEFAULT 0,
+            executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+    ),
 ]
 
 

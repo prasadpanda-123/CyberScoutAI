@@ -1,0 +1,7 @@
+# Retention Policy Configuration for CyberScout AI
+
+archive_expired_days: 90
+delete_archive_days: 365
+cache_ttl_days: 7
+log_retention_days: 30
+auto_cleanup_on_startup: true

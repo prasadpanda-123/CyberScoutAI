@@ -1,0 +1,8 @@
+# HTTP Client Settings for CyberScout AI
+
+timeout_seconds: 15.0
+max_connections: 10
+verify_ssl: true
+follow_redirects: true
+accept_encoding: "gzip, deflate"
+default_user_agent: "CyberScoutAI/0.3.0 (+https://github.com/CyberScoutAI/cyberscout-ai)"

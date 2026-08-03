@@ -1,0 +1,5 @@
+# History Logging Configuration for CyberScout AI
+
+max_search_history_records: 1000
+max_collection_history_records: 1000
+max_execution_history_records: 1000

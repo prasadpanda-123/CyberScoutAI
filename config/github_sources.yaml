@@ -1,0 +1,14 @@
+# GitHub Search Configuration for CyberScout AI
+
+topics:
+  - "cybersecurity"
+  - "security-tools"
+  - "ctf"
+  - "awesome-security"
+  - "threat-hunting"
+  - "penetration-testing"
+
+search_params:
+  per_page: 30
+  sort: "updated"
+  order: "desc"

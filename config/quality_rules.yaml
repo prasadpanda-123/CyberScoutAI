@@ -1,0 +1,20 @@
+# Quality Scoring and Spam Filter Rules for CyberScout AI
+
+min_title_length: 5
+min_description_length: 10
+min_quality_score: 40
+
+spam_keywords:
+  - "casino"
+  - "viagra"
+  - "crypto giveaway"
+  - "earn $1000 daily"
+  - "free money"
+  - "lottery"
+
+weights:
+  has_valid_url: 30
+  has_title: 25
+  has_description: 20
+  has_provider: 15
+  has_date: 10

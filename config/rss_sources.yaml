@@ -1,0 +1,44 @@
+# RSS / Atom Feed Sources Configuration for CyberScout AI
+
+feeds:
+  cisa_alerts:
+    name: "CISA Cybersecurity Advisories"
+    url: "https://www.cisa.gov/cybersecurity-advisories/all.xml"
+    default_category: "security_news"
+    enabled: true
+
+  owasp_news:
+    name: "OWASP Global News"
+    url: "https://owasp.org/feed.xml"
+    default_category: "security_news"
+    enabled: true
+
+  sans_isc:
+    name: "SANS Internet Storm Center"
+    url: "https://isc.sans.edu/rssfeed.xml"
+    default_category: "security_news"
+    enabled: true
+
+  google_security_blog:
+    name: "Google Online Security Blog"
+    url: "https://feeds.feedburner.com/GoogleOnlineSecurityBlog"
+    default_category: "blog"
+    enabled: true
+
+  microsoft_security_blog:
+    name: "Microsoft Security Blog"
+    url: "https://www.microsoft.com/en-us/security/blog/feed/"
+    default_category: "blog"
+    enabled: true
+
+  thehackernews:
+    name: "The Hacker News"
+    url: "https://feeds.feedburner.com/TheHackersNews"
+    default_category: "security_news"
+    enabled: true
+
+  redhat_security:
+    name: "Red Hat Security Blog"
+    url: "https://www.redhat.com/en/blog/channel/security/rss.xml"
+    default_category: "blog"
+    enabled: true

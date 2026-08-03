@@ -1,11 +1,9 @@
 """
-Abstract Processor Interfaces for CyberScout AI.
-
-Defines processing pipeline contracts per docs/architecture/processor_contract.md.
+Abstract Base Processor Contract for CyberScout AI Processing Engine.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Tuple
+from typing import Optional
 
 from src.models.opportunity import Opportunity
 
@@ -15,101 +13,35 @@ class BaseProcessor(ABC):
     Abstract Base Class for all pipeline processors.
     """
 
+    def __init__(self, enabled: bool = True):
+        self.enabled = enabled
+
     @property
     @abstractmethod
-    def name(self) -> str:
-        """Name of the processing stage."""
+    def processor_name(self) -> str:
+        """Human-readable display name for the processor."""
         pass
 
     @abstractmethod
-    def process(self, opportunities: List[Opportunity]) -> List[Opportunity]:
+    def process(self, opportunity: Opportunity) -> Optional[Opportunity]:
         """
-        Transforms or filters a list of Opportunity items.
+        Processes an Opportunity sequentially.
 
         Args:
-            opportunities: Input list of Opportunity objects.
+            opportunity: Target Opportunity instance.
 
         Returns:
-            Transformed list of Opportunity objects.
+            Processed Opportunity instance, or None if rejected by pipeline.
         """
         pass
 
 
-class ICleaner(BaseProcessor):
-    """Interface for text and HTML cleaning stage."""
+class ICleaner(ABC):
+    """
+    Abstract Interface for text cleaning operations.
+    """
 
     @abstractmethod
-    def clean(self, opp: Opportunity) -> Opportunity:
-        """Cleans title, description, and raw text fields."""
-        pass
-
-
-class IValidator(BaseProcessor):
-    """Interface for field validation and quality control stage."""
-
-    @abstractmethod
-    def validate(self, opp: Opportunity) -> Tuple[bool, List[str]]:
-        """
-        Validates opportunity fields.
-
-        Returns:
-            Tuple of (is_valid, list_of_error_strings).
-        """
-        pass
-
-
-class INormalizer(BaseProcessor):
-    """Interface for standardizing dates, locations, prices, and modes."""
-
-    @abstractmethod
-    def normalize(self, opp: Opportunity) -> Opportunity:
-        """Normalizes dates, price, remote flag, and difficulty."""
-        pass
-
-
-class ICategorizer(BaseProcessor):
-    """Interface for taxonomy classification and tag assignment."""
-
-    @abstractmethod
-    def categorize(self, opp: Opportunity) -> Opportunity:
-        """Assigns canonical OpportunityCategory and taxonomy tags."""
-        pass
-
-
-class IDuplicateDetector(BaseProcessor):
-    """Interface for identifying duplicate opportunities."""
-
-    @abstractmethod
-    def find_duplicates(
-        self, candidates: List[Opportunity]
-    ) -> List[Tuple[Opportunity, Opportunity]]:
-        """
-        Identifies duplicate pairs among opportunity candidates.
-
-        Returns:
-            List of (canonical_opp, duplicate_opp) tuples.
-        """
-        pass
-
-
-class IRankingProcessor(BaseProcessor):
-    """Interface for scoring and ranking opportunities."""
-
-    @abstractmethod
-    def compute_score(self, opp: Opportunity) -> Opportunity:
-        """Computes ranking score and score breakdown."""
-        pass
-
-
-class IStorageProcessor(BaseProcessor):
-    """Interface for database persistence stage."""
-
-    @abstractmethod
-    def store(self, opportunities: List[Opportunity]) -> int:
-        """
-        Persists processed opportunities into SQLite.
-
-        Returns:
-            Count of stored/updated records.
-        """
+    def clean(self, raw_text: str) -> str:
+        """Cleans raw text string."""
         pass

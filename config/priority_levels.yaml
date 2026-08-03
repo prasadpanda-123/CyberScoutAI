@@ -1,0 +1,15 @@
+# Priority Level Thresholds for CyberScout AI
+
+levels:
+  P0:
+    min_score: 80
+    label: "Critical / Immediate Attention"
+  P1:
+    min_score: 60
+    label: "High Priority"
+  P2:
+    min_score: 40
+    label: "Medium Priority"
+  P3:
+    min_score: 0
+    label: "Low Priority"

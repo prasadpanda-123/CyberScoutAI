@@ -1,0 +1,18 @@
+# Provider Reputation Bonus Scores for CyberScout AI
+
+providers:
+  CISA: 25
+  OWASP: 25
+  SANS Institute: 25
+  MITRE: 25
+  Google: 20
+  Microsoft: 20
+  AWS: 20
+  Cisco: 20
+  TryHackMe: 15
+  Hack The Box: 15
+  PortSwigger: 15
+  GitHub: 10
+  Coursera: 10
+  edX: 10
+  FutureLearn: 10

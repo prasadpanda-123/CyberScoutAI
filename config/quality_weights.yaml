@@ -1,0 +1,6 @@
+# Quality Weight Settings for CyberScout AI
+
+completeness_weight: 40
+provider_reputation_weight: 30
+description_depth_weight: 20
+date_presence_weight: 10

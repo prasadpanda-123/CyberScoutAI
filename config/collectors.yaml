@@ -1,0 +1,26 @@
+# Universal Collection Framework Configuration for CyberScout AI
+
+collectors:
+  GenericRSSCollector:
+    enabled: true
+    description: "Universal RSS/Atom feed collector"
+    module: "src.collectors.rss_collector"
+    class_name: "GenericRSSCollector"
+
+  GithubSearchCollector:
+    enabled: true
+    description: "GitHub API Search collector for repos and tools"
+    module: "src.collectors.github_collector"
+    class_name: "GithubSearchCollector"
+
+  CtftimeCollector:
+    enabled: true
+    description: "CTFtime API collector for CTF competitions"
+    module: "src.collectors.ctftime_collector"
+    class_name: "CtftimeCollector"
+
+  HtmlScraperCollector:
+    enabled: true
+    description: "Universal HTML BeautifulSoup scraper collector"
+    module: "src.collectors.html_collector"
+    class_name: "HtmlScraperCollector"

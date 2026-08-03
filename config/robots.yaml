@@ -1,0 +1,6 @@
+# Robots.txt Compliance Policy for CyberScout AI
+
+enabled: true
+strict_mode: false # If false, logs warning on Disallow instead of failing task
+cache_ttl_seconds: 86400 # Cache robots.txt for 24 hours
+default_user_agent_name: "CyberScoutAI"

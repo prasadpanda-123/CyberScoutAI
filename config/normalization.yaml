@@ -1,0 +1,22 @@
+# Field Normalization Configuration for CyberScout AI
+
+tracking_parameters:
+  - "utm_source"
+  - "utm_medium"
+  - "utm_campaign"
+  - "utm_term"
+  - "utm_content"
+  - "fbclid"
+  - "gclid"
+  - "_ga"
+
+locations:
+  remote_keywords: ["remote", "work from home", "virtual", "online", "anywhere"]
+  hybrid_keywords: ["hybrid", "flexible location"]
+  onsite_keywords: ["onsite", "in-person", "office"]
+
+currencies:
+  "$": "USD"
+  "€": "EUR"
+  "£": "GBP"
+  "₹": "INR"

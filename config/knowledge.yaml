@@ -1,0 +1,13 @@
+# Knowledge Base State Configuration for CyberScout AI
+
+lifecycle_states:
+  - NEVER_SEEN
+  - SEEN_BEFORE
+  - UPDATED
+  - EXPIRED
+  - ARCHIVED
+  - DELETED
+
+update_sensitivity:
+  track_title_changes: true
+  track_score_changes: true

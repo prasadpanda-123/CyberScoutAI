@@ -1,0 +1,14 @@
+# Core Collectors Configuration for CyberScout AI
+
+github:
+  token: null # Optional GITHUB_TOKEN environment variable override
+  user_agent: "CyberScoutAI-Collector/0.4.0"
+
+rss:
+  max_items_per_feed: 50
+
+youtube:
+  max_items_per_channel: 20
+
+ctftime:
+  max_events: 50

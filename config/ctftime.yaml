@@ -1,0 +1,6 @@
+# CTFTime API Configuration for CyberScout AI
+
+api_url: "https://ctftime.org/api/v1/events/"
+limit: 20
+default_category: "ctf"
+enabled: true
