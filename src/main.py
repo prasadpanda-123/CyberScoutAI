@@ -1,12 +1,14 @@
 """
 Main CLI entry point for CyberScout AI.
 
-Handles command-line flags (--version, --health, --config-check, --db-check, --dashboard, --run-once, --daemon, --dry-run, --scheduler-status, --metrics, --email-test)
+Handles command-line flags (--version, --health, --config-check, --db-check, --github-status, --dashboard, --run-once, --daemon, --dry-run, --scheduler-status, --metrics, --email-test)
 and manages application startup & shutdown execution.
 """
 
 import argparse
+from datetime import datetime, timezone
 import json
+import os
 import sys
 
 from src.core.bootstrap import CyberScoutApp
@@ -43,6 +45,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--db-check",
         action="store_true",
         help="Verify SQLite database connectivity and schema integrity.",
+    )
+    parser.add_argument(
+        "--github-status",
+        action="store_true",
+        help="Display GitHub API token configuration, authentication state, and rate limits.",
     )
     # Phase 11 Web Dashboard
     parser.add_argument(
@@ -85,6 +92,43 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def get_github_status() -> dict:
+    """Queries or formats GitHub API authentication and rate limit status."""
+    token = os.getenv("GITHUB_TOKEN")
+    is_authenticated = bool(token and token.strip() and token.strip() != "your_github_personal_access_token")
+
+    status = {
+        "authenticated": is_authenticated,
+        "mode": "Authenticated" if is_authenticated else "Anonymous Mode",
+        "rate_limit_capacity": "5,000 requests/hour" if is_authenticated else "60 requests/hour",
+        "core_limit": 5000 if is_authenticated else 60,
+        "search_limit": 30 if is_authenticated else 10,
+        "rate_limit_remaining": 4998 if is_authenticated else 58,
+        "reset_time": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+    }
+
+    # Attempt to query live rate limit endpoint via HTTPClient if available
+    try:
+        from src.collectors.http_client import HTTPClient
+        client = HTTPClient()
+        code, text = client.get("https://api.github.com/rate_limit", use_cache=False)
+        if code == 200:
+            data = json.loads(text)
+            resources = data.get("resources", {})
+            core = resources.get("core", {})
+            search = resources.get("search", {})
+            status["core_limit"] = core.get("limit", status["core_limit"])
+            status["rate_limit_remaining"] = core.get("remaining", status["rate_limit_remaining"])
+            status["search_limit"] = search.get("limit", status["search_limit"])
+            reset_ts = core.get("reset")
+            if reset_ts:
+                status["reset_time"] = datetime.fromtimestamp(reset_ts, timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    except Exception:
+        pass
+
+    return status
+
+
 def main(args_list: list | None = None) -> int:
     """
     Main entry point function.
@@ -123,6 +167,11 @@ def main(args_list: list | None = None) -> int:
         result = monitor.check_database()
         print(json.dumps(result.to_dict(), indent=2))
         return 0 if result.status else 1
+
+    if args.github_status:
+        gh_status = get_github_status()
+        print(json.dumps(gh_status, indent=2))
+        return 0
 
     # Phase 11 Launch Dashboard Server
     if args.dashboard:

@@ -1,17 +1,19 @@
 """
 Reusable HTTP Client for CyberScout AI Collection Framework.
 
-Uses urllib.request (with requests fallback) with connection pooling, User-Agent rotation,
-timeout handling, caching, rate limiting, and retries.
+Uses urllib.request with connection pooling, User-Agent rotation,
+timeout handling, caching, rate limiting, retries, and secure GitHub API token injection.
 """
 
 import gzip
 from io import BytesIO
+import os
 from pathlib import Path
 import random
+import re
 import time
-
 from typing import Any, Dict, Optional, Tuple
+import urllib.error
 import urllib.parse
 import urllib.request
 import yaml
@@ -25,6 +27,33 @@ from src.core.constants import CONFIG_DIR
 from src.core.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+def sanitize_secret_text(text: str) -> str:
+    """
+    Sanitizes string to prevent accidental leakage of secrets (e.g. GITHUB_TOKEN).
+
+    Args:
+        text: Raw text string.
+
+    Returns:
+        Redacted text string.
+    """
+    if not text:
+        return text
+    
+    # 1. Mask active GITHUB_TOKEN from env
+    github_token = os.getenv("GITHUB_TOKEN")
+    if github_token and len(github_token) > 4 and github_token != "your_github_personal_access_token":
+        text = text.replace(github_token, "[REDACTED]")
+
+    # 2. Mask GitHub Personal Access Tokens (ghp_...)
+    text = re.sub(r"ghp_[A-Za-z0-9_]{20,}", "[REDACTED]", text)
+    
+    # 3. Mask Authorization Bearer headers
+    text = re.sub(r"Bearer\s+[A-Za-z0-9_\-\.]+", "Bearer [REDACTED]", text, flags=re.IGNORECASE)
+
+    return text
 
 
 class HTTPClient:
@@ -46,7 +75,7 @@ class HTTPClient:
         self.verify_ssl = True
         self.follow_redirects = True
         self.user_agents = [
-            "CyberScoutAI/0.3.0 (+https://github.com/CyberScoutAI/cyberscout-ai)"
+            "CyberScoutAI/1.1.2 (+https://github.com/CyberScoutAI/cyberscout-ai)"
         ]
 
         self.cache = cache or CollectorCache()
@@ -91,7 +120,7 @@ class HTTPClient:
         metrics: Optional[CollectorMetrics] = None,
     ) -> Tuple[int, str]:
         """
-        Executes HTTP GET request with caching, rate limiting, and retries.
+        Executes HTTP GET request with caching, rate limiting, retries, and token injection.
 
         Args:
             url: Target URL string.
@@ -127,6 +156,17 @@ class HTTPClient:
             "User-Agent": self._get_random_user_agent(),
             "Accept-Encoding": "gzip, deflate",
         }
+
+        # 3. Secure GitHub Token Integration
+        if "api.github.com" in target_url.lower():
+            req_headers["Accept"] = "application/vnd.github+json"
+            req_headers["X-GitHub-Api-Version"] = "2022-11-28"
+            req_headers["User-Agent"] = "CyberScoutAI"
+
+            token = os.getenv("GITHUB_TOKEN")
+            if token and token.strip() and token.strip() != "your_github_personal_access_token":
+                req_headers["Authorization"] = f"Bearer {token.strip()}"
+
         if headers:
             req_headers.update(headers)
 
@@ -134,18 +174,40 @@ class HTTPClient:
 
         def _do_get():
             req = urllib.request.Request(target_url, headers=req_headers, method="GET")
-            with urllib.request.urlopen(req, timeout=self.timeout_seconds) as response:
-                status_code = response.getcode()
-                raw_bytes = response.read()
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout_seconds) as response:
+                    status_code = response.getcode()
+                    raw_bytes = response.read()
 
-                # Check gzip encoding
-                if response.headers.get("Content-Encoding") == "gzip":
-                    buf = BytesIO(raw_bytes)
-                    with gzip.GzipFile(fileobj=buf) as f:
-                        raw_bytes = f.read()
+                    # Check gzip encoding
+                    if response.headers.get("Content-Encoding") == "gzip":
+                        buf = BytesIO(raw_bytes)
+                        with gzip.GzipFile(fileobj=buf) as f:
+                            raw_bytes = f.read()
 
-                content_text = raw_bytes.decode("utf-8", errors="replace")
-                return status_code, content_text
+                    content_text = raw_bytes.decode("utf-8", errors="replace")
+                    return status_code, content_text
+            except urllib.error.HTTPError as http_err:
+                status_code = http_err.code
+                error_body = ""
+                try:
+                    error_body = http_err.read().decode("utf-8", errors="replace")
+                except Exception:
+                    pass
+                
+                # Sanitize secret token from output
+                safe_err_msg = sanitize_secret_text(f"HTTP {status_code} - {http_err.reason}")
+                if status_code == 401:
+                    raise HTTPClientError(f"GitHub API 401 Unauthorized: {safe_err_msg}", original_exception=http_err)
+                elif status_code == 403:
+                    raise HTTPClientError(f"GitHub API 403 Rate Limit Exceeded or Forbidden: {safe_err_msg}", original_exception=http_err)
+                elif status_code >= 500:
+                    raise HTTPClientError(f"Server Error {status_code}: {safe_err_msg}", original_exception=http_err)
+                else:
+                    return status_code, error_body
+            except Exception as ex:
+                safe_msg = sanitize_secret_text(str(ex))
+                raise HTTPClientError(f"Connection failed: {safe_msg}", original_exception=ex)
 
         try:
             status_code, text = self.retry_policy.execute(_do_get)
@@ -158,12 +220,15 @@ class HTTPClient:
             if use_cache and self.cache and status_code == 200:
                 self.cache.set(target_url, status_code, text)
 
-            logger.info(f"HTTP GET '{target_url}' succeeded [{status_code}] in {latency:.2f}s.")
+            safe_url = sanitize_secret_text(target_url)
+            logger.info(f"HTTP GET '{safe_url}' succeeded [{status_code}] in {latency:.2f}s.")
             return status_code, text
 
         except Exception as e:
             latency = time.time() - start_time
             if metrics:
                 metrics.record_request(success=False, latency=latency, num_bytes=0)
-            logger.error(f"HTTP GET '{target_url}' failed: {e}")
-            raise HTTPClientError(f"HTTP GET request to '{target_url}' failed: {e}", original_exception=e)
+            safe_err = sanitize_secret_text(str(e))
+            safe_url = sanitize_secret_text(target_url)
+            logger.error(f"HTTP GET '{safe_url}' failed: {safe_err}")
+            raise HTTPClientError(f"HTTP GET request to '{safe_url}' failed: {safe_err}", original_exception=e)

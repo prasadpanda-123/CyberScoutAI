@@ -2,7 +2,7 @@
 System Health Monitoring for CyberScout AI.
 
 Runs startup verification checks across configuration, database, directories,
-permissions, logging, and scheduler systems.
+permissions, logging, scheduler, and GitHub API integration systems.
 """
 
 from dataclasses import asdict, dataclass
@@ -115,6 +115,26 @@ class HealthMonitor:
             details={"verified_count": len(dirs) - len(failed_dirs), "failed": failed_dirs},
         )
 
+    def check_github_api(self) -> HealthCheckResult:
+        """Verifies GitHub API authentication mode and environment configuration."""
+        token = os.getenv("GITHUB_TOKEN")
+        is_configured = bool(token and token.strip() and token.strip() != "your_github_personal_access_token")
+        
+        mode = "Authenticated" if is_configured else "Anonymous Mode"
+        msg = f"GitHub API {mode} ({'Token configured' if is_configured else '60 req/hr rate limit'})"
+        
+        return HealthCheckResult(
+            component="github_api",
+            status=True,
+            message=msg,
+            details={
+                "mode": mode,
+                "authenticated": is_configured,
+                "token_configured": is_configured,
+                "rate_limit_capacity": "5,000 req/hr" if is_configured else "60 req/hr",
+            },
+        )
+
     def run_full_health_check(self) -> Dict[str, Any]:
         """
         Executes complete system health check suite.
@@ -126,6 +146,7 @@ class HealthMonitor:
             self.check_config(),
             self.check_database(),
             self.check_directories(),
+            self.check_github_api(),
         ]
         overall = all(c.status for c in checks)
         return {

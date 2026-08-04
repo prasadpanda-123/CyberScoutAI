@@ -107,11 +107,34 @@ python main.py --run-once
 # Execute single scan in dry-run mode (skip DB writes & emails)
 python main.py --run-once --dry-run
 
+# Inspect GitHub API token authentication & rate limit status
+python main.py --github-status
+
 # Inspect system health diagnostic status
 python main.py --health
 
 # Inspect version information
 python main.py --version
+```
+
+---
+
+## 🔑 GitHub Personal Access Token Setup (Optional)
+
+By default, CyberScout AI communicates with the GitHub Search API in **Anonymous Mode** (60 requests/hour). To unlock **5,000 requests/hour**:
+
+1. Generate a fine-grained or classic Personal Access Token on [GitHub Developer Settings](https://github.com/settings/tokens).
+2. Create a `.env` file in the root directory:
+```bash
+cp .env.example .env
+```
+3. Add your token to `.env`:
+```ini
+GITHUB_TOKEN=ghp_your_actual_token_here
+```
+4. Verify authentication status:
+```bash
+python main.py --github-status
 ```
 
 ---

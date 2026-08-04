@@ -42,6 +42,13 @@ class CyberScoutApp:
             Instantiated AppContext.
         """
         try:
+            # 0. Load Environment Variables from .env file
+            try:
+                from dotenv import load_dotenv
+                load_dotenv()
+            except ImportError:
+                pass
+
             # 1. Load Configuration
             cfg = Config(config_files=self.config_files)
 

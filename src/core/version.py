@@ -8,7 +8,7 @@ import sys
 from typing import Dict
 
 APP_NAME = "CyberScout AI"
-APP_VERSION = "1.1.1"
+APP_VERSION = "1.1.2"
 APP_TAGLINE = "Never Miss a Cybersecurity Opportunity Again."
 BUILD_DATE = "2026-08-03"
 
