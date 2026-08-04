@@ -1,7 +1,7 @@
 """
 Main CLI entry point for CyberScout AI.
 
-Handles command-line flags (--version, --health, --config-check, --validate-config, --validate-sources, --provider-health, --config-report, --db-check, --env-status, --github-status, --generate-command-docs, --dashboard, --run-once, --daemon, --dry-run, --scheduler-status, --metrics, --email-test)
+Handles command-line flags (--version, --health, --config-check, --validate-config, --validate-sources, --provider-health, --config-report, --validate-rss, --rss-report, --repair-config, --db-check, --env-status, --github-status, --generate-command-docs, --dashboard, --run-once, --daemon, --dry-run, --scheduler-status, --metrics, --email-test)
 and manages application startup & shutdown execution.
 """
 
@@ -9,14 +9,19 @@ import argparse
 from datetime import datetime, timezone
 import json
 import os
+from pathlib import Path
 import sys
+import yaml
 
+from src.collectors.http_client import HTTPClient
+from src.collectors.parser_utils import parse_rss_xml_content
 from src.core.bootstrap import CyberScoutApp, ensure_env_file
 from src.core.config import config
 from src.core.config_validator import ConfigurationValidator
-from src.core.constants import PROJECT_ROOT
+from src.core.constants import CONFIG_DIR, PROJECT_ROOT
 from src.core.health import HealthMonitor
 from src.core.provider_health import ProviderHealthChecker
+from src.core.rss_diagnostics import RSSDiagnosticsManager
 from src.core.version import format_banner, get_version_info
 from src.database.connection import DatabaseManager
 from src.automation.engine import AutomationEngine
@@ -64,6 +69,21 @@ def build_parser() -> argparse.ArgumentParser:
         "--config-report",
         action="store_true",
         help="Generate master configuration audit summary report.",
+    )
+    parser.add_argument(
+        "--validate-rss",
+        action="store_true",
+        help="Execute live RSS feed fetching and XML parser validation.",
+    )
+    parser.add_argument(
+        "--rss-report",
+        action="store_true",
+        help="Display RSS feed parser diagnostics and error tracking report.",
+    )
+    parser.add_argument(
+        "--repair-config",
+        action="store_true",
+        help="Automatically repair source collector recommendations in sources.yaml.",
     )
     parser.add_argument(
         "--db-check",
@@ -197,6 +217,100 @@ def get_github_status() -> dict:
     return status
 
 
+def run_validate_rss() -> dict:
+    """Executes live RSS validation across configured sources."""
+    sources_file = CONFIG_DIR / "sources.yaml"
+    client = HTTPClient()
+    diag_mgr = RSSDiagnosticsManager()
+
+    try:
+        with open(sources_file, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        sources = data.get("sources", [])
+    except Exception as e:
+        return {"error": f"Failed to load sources.yaml: {e}"}
+
+    rss_sources = [s for s in sources if s.get("enabled", True) and s.get("collection_method") == "rss"]
+    validated = []
+
+    for s in rss_sources:
+        sid = s["id"]
+        base_url = s.get("base_url")
+        if not base_url or "REPLACE_WITH_CHANNEL_ID" in base_url:
+            continue
+
+        try:
+            code, content = client.get(base_url, source_id=sid)
+            items = parse_rss_xml_content(
+                content=content,
+                source_id=sid,
+                url=base_url,
+                collector_name=s.get("preferred_collector", "GenericRSSCollector"),
+                status_code=code,
+            )
+            validated.append({
+                "source_id": sid,
+                "target_url": base_url,
+                "status_code": code,
+                "items_parsed": len(items),
+                "parsed_cleanly": len(items) > 0,
+            })
+        except Exception as ex:
+            validated.append({
+                "source_id": sid,
+                "target_url": base_url,
+                "status_code": 500,
+                "items_parsed": 0,
+                "error": str(ex),
+            })
+
+    return {
+        "rss_sources_tested": len(validated),
+        "details": validated,
+        "diagnostics_summary": diag_mgr.get_feed_diagnostics_summary(),
+    }
+
+
+def run_repair_config() -> dict:
+    """Repairs collector recommendations in config/sources.yaml."""
+    sources_file = CONFIG_DIR / "sources.yaml"
+    diag_mgr = RSSDiagnosticsManager()
+    summary = diag_mgr.get_feed_diagnostics_summary()
+    feed_stats = summary.get("feed_stats", {})
+
+    repaired_count = 0
+    repaired_sources = []
+
+    try:
+        with open(sources_file, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        sources = data.get("sources", [])
+
+        for src in sources:
+            sid = src.get("id")
+            if sid in feed_stats:
+                stat = feed_stats[sid]
+                rec = stat.get("recommendation", "")
+                if "HtmlScraperCollector" in rec and src.get("preferred_collector") != "HtmlScraperCollector":
+                    src["preferred_collector"] = "HtmlScraperCollector"
+                    src["collection_method"] = "html"
+                    repaired_count += 1
+                    repaired_sources.append(f"{sid}: switched to HtmlScraperCollector")
+
+        if repaired_count > 0:
+            with open(sources_file, "w", encoding="utf-8") as f:
+                yaml.safe_dump(data, f, sort_keys=False)
+
+    except Exception as e:
+        return {"status": "failed", "error": str(e)}
+
+    return {
+        "status": "success",
+        "repaired_count": repaired_count,
+        "repaired_sources": repaired_sources,
+    }
+
+
 def main(args_list: list | None = None) -> int:
     """
     Main entry point function.
@@ -235,6 +349,21 @@ def main(args_list: list | None = None) -> int:
         report = validator.validate_all()
         print(json.dumps(report.to_dict(), indent=2))
         return 0 if report.is_valid else 1
+
+    if args.validate_rss:
+        result = run_validate_rss()
+        print(json.dumps(result, indent=2))
+        return 0
+
+    if args.rss_report:
+        diag_mgr = RSSDiagnosticsManager()
+        print(json.dumps(diag_mgr.get_feed_diagnostics_summary(), indent=2))
+        return 0
+
+    if args.repair_config:
+        result = run_repair_config()
+        print(json.dumps(result, indent=2))
+        return 0
 
     if args.provider_health:
         checker = ProviderHealthChecker()

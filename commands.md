@@ -17,6 +17,9 @@
 | **CONFIGURATION** | `python main.py --validate-sources` | Audit provider sources, URL syntax, and capability matrices. |
 | **CONFIGURATION** | `python main.py --provider-health` | Run live DNS resolution and reachability checks for all sources. |
 | **CONFIGURATION** | `python main.py --config-report` | Generate master configuration audit summary report. |
+| **SYSTEM** | `python main.py --validate-rss` | Execute live RSS feed fetching and XML parser validation. |
+| **SYSTEM** | `python main.py --rss-report` | Display RSS feed parser diagnostics and error tracking report. |
+| **SYSTEM** | `python main.py --repair-config` | Automatically repair source collector recommendations in sources.yaml. |
 | **SYSTEM** | `python main.py --db-check` | Verify SQLite database connectivity and schema integrity. |
 | **ENVIRONMENT** | `python main.py --env-status` | Display local .env environment variable configuration status. |
 | **ENVIRONMENT** | `python main.py --github-status` | Display GitHub API token configuration, authentication state, and rate limits. |

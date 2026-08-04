@@ -1,0 +1,126 @@
+{% extends "layout.html" %}
+
+{% block title %}System Diagnostics — CyberScout AI{% endblock %}
+
+{% block content %}
+<div class="dashboard-header mb-4">
+    <h2><i class="bi bi-cpu text-info"></i> System & RSS Feed Diagnostics</h2>
+    <p class="text-muted">Real-time parser error detection, XML recovery tracking, and provider health metrics.</p>
+</div>
+
+<!-- Diagnostics Metrics Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card bg-dark border-secondary h-100 p-3">
+            <div class="text-muted small">Healthy Feeds</div>
+            <div class="fs-3 fw-bold text-success">{{ diag.healthy_feeds_count }}</div>
+            <div class="small text-muted">Active responsive feeds</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-dark border-secondary h-100 p-3">
+            <div class="text-muted small">Broken / Malformed Feeds</div>
+            <div class="fs-3 fw-bold text-danger">{{ diag.broken_feeds_count }}</div>
+            <div class="small text-muted">Feeds requiring attention</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-dark border-secondary h-100 p-3">
+            <div class="text-muted small">Total Parser Errors</div>
+            <div class="fs-3 fw-bold text-warning">{{ diag.total_parser_errors }}</div>
+            <div class="small text-muted">XML parse exceptions logged</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-dark border-secondary h-100 p-3">
+            <div class="text-muted small">Avg Response Time</div>
+            <div class="fs-3 fw-bold text-info">{{ diag.average_response_time_sec }}s</div>
+            <div class="small text-muted">Average network latency</div>
+        </div>
+    </div>
+</div>
+
+<!-- Feed Status Summary Table -->
+<div class="card bg-dark border-secondary mb-4">
+    <div class="card-header bg-dark border-secondary fw-bold text-light">
+        <i class="bi bi-rss text-warning"></i> RSS / Feed Health Registry
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Source ID</th>
+                        <th>Status</th>
+                        <th>Target URL</th>
+                        <th>Last Error</th>
+                        <th>Recommendation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sid, stat in diag.feed_stats.items() %}
+                    <tr>
+                        <td class="fw-bold text-info">{{ sid }}</td>
+                        <td>
+                            {% if stat.status == 'Healthy' %}
+                            <span class="badge bg-success">Healthy</span>
+                            {% elif stat.status == 'Broken' %}
+                            <span class="badge bg-danger">Broken</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ stat.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td><small class="text-muted">{{ stat.target_url }}</small></td>
+                        <td><small class="text-danger">{{ stat.last_error or 'None' }}</small></td>
+                        <td><small class="text-warning">{{ stat.recommendation or 'OK' }}</small></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-3">No feed diagnostics recorded yet. Run a collection scan.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Malformed XML Error Logs Table -->
+<div class="card bg-dark border-secondary">
+    <div class="card-header bg-dark border-secondary fw-bold text-light">
+        <i class="bi bi-exclamation-triangle text-danger"></i> Recent XML / Feed Parse Errors Log
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-dark table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Provider</th>
+                        <th>Position</th>
+                        <th>HTTP</th>
+                        <th>Exception / Error</th>
+                        <th>Recommendation / Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for err in diag.recent_errors %}
+                    <tr>
+                        <td><small class="text-muted">{{ err.timestamp }}</small></td>
+                        <td class="fw-bold text-warning">{{ err.source_id }}</td>
+                        <td><small class="text-info">Line {{ err.line_number or '?' }}, Col {{ err.column_number or '?' }}</small></td>
+                        <td><span class="badge bg-secondary">{{ err.http_status }}</span></td>
+                        <td><small class="text-danger">{{ err.parser_exception }}</small></td>
+                        <td><small class="text-success fw-bold">{{ err.recommendation }}</small></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-3">Zero RSS parse errors recorded. All feeds parsing cleanly!</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

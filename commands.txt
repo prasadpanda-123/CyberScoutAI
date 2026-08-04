@@ -20,6 +20,15 @@ python main.py --health
 python main.py --config-check
     Validate application configuration settings.
 
+python main.py --validate-rss
+    Execute live RSS feed fetching and XML parser validation.
+
+python main.py --rss-report
+    Display RSS feed parser diagnostics and error tracking report.
+
+python main.py --repair-config
+    Automatically repair source collector recommendations in sources.yaml.
+
 python main.py --db-check
     Verify SQLite database connectivity and schema integrity.
 

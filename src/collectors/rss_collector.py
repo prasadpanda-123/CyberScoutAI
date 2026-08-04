@@ -10,6 +10,7 @@ from src.collectors.context import CollectorContext
 from src.collectors.parser_utils import parse_rss_xml_content
 from src.collectors.result import CollectorResult
 from src.core.logging import get_logger
+from src.core.rss_diagnostics import RSSDiagnosticsManager
 from src.intelligence.planner_models import SearchTask
 from src.models.enums import OpportunityCategory, Status
 from src.models.opportunity import Opportunity
@@ -47,13 +48,28 @@ class GenericRSSCollector(BaseCollector):
         try:
             status_code, content = self.context.http_client.get(url, source_id=self.source_id)
             if status_code != 200:
+                RSSDiagnosticsManager().log_parser_error(
+                    source_id=self.source_id,
+                    collector_name=self.collector_name,
+                    target_url=url,
+                    http_status=status_code,
+                    content_type="text/html",
+                    payload=content or "",
+                    exception_msg=f"HTTP status code {status_code} returned.",
+                )
                 return CollectorResult(
                     source_id=self.source_id,
                     status="failed",
                     errors=[f"HTTP {status_code} returned for RSS feed '{url}'."],
                 )
 
-            raw_items = parse_rss_xml_content(content)
+            raw_items = parse_rss_xml_content(
+                content=content,
+                source_id=self.source_id,
+                url=url,
+                collector_name=self.collector_name,
+                status_code=status_code,
+            )
             for item in raw_items:
                 normalized = self.normalize_item(item, task)
                 if normalized:
@@ -99,7 +115,5 @@ class GenericRSSCollector(BaseCollector):
             source_id=self.source_id,
             description=item.get("description", "").strip(),
             category=cat,
-            provider=self.source_id,
-            published_date=item.get("published_date"),
-            status=Status.ACTIVE.value,
+            status="discovered",
         )

@@ -113,6 +113,21 @@ class YouTubeRSSCollector(BaseCollector):
                     "thumbnail_url": thumbnail_url,
                 })
             return entries
+        except ET.ParseError as pe:
+            line, col = pe.position if hasattr(pe, "position") else (None, None)
+            from src.core.rss_diagnostics import RSSDiagnosticsManager
+            RSSDiagnosticsManager().log_parser_error(
+                source_id=self.source_id,
+                collector_name=self.collector_name,
+                target_url=target_url,
+                http_status=200,
+                content_type="application/atom+xml",
+                payload=content,
+                exception_msg=str(pe),
+                line=line,
+                col=col,
+            )
+            return entries
         except Exception as e:
             logger.warning(f"Failed to parse YouTube Atom XML: {e}")
             return entries
