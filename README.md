@@ -107,6 +107,9 @@ python main.py --run-once
 # Execute single scan in dry-run mode (skip DB writes & emails)
 python main.py --run-once --dry-run
 
+# Inspect local .env environment variable configuration status
+python main.py --env-status
+
 # Inspect GitHub API token authentication & rate limit status
 python main.py --github-status
 
@@ -119,23 +122,38 @@ python main.py --version
 
 ---
 
-## 🔑 GitHub Personal Access Token Setup (Optional)
+## 🔐 Local Environment Configuration (`.env`)
 
-By default, CyberScout AI communicates with the GitHub Search API in **Anonymous Mode** (60 requests/hour). To unlock **5,000 requests/hour**:
+CyberScout AI automatically manages environment settings using a root-level `.env` file:
 
-1. Generate a fine-grained or classic Personal Access Token on [GitHub Developer Settings](https://github.com/settings/tokens).
-2. Create a `.env` file in the root directory:
+1. **Automatic Initialization**: On first startup, if `.env` does not exist, it is automatically generated from `.env.example`.
+2. **Manual Configuration**: You can also copy and customize `.env` manually:
 ```bash
 cp .env.example .env
 ```
-3. Add your token to `.env`:
+3. **Configure Secrets**: Add your credentials to `.env`:
 ```ini
+APP_ENV=development
+LOG_LEVEL=INFO
+LOG_FILE=cyberscout.log
+DB_NAME=cyberscout.db
+
+# Optional GitHub Personal Access Token (5,000 req/hr capacity)
 GITHUB_TOKEN=ghp_your_actual_token_here
+
+# Optional SMTP Email Settings
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=user@example.com
+SMTP_PASSWORD=your_smtp_app_password
+RECIPIENT_EMAIL=user@example.com
 ```
-4. Verify authentication status:
+4. **Inspect Environment Status**:
 ```bash
-python main.py --github-status
+python main.py --env-status
 ```
+> [!IMPORTANT]
+> **Security Guarantee**: The `.env` file is excluded from Git tracking in `.gitignore`. Secrets (`GITHUB_TOKEN`, `SMTP_PASSWORD`) are masked (`[REDACTED]`) in all logs, terminal outputs, and reports.
 
 ---
 

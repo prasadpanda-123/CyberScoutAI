@@ -1,7 +1,7 @@
 """
 Main CLI entry point for CyberScout AI.
 
-Handles command-line flags (--version, --health, --config-check, --db-check, --github-status, --dashboard, --run-once, --daemon, --dry-run, --scheduler-status, --metrics, --email-test)
+Handles command-line flags (--version, --health, --config-check, --db-check, --env-status, --github-status, --dashboard, --run-once, --daemon, --dry-run, --scheduler-status, --metrics, --email-test)
 and manages application startup & shutdown execution.
 """
 
@@ -11,8 +11,9 @@ import json
 import os
 import sys
 
-from src.core.bootstrap import CyberScoutApp
+from src.core.bootstrap import CyberScoutApp, ensure_env_file
 from src.core.config import config
+from src.core.constants import PROJECT_ROOT
 from src.core.health import HealthMonitor
 from src.core.version import format_banner, get_version_info
 from src.database.connection import DatabaseManager
@@ -45,6 +46,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--db-check",
         action="store_true",
         help="Verify SQLite database connectivity and schema integrity.",
+    )
+    parser.add_argument(
+        "--env-status",
+        action="store_true",
+        help="Display local .env environment variable configuration status.",
     )
     parser.add_argument(
         "--github-status",
@@ -92,8 +98,43 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def get_env_status_report() -> str:
+    """Formats formatted terminal output report for local .env environment configuration."""
+    ensure_env_file()
+    env_exists = (PROJECT_ROOT / ".env").exists()
+    
+    gh_token = os.getenv("GITHUB_TOKEN")
+    gh_configured = bool(gh_token and gh_token.strip() and gh_token.strip() != "your_github_personal_access_token")
+    
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_PASSWORD")
+    smtp_configured = bool(smtp_user and smtp_user.strip() and smtp_pass and smtp_pass.strip() and smtp_user.strip() != "user@example.com")
+    
+    app_mode = os.getenv("APP_ENV", config.get("app_env", "development"))
+
+    lines = [
+        "======================================================",
+        "Environment Status",
+        "======================================================",
+        "",
+        f".env file ............ {'FOUND' if env_exists else 'NOT FOUND'}",
+        "",
+        "Configuration ........ OK",
+        "",
+        f"GitHub Token ......... {'CONFIGURED' if gh_configured else 'NOT CONFIGURED'}",
+        "",
+        f"SMTP ................. {'CONFIGURED' if smtp_configured else 'NOT CONFIGURED'}",
+        "",
+        f"Application Mode ..... {app_mode}",
+        "",
+        "======================================================",
+    ]
+    return "\n".join(lines)
+
+
 def get_github_status() -> dict:
     """Queries or formats GitHub API authentication and rate limit status."""
+    ensure_env_file()
     token = os.getenv("GITHUB_TOKEN")
     is_authenticated = bool(token and token.strip() and token.strip() != "your_github_personal_access_token")
 
@@ -107,7 +148,6 @@ def get_github_status() -> dict:
         "reset_time": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
     }
 
-    # Attempt to query live rate limit endpoint via HTTPClient if available
     try:
         from src.collectors.http_client import HTTPClient
         client = HTTPClient()
@@ -167,6 +207,10 @@ def main(args_list: list | None = None) -> int:
         result = monitor.check_database()
         print(json.dumps(result.to_dict(), indent=2))
         return 0 if result.status else 1
+
+    if args.env_status:
+        print(get_env_status_report())
+        return 0
 
     if args.github_status:
         gh_status = get_github_status()

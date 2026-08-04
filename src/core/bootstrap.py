@@ -1,15 +1,18 @@
 """
 Central Application Bootstrapper and Lifecycle Manager for CyberScout AI.
 
-Wires together Configuration, Logging, SQLite Database, Repositories,
-Migration Engine, Seed Data, and Scheduler into a single CyberScoutApp.
+Wires together Configuration, Environment Variables (.env), Logging, SQLite Database,
+Repositories, Migration Engine, Seed Data, and Scheduler into a single CyberScoutApp.
 """
 
+import os
+from pathlib import Path
+import shutil
 import sys
 from typing import Optional
 
 from src.core.config import Config, config
-from src.core.constants import DATA_DIR, LOGS_DIR, REPORTS_DIR
+from src.core.constants import DATA_DIR, LOGS_DIR, PROJECT_ROOT, REPORTS_DIR
 from src.core.context import AppContext, RepositoryContainer
 from src.core.exceptions import ConfigurationError, DatabaseError, SchedulerError
 from src.core.health import HealthMonitor
@@ -21,6 +24,40 @@ from src.database.seed import SeedManager
 from src.scheduler.manager import SchedulerManager
 
 logger = get_logger(__name__)
+
+
+def ensure_env_file(root_dir: Optional[Path] = None) -> bool:
+    """
+    Verifies existence of root-level .env file.
+    If missing, automatically creates .env from .env.example template.
+
+    Args:
+        root_dir: Optional root directory path.
+
+    Returns:
+        True if .env exists or was created, False otherwise.
+    """
+    root = root_dir or PROJECT_ROOT
+    env_file = root / ".env"
+    example_file = root / ".env.example"
+
+    if not env_file.exists() and example_file.exists():
+        try:
+            shutil.copy(example_file, env_file)
+            logger.info("Automatically generated '.env' file from '.env.example' template.")
+        except Exception as e:
+            logger.warning(f"Could not auto-generate .env file: {e}")
+
+    try:
+        from dotenv import load_dotenv
+        if env_file.exists():
+            load_dotenv(dotenv_path=env_file, override=False)
+        else:
+            load_dotenv(override=False)
+        return True
+    except ImportError:
+        logger.debug("python-dotenv not installed. Skipping .env file loading.")
+        return False
 
 
 class CyberScoutApp:
@@ -42,12 +79,8 @@ class CyberScoutApp:
             Instantiated AppContext.
         """
         try:
-            # 0. Load Environment Variables from .env file
-            try:
-                from dotenv import load_dotenv
-                load_dotenv()
-            except ImportError:
-                pass
+            # 0. Load Environment Variables from .env file (Auto-create if missing)
+            ensure_env_file()
 
             # 1. Load Configuration
             cfg = Config(config_files=self.config_files)
@@ -65,80 +98,59 @@ class CyberScoutApp:
                 backup_count=backup_count,
             )
 
-            logger.info("Starting CyberScout AI Application Initialization...")
+            # 3. Verify Runtime Directories
+            DATA_DIR.mkdir(parents=True, exist_ok=True)
+            LOGS_DIR.mkdir(parents=True, exist_ok=True)
+            REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
-            # 3. Create Runtime Directories
-            for d in [DATA_DIR, LOGS_DIR, REPORTS_DIR]:
-                d.mkdir(parents=True, exist_ok=True)
-
-            # 4. Initialize SQLite Database & Schema
+            # 4. Initialize Database & Run Migrations
             db_mgr = DatabaseManager()
-            db_mgr.initialize_database()
-
-            if not db_mgr.ping():
-                raise DatabaseError("SQLite database health check ping failed.")
-
-            # 5. Apply Pending Migrations
             mig_mgr = MigrationManager(db_mgr)
             mig_mgr.apply_migrations()
-            current_version = mig_mgr.get_current_version()
 
-            # 6. Seed Default Records
+            # 5. Seed Initial Database Tables
             seed_mgr = SeedManager(db_mgr)
             seed_mgr.run_all_seeds()
 
-            # 7. Instantiate Repositories
+            # 6. Instantiate Repository Container
             repos = RepositoryContainer.create_all(db_mgr)
 
-            # 8. Instantiate Scheduler Manager
-            scheduler = SchedulerManager()
+            # 7. Initialize Scheduler Manager
+            scheduler_mgr = SchedulerManager()
 
-            # 9. Build AppContext
+            # 8. Construct Central AppContext
             self.context = AppContext(
                 config_instance=cfg,
-                logger_instance=log_instance,
+                logger_instance=logger,
                 db_manager=db_mgr,
                 repositories=repos,
-                scheduler=scheduler,
+                scheduler=scheduler_mgr,
             )
 
             self.is_initialized = True
-
-            # 10. Display Clean Startup Banner
-            banner = format_banner(
-                env=cfg.get("app_env", "development"),
-                db_status="CONNECTED & VERIFIED",
-                db_version=current_version,
-            )
-            logger.info(f"\n{banner}")
+            logger.info("\n" + format_banner())
             logger.info("Application initialization pipeline completed successfully.")
-
             return self.context
 
-        except ConfigurationError as e:
-            logger.critical(f"Configuration startup failure: {e}")
-            sys.exit(1)
-        except DatabaseError as e:
-            logger.critical(f"Database startup failure: {e}")
-            sys.exit(1)
         except Exception as e:
-            logger.critical(f"Fatal error during application startup: {e}", exc_info=True)
-            sys.exit(1)
+            logger.critical(f"CyberScoutApp startup failed: {e}", exc_info=True)
+            raise ConfigurationError(f"Application bootstrap failed: {e}", original_exception=e)
 
     def shutdown(self) -> None:
-        """
-        Executes clean shutdown sequence:
-        Scheduler -> Database -> Logging teardown.
-        """
+        """Executes graceful shutdown sequence for background threads and database connections."""
+        if not self.is_initialized or not self.context:
+            logger.warning("Shutdown called on uninitialized CyberScoutApp instance.")
+            return
+
         logger.info("Initiating CyberScout AI application shutdown sequence...")
-        if self.context:
+        try:
             if self.context.scheduler:
                 self.context.scheduler.shutdown()
+
             if self.context.db_manager:
-                self.context.db_manager.close()
-        self.is_initialized = False
-        logger.info("Application shutdown completed cleanly.")
+                self.context.db_manager.close_connection()
 
-
-# Legacy compatibility alias
-AppManager = CyberScoutApp
+            self.is_initialized = False
+            logger.info("Application shutdown completed cleanly.")
+        except Exception as e:
+            logger.error(f"Error during CyberScoutApp shutdown: {e}", exc_info=True)

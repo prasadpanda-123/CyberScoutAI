@@ -71,6 +71,16 @@ class DatabaseManager:
                 raise DatabaseConnectionError(f"Failed to connect to database '{self.db_path}': {e}", original_exception=e)
         return self._connection
 
+    def close_connection(self) -> None:
+        """Closes the active SQLite connection if open."""
+        if self._connection:
+            try:
+                self._connection.close()
+                self._connection = None
+                logger.debug(f"Closed connection to database: {self.db_path}")
+            except sqlite3.Error as e:
+                logger.warning(f"Error closing database connection: {e}")
+
     @contextmanager
     def transaction(self) -> Generator[sqlite3.Cursor, None, None]:
         """
