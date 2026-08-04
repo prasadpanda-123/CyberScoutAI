@@ -19,6 +19,7 @@ data/*.sqlite3
 
 # Logs and runtime artifacts
 logs/*.log
+logs/rss_errors/
 reports/*
 !reports/.gitkeep
 
