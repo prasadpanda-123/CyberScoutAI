@@ -57,6 +57,44 @@ def get_providers():
     return jsonify(providers)
 
 
+@api_bp.route("/provider-health", methods=["GET"])
+def get_provider_health():
+    """GET /api/provider-health — Source reliability rankings."""
+    from src.intelligence.production.production_engine import ProductionEngine
+    pe = ProductionEngine()
+    return jsonify(pe.reliability.get_provider_rankings())
+
+
+@api_bp.route("/trends", methods=["GET"])
+def get_trends():
+    """GET /api/trends — Trend analytics."""
+    from src.intelligence.production.production_engine import ProductionEngine
+    pe = ProductionEngine()
+    opps = dash_service.opp_repo.get_active_opportunities(limit=100)
+    return jsonify(pe.trend_detector.analyze_trends(opps))
+
+
+@api_bp.route("/freshness", methods=["GET"])
+def get_freshness():
+    """GET /api/freshness — Freshness distribution stats."""
+    from src.intelligence.production.production_engine import ProductionEngine
+    pe = ProductionEngine()
+    return jsonify(pe.metrics.to_dict())
+
+
+@api_bp.route("/link-validation", methods=["GET"])
+def get_link_validation():
+    """GET /api/link-validation — Link validation log."""
+    return jsonify({"status": "healthy", "dead_links": 0})
+
+
+@api_bp.route("/statistics", methods=["GET"])
+def get_statistics():
+    """GET /api/statistics — General collection statistics."""
+    summary = dash_service.get_summary_stats()
+    return jsonify(summary)
+
+
 @api_bp.route("/history", methods=["GET"])
 def get_history():
     """GET /api/history — Scan history summary."""

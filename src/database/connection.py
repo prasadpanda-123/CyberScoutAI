@@ -42,6 +42,8 @@ class DatabaseManager:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
             conn = self.get_connection()
             self._create_schema(conn)
+            from src.database.migrations import MigrationManager
+            MigrationManager(db_manager=self).apply_migrations()
             logger.info(f"Database successfully initialized at '{self.db_path}'.")
         except sqlite3.Error as e:
             raise DatabaseConnectionError(f"Failed to initialize SQLite database at '{self.db_path}': {e}", original_exception=e)
@@ -194,6 +196,14 @@ class DatabaseManager:
             beginner_friendly BOOLEAN,
             score INTEGER DEFAULT 0,
             score_breakdown TEXT,
+            confidence_score REAL DEFAULT 0.0,
+            quality_score REAL DEFAULT 0.0,
+            is_rejected BOOLEAN DEFAULT 0,
+            rejection_reason TEXT,
+            quality_flags TEXT,
+            topic_score REAL DEFAULT 0.0,
+            keyword_score REAL DEFAULT 0.0,
+            spam_score REAL DEFAULT 0.0,
             status TEXT NOT NULL DEFAULT 'active',
             duplicate_of_id TEXT,
             run_id TEXT,

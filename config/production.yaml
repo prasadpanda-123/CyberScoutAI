@@ -1,0 +1,21 @@
+minimum_provider_score: 40.0
+minimum_freshness: 30.0
+maximum_days_old: 90
+duplicate_threshold: 0.85
+verification_timeout: 5.0
+link_timeout: 3.0
+retry_attempts: 2
+archive_after_days: 60
+trend_window_days: 30
+
+provider_trust_defaults:
+  cisa_alerts: 100.0
+  us_cert: 100.0
+  github_api: 95.0
+  ctftime_api: 95.0
+  owasp_feed: 95.0
+  portswigger_blog: 95.0
+  hackthebox_news: 90.0
+  tryhackme_blog: 90.0
+  generic_rss: 60.0
+  html_scraper: 50.0

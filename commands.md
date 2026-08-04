@@ -32,6 +32,18 @@
 | **AUTOMATION** | `python main.py --metrics` | Display performance timings for the last completed run. |
 | **SYSTEM** | `python main.py --smtp-check` | Execute end-to-end SMTP configuration, DNS resolution, TCP connection, and authentication checks. |
 | **EMAIL** | `python main.py --email-test` | Sends a test notification email digest. |
+| **SYSTEM** | `python main.py --quality-report` | Display Quality Intelligence Engine acceptance and rejection statistics. |
+| **SYSTEM** | `python main.py --quality-check` | Run Quality Intelligence validation against current database opportunities. |
+| **SYSTEM** | `python main.py --quality-stats` | Display aggregated quality metrics (confidence distribution, keyword frequency, etc.). |
+| **SYSTEM** | `python main.py --quality-test` | Run a test evaluation of a sample opportunity through the Quality Engine. |
+| **SYSTEM** | `python main.py --rejected` | List recently rejected opportunities with rejection reasons. |
+| **SYSTEM** | `python main.py --provider-report` | Display provider reliability rankings and star ratings. |
+| **SYSTEM** | `python main.py --freshness-report` | Display opportunity freshness and decay statistics. |
+| **SYSTEM** | `python main.py --trend-report` | Display top growing skills, hiring companies, and trending categories. |
+| **SYSTEM** | `python main.py --history-report` | Display historical opportunity lifecycle state transitions. |
+| **SYSTEM** | `python main.py --validate-links` | Execute URL link validation diagnostics against active database opportunities. |
+| **SYSTEM** | `python main.py --verify-content` | Execute page content verification checks. |
+| **SYSTEM** | `python main.py --production-report` | Display comprehensive Production Intelligence master telemetry report. |
 
 ---
 

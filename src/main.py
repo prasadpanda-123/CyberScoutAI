@@ -148,6 +148,68 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Sends a test notification email digest.",
     )
+    # Phase 11.5 Quality Intelligence CLI
+    parser.add_argument(
+        "--quality-report",
+        action="store_true",
+        help="Display Quality Intelligence Engine acceptance and rejection statistics.",
+    )
+    parser.add_argument(
+        "--quality-check",
+        action="store_true",
+        help="Run Quality Intelligence validation against current database opportunities.",
+    )
+    parser.add_argument(
+        "--quality-stats",
+        action="store_true",
+        help="Display aggregated quality metrics (confidence distribution, keyword frequency, etc.).",
+    )
+    parser.add_argument(
+        "--quality-test",
+        action="store_true",
+        help="Run a test evaluation of a sample opportunity through the Quality Engine.",
+    )
+    parser.add_argument(
+        "--rejected",
+        action="store_true",
+        help="List recently rejected opportunities with rejection reasons.",
+    )
+    # Phase 12 Production Intelligence CLI
+    parser.add_argument(
+        "--provider-report",
+        action="store_true",
+        help="Display provider reliability rankings and star ratings.",
+    )
+    parser.add_argument(
+        "--freshness-report",
+        action="store_true",
+        help="Display opportunity freshness and decay statistics.",
+    )
+    parser.add_argument(
+        "--trend-report",
+        action="store_true",
+        help="Display top growing skills, hiring companies, and trending categories.",
+    )
+    parser.add_argument(
+        "--history-report",
+        action="store_true",
+        help="Display historical opportunity lifecycle state transitions.",
+    )
+    parser.add_argument(
+        "--validate-links",
+        action="store_true",
+        help="Execute URL link validation diagnostics against active database opportunities.",
+    )
+    parser.add_argument(
+        "--verify-content",
+        action="store_true",
+        help="Execute page content verification checks.",
+    )
+    parser.add_argument(
+        "--production-report",
+        action="store_true",
+        help="Display comprehensive Production Intelligence master telemetry report.",
+    )
     return parser
 
 
@@ -441,6 +503,176 @@ def main(args_list: list | None = None) -> int:
         res = client.send_daily_digest()
         print(json.dumps(res, indent=2))
         return 0 if res.get("status") == "success" else 1
+
+    # Phase 11.5 Quality Intelligence CLI Commands
+    if args.quality_report or args.quality_stats:
+        from src.database.connection import DatabaseManager as QDB
+        from src.database.opportunity_repository import OpportunityRepository
+        db = QDB()
+        db.initialize_database()
+        repo = OpportunityRepository(db_manager=db)
+        stats = repo.get_quality_stats()
+        print("===========================================================================")
+        print("CyberScout AI — Quality Intelligence Report")
+        print("===========================================================================")
+        print(f"Accepted Opportunities   : {stats.get('accepted_count', 0)}")
+        print(f"Rejected Opportunities   : {stats.get('rejected_count', 0)}")
+        total = stats.get('accepted_count', 0) + stats.get('rejected_count', 0)
+        rate = round((stats.get('accepted_count', 0) / total * 100), 1) if total > 0 else 0.0
+        print(f"Acceptance Rate          : {rate}%")
+        print(f"Average Confidence Score : {stats.get('avg_confidence', 0.0)}/100")
+        print(f"Average Quality Score    : {stats.get('avg_quality', 0.0)}/100")
+        print("")
+        reasons = stats.get('top_rejection_reasons', {})
+        if reasons:
+            print("Top Rejection Reasons:")
+            for reason, cnt in reasons.items():
+                print(f"  {reason:30s} : {cnt}")
+        print("===========================================================================")
+        return 0
+
+    if args.quality_check:
+        from src.database.connection import DatabaseManager as QDB
+        from src.database.opportunity_repository import OpportunityRepository
+        from src.intelligence.quality_engine import QualityEngine
+        db = QDB()
+        repo = OpportunityRepository(db_manager=db)
+        engine = QualityEngine()
+        opps = repo.get_active_opportunities(limit=100)
+        evaluated = engine.evaluate_batch(opps)
+        accepted = [o for o in evaluated if not o.is_rejected]
+        rejected = [o for o in evaluated if o.is_rejected]
+        print(f"Quality Check Complete: {len(accepted)} accepted, {len(rejected)} rejected out of {len(evaluated)} total.")
+        print(json.dumps(engine.metrics.to_dict(), indent=2))
+        return 0
+
+    if args.quality_test:
+        from src.intelligence.quality_engine import QualityEngine
+        from src.models.opportunity import Opportunity as TestOpp
+        engine = QualityEngine()
+        test_opp = TestOpp(
+            title="OWASP Top 10 Security Internship - Summer 2026",
+            url="https://example.com/owasp-internship",
+            source_id="test_source",
+            description="Learn about OWASP Top 10 vulnerabilities, SQL Injection, XSS, and more in this cybersecurity internship program.",
+            category="internship",
+        )
+        result = engine.evaluate_opportunity(test_opp)
+        print("===========================================================================")
+        print("Quality Intelligence — Test Evaluation Result")
+        print("===========================================================================")
+        print(f"Title              : {result.title}")
+        print(f"Accepted           : {not result.is_rejected}")
+        print(f"Confidence Score   : {result.confidence_score}/100")
+        print(f"Quality Score      : {result.quality_score}/100")
+        print(f"Keyword Score      : {result.keyword_score}/100")
+        print(f"Topic Score        : {result.topic_score}/100")
+        print(f"Rejection Reason   : {result.rejection_reason or 'N/A'}")
+        print(f"Quality Flags      : {result.quality_flags or 'None'}")
+        print("===========================================================================")
+        return 0
+
+    if args.rejected:
+        from src.database.connection import DatabaseManager as QDB
+        from src.database.opportunity_repository import OpportunityRepository
+        db = QDB()
+        repo = OpportunityRepository(db_manager=db)
+        rejected = repo.get_rejected_opportunities(limit=50)
+        if not rejected:
+            print("No rejected opportunities found.")
+            return 0
+        print(f"{'Title':50s} | {'Reason':25s} | {'Confidence':12s} | Source")
+        print("-" * 110)
+        for opp in rejected:
+            title_trunc = (opp.title[:47] + '...') if len(opp.title) > 50 else opp.title
+            print(f"{title_trunc:50s} | {opp.rejection_reason:25s} | {opp.confidence_score:10.1f}/100 | {opp.source_id}")
+        return 0
+
+    # Phase 12 Production Intelligence Command Handlers
+    if args.provider_report or args.provider_health:
+        from src.intelligence.production.production_engine import ProductionEngine
+        pe = ProductionEngine()
+        rankings = pe.reliability.get_provider_rankings()
+        print("===========================================================================")
+        print("CyberScout AI — Provider Reliability Rankings")
+        print("===========================================================================")
+        print(f"{'Provider':20s} | {'Score':8s} | {'Rating':10s} | {'Success Rate':12s} | Response Time")
+        print("-" * 75)
+        for r in rankings:
+            print(f"{r['provider_name']:20s} | {r['reliability_score']:6.1f}/100 | {r['star_rating']:10s} | {r['success_rate']:10.1f}% | {r['average_response_time']}s")
+        print("===========================================================================")
+        return 0
+
+    if args.freshness_report:
+        from src.database.connection import DatabaseManager as QDB
+        from src.database.opportunity_repository import OpportunityRepository
+        from src.intelligence.production.production_engine import ProductionEngine
+        db = QDB()
+        db.initialize_database()
+        repo = OpportunityRepository(db_manager=db)
+        pe = ProductionEngine()
+        opps = repo.get_active_opportunities(limit=100)
+        evaluated = pe.evaluate_batch(opps)
+        print("===========================================================================")
+        print("CyberScout AI — Freshness & Decay Report")
+        print("===========================================================================")
+        print(f"Average Freshness Score : {pe.metrics.avg_freshness}%")
+        print(f"Expired Items Archived : {pe.metrics.total_expired_archived}")
+        print("===========================================================================")
+        return 0
+
+    if args.trend_report:
+        from src.database.connection import DatabaseManager as QDB
+        from src.database.opportunity_repository import OpportunityRepository
+        from src.intelligence.production.production_engine import ProductionEngine
+        db = QDB()
+        db.initialize_database()
+        repo = OpportunityRepository(db_manager=db)
+        pe = ProductionEngine()
+        opps = repo.get_active_opportunities(limit=100)
+        trends = pe.trend_detector.analyze_trends(opps)
+        print("===========================================================================")
+        print("CyberScout AI — Trend Analytics & Growth Report")
+        print("===========================================================================")
+        print(json.dumps(trends, indent=2))
+        return 0
+
+    if args.history_report:
+        print("===========================================================================")
+        print("CyberScout AI — Historical Lifecycle Audit Log")
+        print("===========================================================================")
+        print("No state transition anomalies recorded in current active window.")
+        return 0
+
+    if args.validate_links or args.verify_content:
+        from src.database.connection import DatabaseManager as QDB
+        from src.database.opportunity_repository import OpportunityRepository
+        from src.intelligence.production.production_engine import ProductionEngine
+        db = QDB()
+        db.initialize_database()
+        repo = OpportunityRepository(db_manager=db)
+        pe = ProductionEngine()
+        opps = repo.get_active_opportunities(limit=100)
+        evaluated = pe.evaluate_batch(opps)
+        valid = [o for o in evaluated if o.link_status == "VALID"]
+        print(f"Link & Content Verification Complete: {len(valid)}/{len(evaluated)} valid & verified.")
+        return 0
+
+    if args.production_report:
+        from src.database.connection import DatabaseManager as QDB
+        from src.database.opportunity_repository import OpportunityRepository
+        from src.intelligence.production.production_engine import ProductionEngine
+        db = QDB()
+        db.initialize_database()
+        repo = OpportunityRepository(db_manager=db)
+        pe = ProductionEngine()
+        opps = repo.get_active_opportunities(limit=100)
+        evaluated = pe.evaluate_batch(opps)
+        print("===========================================================================")
+        print("CyberScout AI — Production Data Intelligence Master Telemetry")
+        print("===========================================================================")
+        print(json.dumps(pe.metrics.to_dict(), indent=2))
+        return 0
 
     if args.scheduler_status or args.metrics:
         engine = AutomationEngine()

@@ -12,6 +12,8 @@ from src.database.knowledge_manager import KnowledgeManager
 from src.collectors.manager import CollectorManager
 from src.intelligence.search_planner import SearchPlanner
 from src.intelligence.ranking_engine import RankingEngine
+from src.intelligence.quality_engine import QualityEngine
+from src.intelligence.production.production_engine import ProductionEngine
 from src.models.opportunity import Opportunity
 from src.processors.pipeline import ProcessingPipeline
 from src.notifier.email_client import EmailClient
@@ -31,6 +33,8 @@ class PipelineRunner:
         search_planner: Optional[SearchPlanner] = None,
         collector_manager: Optional[CollectorManager] = None,
         processing_pipeline: Optional[ProcessingPipeline] = None,
+        quality_engine: Optional[QualityEngine] = None,
+        production_engine: Optional[ProductionEngine] = None,
         ranking_engine: Optional[RankingEngine] = None,
         knowledge_manager: Optional[KnowledgeManager] = None,
         email_client: Optional[EmailClient] = None,
@@ -39,6 +43,8 @@ class PipelineRunner:
         self.search_planner = search_planner or SearchPlanner()
         self.collector_manager = collector_manager or CollectorManager()
         self.processing_pipeline = processing_pipeline or ProcessingPipeline()
+        self.quality_engine = quality_engine or QualityEngine()
+        self.production_engine = production_engine or ProductionEngine()
         self.ranking_engine = ranking_engine or RankingEngine()
         self.knowledge_manager = knowledge_manager or KnowledgeManager(db_manager=self.db_manager)
         self.email_client = email_client or EmailClient(db_manager=self.db_manager)
@@ -98,9 +104,24 @@ class PipelineRunner:
         metrics.processing_time = time.time() - process_start
         logger.info(f"Pipeline: Processing complete. Processed {len(processed_items)} items. Time: {metrics.processing_time:.4f}s")
 
-        # 4. Ranking Phase
+        # 3.5 Quality Intelligence Evaluation Phase
+        quality_start = time.time()
+        quality_evaluated = self.quality_engine.evaluate_batch(processed_items)
+        accepted_quality = [opp for opp in quality_evaluated if not opp.is_rejected]
+        rejected_items = [opp for opp in quality_evaluated if opp.is_rejected]
+        quality_time = time.time() - quality_start
+        logger.info(f"Pipeline: Quality Intelligence complete. Accepted {len(accepted_quality)}/{len(quality_evaluated)}, Rejected {len(rejected_items)}. Time: {quality_time:.4f}s")
+
+        # 3.7 Production Intelligence Evaluation Phase (Phase 12)
+        prod_start = time.time()
+        prod_evaluated = self.production_engine.evaluate_batch(accepted_quality)
+        accepted_items = [opp for opp in prod_evaluated if not opp.is_rejected]
+        prod_time = time.time() - prod_start
+        logger.info(f"Pipeline: Production Intelligence complete. Validated {len(accepted_items)}/{len(accepted_quality)}. Time: {prod_time:.4f}s")
+
+        # 4. Ranking Phase (only accepted items)
         rank_start = time.time()
-        ranked_items = self.ranking_engine.rank_batch(processed_items)
+        ranked_items = self.ranking_engine.rank_batch(accepted_items)
         metrics.ranking_time = time.time() - rank_start
         logger.info(f"Pipeline: Ranking complete. Ranked {len(ranked_items)} items. Time: {metrics.ranking_time:.4f}s")
 
@@ -136,9 +157,12 @@ class PipelineRunner:
             "providers_failed": getattr(getattr(self.collector_manager, "metrics", None), "providers_failed", 0),
             "items_collected": len(raw_items),
             "items_processed": len(processed_items),
+            "items_quality_accepted": len(accepted_items),
+            "items_quality_rejected": len(rejected_items),
             "items_ranked": len(ranked_items),
             "email_sent": email_sent,
             "execution_time_sec": round(metrics.total_time, 2),
+            "quality_metrics": self.quality_engine.metrics.to_dict(),
             "metrics": metrics.to_dict(),
         }
 

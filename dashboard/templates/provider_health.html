@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid py-4">
+    <h1 class="h2 text-white fw-bold mb-4"><i class="bi bi-activity text-info me-2"></i>Provider Health & Reliability</h1>
+    <div class="card bg-dark border-secondary text-white">
+        <div class="card-body p-0">
+            <table class="table table-dark table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>Provider Name</th>
+                        <th>Reliability</th>
+                        <th>Rating</th>
+                        <th>Success Rate</th>
+                        <th>Failures</th>
+                        <th>DNS Errors</th>
+                        <th>Timeouts</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in rankings %}
+                    <tr>
+                        <td class="fw-bold">{{ p.provider_name }}</td>
+                        <td><span class="badge bg-info">{{ p.reliability_score }}/100</span></td>
+                        <td class="text-warning">{{ p.star_rating }}</td>
+                        <td>{{ p.success_rate }}%</td>
+                        <td>{{ p.failed_requests }}</td>
+                        <td>{{ p.dns_failures }}</td>
+                        <td>{{ p.timeouts }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

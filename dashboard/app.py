@@ -17,6 +17,8 @@ from dashboard.routes import (
     logs_bp,
     notifications_bp,
     opportunities_bp,
+    production_bp,
+    quality_bp,
     scheduler_bp,
     system_bp,
 )
@@ -45,6 +47,8 @@ def create_app(config_class=DashboardConfig) -> Flask:
     app.register_blueprint(health_bp)
     app.register_blueprint(system_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(quality_bp)
+    app.register_blueprint(production_bp)
 
     return app
 

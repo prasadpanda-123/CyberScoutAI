@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid py-4">
+    <h1 class="h2 text-white fw-bold mb-4"><i class="bi bi-link-45deg text-info me-2"></i>Link Validation Diagnostics Log</h1>
+    <div class="card bg-dark border-secondary text-white">
+        <div class="card-header border-secondary fw-bold">Active Opportunities Link Health</div>
+        <div class="card-body p-0">
+            <table class="table table-dark table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>URL</th>
+                        <th>Status</th>
+                        <th>Verification</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in valid_links %}
+                    <tr>
+                        <td>{{ item.title }}</td>
+                        <td class="text-truncate" style="max-width: 300px;"><a href="{{ item.url }}" target="_blank" class="text-info">{{ item.url }}</a></td>
+                        <td><span class="badge bg-success">{{ item.link_status }}</span></td>
+                        <td><span class="badge bg-primary">{{ item.verification_status }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

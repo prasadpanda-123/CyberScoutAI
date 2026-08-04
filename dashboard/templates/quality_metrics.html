@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid py-4">
+    <h1 class="h2 text-white fw-bold mb-4"><i class="bi bi-speedometer2 text-info me-2"></i>Comprehensive Quality & Telemetry Metrics</h1>
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card bg-dark border-secondary text-white p-3 text-center">
+                <div class="text-muted small">Total Evaluated</div>
+                <div class="fs-2 fw-bold text-white">{{ metrics.total_evaluated }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-dark border-secondary text-white p-3 text-center">
+                <div class="text-muted small">Total Accepted</div>
+                <div class="fs-2 fw-bold text-success">{{ metrics.total_accepted }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-dark border-secondary text-white p-3 text-center">
+                <div class="text-muted small">Total Rejected</div>
+                <div class="fs-2 fw-bold text-danger">{{ metrics.total_rejected }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

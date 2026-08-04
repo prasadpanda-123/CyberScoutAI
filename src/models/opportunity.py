@@ -47,6 +47,21 @@ class Opportunity:
     beginner_friendly: Optional[bool] = None
     score: int = 0
     score_breakdown: Dict[str, Any] = field(default_factory=dict)
+    confidence_score: float = 0.0
+    quality_score: float = 0.0
+    is_rejected: bool = False
+    rejection_reason: str = ""
+    quality_flags: str = ""
+    topic_score: float = 0.0
+    keyword_score: float = 0.0
+    spam_score: float = 0.0
+    freshness_score: float = 100.0
+    provider_score: float = 100.0
+    link_status: str = "valid"
+    verification_status: str = "verified"
+    last_verified: Optional[str] = None
+    expired: int = 0
+    archived: int = 0
     status: str = Status.ACTIVE.value
     duplicate_of_id: Optional[str] = None
     run_id: Optional[str] = None

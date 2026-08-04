@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+  <h1 class="h2"><i class="bi bi-shield-check"></i> Quality Intelligence</h1>
+  <span class="badge bg-info">Phase 11.5</span>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card text-bg-success">
+      <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-check-circle"></i> Accepted</h5>
+        <p class="display-6">{{ stats.accepted_count }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-bg-danger">
+      <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-x-circle"></i> Rejected</h5>
+        <p class="display-6">{{ stats.rejected_count }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-bg-primary">
+      <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-speedometer2"></i> Avg Confidence</h5>
+        <p class="display-6">{{ stats.avg_confidence }}/100</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-bg-warning">
+      <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-star"></i> Avg Quality</h5>
+        <p class="display-6">{{ stats.avg_quality }}/100</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Rejection Reasons -->
+<div class="row mb-4">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-bar-chart"></i> Top Rejection Reasons</div>
+      <div class="card-body">
+        {% if stats.top_rejection_reasons %}
+        <canvas id="rejectionChart" height="250"></canvas>
+        {% else %}
+        <p class="text-muted">No rejected items yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-info-circle"></i> Quality Intelligence Summary</div>
+      <div class="card-body">
+        <table class="table table-sm">
+          <tbody>
+            <tr><td>Total Evaluated</td><td><strong>{{ stats.accepted_count + stats.rejected_count }}</strong></td></tr>
+            <tr><td>Acceptance Rate</td><td><strong>{% if (stats.accepted_count + stats.rejected_count) > 0 %}{{ ((stats.accepted_count / (stats.accepted_count + stats.rejected_count)) * 100)|round(1) }}%{% else %}N/A{% endif %}</strong></td></tr>
+            <tr><td>Average Confidence</td><td><strong>{{ stats.avg_confidence }}/100</strong></td></tr>
+            <tr><td>Average Quality Score</td><td><strong>{{ stats.avg_quality }}/100</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Rejected Items Table -->
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-exclamation-triangle"></i> Recently Rejected Opportunities</div>
+  <div class="card-body">
+    {% if rejected %}
+    <div class="table-responsive">
+      <table class="table table-sm table-striped">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Source</th>
+            <th>Reason</th>
+            <th>Confidence</th>
+            <th>Flags</th>
+            <th>Discovered</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for opp in rejected %}
+          <tr>
+            <td><a href="{{ opp.url }}" target="_blank" class="text-truncate d-inline-block" style="max-width:250px;">{{ opp.title }}</a></td>
+            <td>{{ opp.source_id }}</td>
+            <td><span class="badge bg-danger">{{ opp.rejection_reason }}</span></td>
+            <td>{{ opp.confidence_score }}/100</td>
+            <td>{{ opp.quality_flags }}</td>
+            <td>{{ opp.discovered_date }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted">No rejected opportunities found.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if stats.top_rejection_reasons %}
+<script>
+const ctx = document.getElementById('rejectionChart').getContext('2d');
+const labels = {{ stats.top_rejection_reasons.keys()|list|tojson }};
+const data = {{ stats.top_rejection_reasons.values()|list|tojson }};
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: labels,
+    datasets: [{
+      label: 'Rejection Count',
+      data: data,
+      backgroundColor: [
+        'rgba(255, 99, 132, 0.7)',
+        'rgba(255, 159, 64, 0.7)',
+        'rgba(255, 205, 86, 0.7)',
+        'rgba(75, 192, 192, 0.7)',
+        'rgba(54, 162, 235, 0.7)',
+        'rgba(153, 102, 255, 0.7)',
+        'rgba(201, 203, 207, 0.7)',
+      ],
+      borderWidth: 1,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { x: { beginAtZero: true } }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

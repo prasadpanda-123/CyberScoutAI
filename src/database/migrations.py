@@ -71,6 +71,79 @@ MIGRATIONS: List[Migration] = [
         );
         """,
     ),
+    Migration(
+        version=3,
+        description="Phase 11.5 Quality Intelligence Schema Extension",
+        sql="""
+        SELECT 1;
+        """,
+    ),
+    Migration(
+        version=4,
+        description="Phase 12 Production Data Intelligence Schema Extension",
+        sql="""
+        CREATE TABLE IF NOT EXISTS trend_statistics (
+            id TEXT PRIMARY KEY,
+            window_days INTEGER DEFAULT 30,
+            metric_category TEXT NOT NULL,
+            metric_key TEXT NOT NULL,
+            metric_value INTEGER DEFAULT 0,
+            recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS historical_changes (
+            id TEXT PRIMARY KEY,
+            opportunity_id TEXT NOT NULL,
+            change_type TEXT NOT NULL,
+            old_value TEXT,
+            new_value TEXT,
+            recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS link_validation (
+            url TEXT PRIMARY KEY,
+            status_code INTEGER DEFAULT 200,
+            ssl_valid INTEGER DEFAULT 1,
+            content_type TEXT,
+            response_time REAL DEFAULT 0.0,
+            checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS quality_metrics_daily (
+            date DATE PRIMARY KEY,
+            total_collected INTEGER DEFAULT 0,
+            total_accepted INTEGER DEFAULT 0,
+            total_rejected INTEGER DEFAULT 0,
+            total_duplicates INTEGER DEFAULT 0,
+            total_expired INTEGER DEFAULT 0,
+            avg_confidence REAL DEFAULT 0.0,
+            avg_quality REAL DEFAULT 0.0,
+            avg_freshness REAL DEFAULT 100.0
+        );
+        """,
+    ),
+]
+
+
+QUALITY_COLUMNS = [
+    ("confidence_score", "REAL DEFAULT 0.0"),
+    ("quality_score", "REAL DEFAULT 0.0"),
+    ("is_rejected", "INTEGER DEFAULT 0"),
+    ("rejection_reason", "TEXT DEFAULT ''"),
+    ("quality_flags", "TEXT DEFAULT ''"),
+    ("topic_score", "REAL DEFAULT 0.0"),
+    ("keyword_score", "REAL DEFAULT 0.0"),
+    ("spam_score", "REAL DEFAULT 0.0"),
+]
+
+PRODUCTION_COLUMNS = [
+    ("freshness_score", "REAL DEFAULT 100.0"),
+    ("provider_score", "REAL DEFAULT 100.0"),
+    ("link_status", "TEXT DEFAULT 'valid'"),
+    ("verification_status", "TEXT DEFAULT 'verified'"),
+    ("last_verified", "TIMESTAMP"),
+    ("expired", "INTEGER DEFAULT 0"),
+    ("archived", "INTEGER DEFAULT 0"),
 ]
 
 
@@ -97,6 +170,52 @@ class MigrationManager:
         except Exception:
             return 0
 
+    def _get_existing_columns(self, table_name: str) -> List[str]:
+        """Returns list of existing column names in a table."""
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(f"PRAGMA table_info({table_name});")
+            return [row[1] for row in cursor.fetchall()]
+        except Exception:
+            return []
+        finally:
+            cursor.close()
+
+    def _apply_v3_quality_columns(self) -> None:
+        """Safely adds Phase 11.5 quality columns if they don't exist."""
+        existing = self._get_existing_columns("Opportunities")
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            for col_name, col_def in QUALITY_COLUMNS:
+                if col_name not in existing:
+                    cursor.execute(f"ALTER TABLE Opportunities ADD COLUMN {col_name} {col_def};")
+                    logger.info(f"Added column '{col_name}' to Opportunities table.")
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise MigrationError(f"Failed to add quality columns: {e}", original_exception=e)
+        finally:
+            cursor.close()
+
+    def _apply_v4_production_columns(self) -> None:
+        """Safely adds Phase 12 production columns if they don't exist."""
+        existing = self._get_existing_columns("Opportunities")
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            for col_name, col_def in PRODUCTION_COLUMNS:
+                if col_name not in existing:
+                    cursor.execute(f"ALTER TABLE Opportunities ADD COLUMN {col_name} {col_def};")
+                    logger.info(f"Added column '{col_name}' to Opportunities table.")
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise MigrationError(f"Failed to add production columns: {e}", original_exception=e)
+        finally:
+            cursor.close()
+
     def apply_migrations(self) -> int:
         """
         Applies any pending migrations in sequential order.
@@ -112,6 +231,13 @@ class MigrationManager:
                 logger.info(f"Applying migration v{migration.version}: {migration.description}...")
                 try:
                     now = datetime.now(timezone.utc).isoformat()
+
+                    # Custom migration logic for v3 and v4
+                    if migration.version == 3:
+                        self._apply_v3_quality_columns()
+                    elif migration.version == 4:
+                        self._apply_v4_production_columns()
+
                     with self.db_manager.transaction() as cursor:
                         cursor.executescript(migration.sql)
                         cursor.execute(

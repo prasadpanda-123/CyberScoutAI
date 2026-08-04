@@ -1,0 +1,139 @@
+# Quality Intelligence Engine Configuration for CyberScout AI
+
+thresholds:
+  minimum_confidence: 60
+  minimum_keyword_score: 20
+  minimum_topic_score: 15
+  spam_threshold: 0.70
+  duplicate_threshold: 0.85
+  max_readme_urls: 200
+
+quality_weights:
+  keyword_weight: 0.35
+  topic_weight: 0.25
+  language_weight: 0.15
+  relevance_weight: 0.15
+  source_credibility_weight: 0.10
+
+approved_topics:
+  - security
+  - cybersecurity
+  - ctf
+  - owasp
+  - pentesting
+  - osint
+  - forensics
+  - malware
+  - reverse-engineering
+  - bug-bounty
+  - red-team
+  - blue-team
+  - dfir
+  - cloud-security
+  - web-security
+  - network-security
+  - cryptography
+  - exploit
+  - vulnerability
+  - threat-intelligence
+  - appsec
+  - devsecops
+  - infosec
+  - soc
+  - siem
+
+approved_languages:
+  - Python
+  - Go
+  - Rust
+  - C
+  - C++
+  - Java
+  - JavaScript
+  - TypeScript
+  - PowerShell
+  - Bash
+  - Shell
+  - Lua
+  - C#
+  - Ruby
+  - PHP
+
+penalized_languages:
+  - HTML
+  - CSS
+  - Markdown
+
+blacklist_keywords:
+  - iptv
+  - m3u
+  - playlist
+  - "#extm3u"
+  - movie
+  - movies
+  - anime
+  - music
+  - spotify
+  - netflix
+  - "telegram dump"
+  - "proxy list"
+  - adult
+  - porn
+  - warez
+  - keygen
+  - crack
+  - serial
+  - coupon
+  - "ebook collection"
+  - torrent
+  - "free movies"
+  - "streaming channels"
+  - "radio playlist"
+  - "tv channels"
+  - "television streams"
+  - "channel list"
+  - "live tv"
+
+preferred_keywords:
+  - OWASP
+  - CVE
+  - Exploit
+  - Vulnerability
+  - Authentication
+  - Authorization
+  - "SQL Injection"
+  - XSS
+  - CSRF
+  - Linux
+  - Windows
+  - SOC
+  - SIEM
+  - IDS
+  - IPS
+  - "Threat Intelligence"
+  - Malware
+  - Forensics
+  - "Reverse Engineering"
+  - "Incident Response"
+  - CTF
+  - HackTheBox
+  - TryHackMe
+  - PortSwigger
+  - "Burp Suite"
+  - Nmap
+  - Metasploit
+  - Wireshark
+  - YARA
+  - Sigma
+  - IOC
+  - Detection
+  - "Blue Team"
+  - "Red Team"
+  - "Digital Forensics"
+  - Advisory
+  - Patch
+  - Zero-Day
+  - Internship
+  - Course
+  - Certification
+  - Hackathon

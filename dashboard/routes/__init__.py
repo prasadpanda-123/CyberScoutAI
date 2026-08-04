@@ -14,6 +14,8 @@ from dashboard.routes.logs import logs_bp
 from dashboard.routes.health import health_bp
 from dashboard.routes.system import system_bp
 from dashboard.routes.api import api_bp
+from dashboard.routes.quality import quality_bp
+from dashboard.routes.production import production_bp
 
 __all__ = [
     "dashboard_bp",
@@ -28,4 +30,6 @@ __all__ = [
     "health_bp",
     "system_bp",
     "api_bp",
+    "quality_bp",
+    "production_bp",
 ]

@@ -50,7 +50,7 @@ class TestKnowledgeBase(unittest.TestCase):
 
     def test_migration_v2(self):
         mig_manager = MigrationManager(db_manager=self.db_manager)
-        self.assertEqual(mig_manager.get_current_version(), 2)
+        self.assertEqual(mig_manager.get_current_version(), 4)
 
     def test_knowledge_manager_lifecycle(self):
         km = KnowledgeManager(db_manager=self.db_manager)

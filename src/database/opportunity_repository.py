@@ -63,6 +63,21 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
             "beginner_friendly": 1 if opp.beginner_friendly is True else (0 if opp.beginner_friendly is False else None),
             "score": opp.score,
             "score_breakdown": json.dumps(opp.score_breakdown),
+            "confidence_score": opp.confidence_score,
+            "quality_score": opp.quality_score,
+            "is_rejected": 1 if opp.is_rejected else 0,
+            "rejection_reason": opp.rejection_reason,
+            "quality_flags": opp.quality_flags,
+            "topic_score": opp.topic_score,
+            "keyword_score": opp.keyword_score,
+            "spam_score": opp.spam_score,
+            "freshness_score": opp.freshness_score,
+            "provider_score": opp.provider_score,
+            "link_status": opp.link_status,
+            "verification_status": opp.verification_status,
+            "last_verified": opp.last_verified,
+            "expired": opp.expired,
+            "archived": opp.archived,
             "status": opp.status,
             "duplicate_of_id": opp.duplicate_of_id,
             "run_id": opp.run_id,
@@ -71,40 +86,65 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
         }
 
     def _row_to_entity(self, row: Any) -> Opportunity:
-        tags = json.loads(row["tags"]) if row["tags"] else []
-        score_breakdown = json.loads(row["score_breakdown"]) if row["score_breakdown"] else {}
-        raw_data = json.loads(row["raw_data"]) if row["raw_data"] else {}
+        def _get_field(key: str, default: Any = None) -> Any:
+            try:
+                val = row[key]
+                return val if val is not None else default
+            except (IndexError, KeyError):
+                return default
+
+        raw_tags = _get_field("tags")
+        tags = json.loads(raw_tags) if raw_tags else []
+        raw_score_bd = _get_field("score_breakdown")
+        score_breakdown = json.loads(raw_score_bd) if raw_score_bd else {}
+        raw_rd = _get_field("raw_data")
+        raw_data = json.loads(raw_rd) if raw_rd else {}
 
         return Opportunity(
             id=row["id"],
             title=row["title"],
-            description=row["description"],
+            description=_get_field("description"),
             url=row["url"],
             source_id=row["source_id"],
             category=row["category"],
-            provider=row["provider"],
-            company=row["company"],
-            location=row["location"],
-            remote=bool(row["remote"]),
-            paid=bool(row["paid"]) if row["paid"] is not None else None,
-            certificate=bool(row["certificate"]),
-            price_raw=row["price_raw"],
-            price_normalized=row["price_normalized"],
-            currency=row["currency"],
-            deadline=row["deadline"],
-            published_date=row["published_date"],
+            provider=_get_field("provider"),
+            company=_get_field("company"),
+            location=_get_field("location"),
+            remote=bool(_get_field("remote", False)),
+            paid=bool(_get_field("paid")) if _get_field("paid") is not None else None,
+            certificate=bool(_get_field("certificate", False)),
+            price_raw=_get_field("price_raw"),
+            price_normalized=_get_field("price_normalized"),
+            currency=_get_field("currency"),
+            deadline=_get_field("deadline"),
+            published_date=_get_field("published_date"),
             discovered_date=row["discovered_date"],
-            duration=row["duration"],
-            difficulty=row["difficulty"],
+            duration=_get_field("duration"),
+            difficulty=_get_field("difficulty", "unknown"),
             tags=tags,
-            beginner_friendly=bool(row["beginner_friendly"]) if row["beginner_friendly"] is not None else None,
-            score=row["score"],
+            beginner_friendly=bool(_get_field("beginner_friendly")) if _get_field("beginner_friendly") is not None else None,
+            score=_get_field("score", 0),
             score_breakdown=score_breakdown,
-            status=row["status"],
-            duplicate_of_id=row["duplicate_of_id"],
-            run_id=row["run_id"],
+            confidence_score=float(_get_field("confidence_score", 0.0)),
+            quality_score=float(_get_field("quality_score", 0.0)),
+            is_rejected=bool(_get_field("is_rejected", False)),
+            rejection_reason=_get_field("rejection_reason", ""),
+            quality_flags=_get_field("quality_flags", ""),
+            topic_score=float(_get_field("topic_score", 0.0)),
+            keyword_score=float(_get_field("keyword_score", 0.0)),
+            spam_score=float(_get_field("spam_score", 0.0)),
+            freshness_score=float(_get_field("freshness_score", 100.0)),
+            provider_score=float(_get_field("provider_score", 100.0)),
+            link_status=_get_field("link_status", "valid"),
+            verification_status=_get_field("verification_status", "verified"),
+            last_verified=_get_field("last_verified"),
+            expired=int(_get_field("expired", 0)),
+            archived=int(_get_field("archived", 0)),
+            status=_get_field("status", "active"),
+            duplicate_of_id=_get_field("duplicate_of_id"),
+            run_id=_get_field("run_id"),
             raw_data=raw_data,
-            last_seen=row["last_seen"],
+            last_seen=_get_field("last_seen"),
         )
 
     def upsert(self, opp: Opportunity) -> str:
@@ -116,14 +156,20 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
             provider, company, location, remote, paid, certificate,
             price_raw, price_normalized, currency, deadline, published_date,
             discovered_date, duration, difficulty, tags, beginner_friendly,
-            score, score_breakdown, status, duplicate_of_id, run_id,
+            score, score_breakdown,
+            confidence_score, quality_score, is_rejected, rejection_reason,
+            quality_flags, topic_score, keyword_score, spam_score,
+            status, duplicate_of_id, run_id,
             raw_data, last_seen
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?,
+            ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?,
             ?, ?
         )
         ON CONFLICT(id) DO UPDATE SET
@@ -131,6 +177,14 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
             description = excluded.description,
             score = excluded.score,
             score_breakdown = excluded.score_breakdown,
+            confidence_score = excluded.confidence_score,
+            quality_score = excluded.quality_score,
+            is_rejected = excluded.is_rejected,
+            rejection_reason = excluded.rejection_reason,
+            quality_flags = excluded.quality_flags,
+            topic_score = excluded.topic_score,
+            keyword_score = excluded.keyword_score,
+            spam_score = excluded.spam_score,
             status = excluded.status,
             last_seen = excluded.last_seen;
         """
@@ -140,6 +194,8 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
             data["remote"], data["paid"], data["certificate"], data["price_raw"], data["price_normalized"],
             data["currency"], data["deadline"], data["published_date"], data["discovered_date"], data["duration"],
             data["difficulty"], data["tags"], data["beginner_friendly"], data["score"], data["score_breakdown"],
+            data["confidence_score"], data["quality_score"], data["is_rejected"], data["rejection_reason"],
+            data["quality_flags"], data["topic_score"], data["keyword_score"], data["spam_score"],
             data["status"], data["duplicate_of_id"], data["run_id"], data["raw_data"], data["last_seen"]
         )
 
@@ -162,17 +218,54 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
     ) -> List[Opportunity]:
         if category:
             return self.search(
-                where_clause="status = ? AND category = ?",
+                where_clause="status = ? AND (is_rejected = 0 OR is_rejected IS NULL) AND category = ?",
                 params=(Status.ACTIVE.value, category),
                 order_by="score DESC, discovered_date DESC",
                 limit=limit,
             )
         return self.search(
-            where_clause="status = ?",
+            where_clause="status = ? AND (is_rejected = 0 OR is_rejected IS NULL)",
             params=(Status.ACTIVE.value,),
             order_by="score DESC, discovered_date DESC",
             limit=limit,
         )
+
+    def get_rejected_opportunities(
+        self, limit: int = 100
+    ) -> List[Opportunity]:
+        """Retrieves rejected opportunities for quality reporting."""
+        return self.search(
+            where_clause="is_rejected = 1",
+            order_by="discovered_date DESC",
+            limit=limit,
+        )
+
+    def get_quality_stats(self) -> Dict[str, Any]:
+        """Computes quality intelligence statistics from the database."""
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            stats = {}
+            cursor.execute("SELECT COUNT(*) as cnt FROM Opportunities WHERE is_rejected = 0 OR is_rejected IS NULL;")
+            stats["accepted_count"] = cursor.fetchone()["cnt"]
+
+            cursor.execute("SELECT COUNT(*) as cnt FROM Opportunities WHERE is_rejected = 1;")
+            stats["rejected_count"] = cursor.fetchone()["cnt"]
+
+            cursor.execute("SELECT AVG(confidence_score) as avg_conf FROM Opportunities WHERE (is_rejected = 0 OR is_rejected IS NULL) AND confidence_score > 0;")
+            row = cursor.fetchone()
+            stats["avg_confidence"] = round(row["avg_conf"] or 0.0, 1)
+
+            cursor.execute("SELECT AVG(quality_score) as avg_qual FROM Opportunities WHERE (is_rejected = 0 OR is_rejected IS NULL) AND quality_score > 0;")
+            row = cursor.fetchone()
+            stats["avg_quality"] = round(row["avg_qual"] or 0.0, 1)
+
+            cursor.execute("SELECT rejection_reason, COUNT(*) as cnt FROM Opportunities WHERE is_rejected = 1 GROUP BY rejection_reason ORDER BY cnt DESC LIMIT 10;")
+            stats["top_rejection_reasons"] = {r["rejection_reason"]: r["cnt"] for r in cursor.fetchall()}
+
+            return stats
+        finally:
+            cursor.close()
 
     def update_status(self, opp_id: str, new_status: str) -> None:
         sql = "UPDATE Opportunities SET status = ? WHERE id = ?;"

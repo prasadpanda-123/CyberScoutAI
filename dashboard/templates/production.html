@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h2 text-white fw-bold"><i class="bi bi-shield-check text-success me-2"></i>Production Data Intelligence</h1>
+            <p class="text-muted">Real-time trustworthiness, freshness, provider reliability, and telemetry analytics</p>
+        </div>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card bg-dark border-secondary text-white p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small">Average Freshness</div>
+                        <div class="fs-3 fw-bold text-info">{{ metrics.avg_freshness }}%</div>
+                    </div>
+                    <i class="bi bi-clock-history fs-1 text-info opacity-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-dark border-secondary text-white p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small">Avg Confidence</div>
+                        <div class="fs-3 fw-bold text-success">{{ metrics.avg_confidence }}%</div>
+                    </div>
+                    <i class="bi bi-graph-up-arrow fs-1 text-success opacity-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-dark border-secondary text-white p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small">Duplicates Merged</div>
+                        <div class="fs-3 fw-bold text-warning">{{ metrics.total_duplicates_merged }}</div>
+                    </div>
+                    <i class="bi bi-layers fs-1 text-warning opacity-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-dark border-secondary text-white p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small">Dead Links Rejected</div>
+                        <div class="fs-3 fw-bold text-danger">{{ metrics.total_dead_links_rejected }}</div>
+                    </div>
+                    <i class="bi bi-x-circle fs-1 text-danger opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Provider Health Overview -->
+    <div class="card bg-dark border-secondary text-white mb-4">
+        <div class="card-header border-secondary fw-bold"><i class="bi bi-star-fill text-warning me-2"></i>Source Reliability Rankings</div>
+        <div class="card-body p-0">
+            <table class="table table-dark table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Provider</th>
+                        <th>Reliability Score</th>
+                        <th>Star Rating</th>
+                        <th>Success Rate</th>
+                        <th>Avg Response Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in provider_rankings %}
+                    <tr>
+                        <td class="fw-bold">{{ p.provider_name }}</td>
+                        <td><span class="badge bg-success">{{ p.reliability_score }}/100</span></td>
+                        <td class="text-warning">{{ p.star_rating }}</td>
+                        <td>{{ p.success_rate }}%</td>
+                        <td>{{ p.average_response_time }}s</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
