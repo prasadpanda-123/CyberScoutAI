@@ -17,7 +17,6 @@ from src.database.connection import DatabaseManager
 from src.database.opportunity_repository import OpportunityRepository
 from src.database.source_repository import SourceRepository
 from src.database.statistics_manager import StatisticsManager
-from src.automation.engine import AutomationEngine
 
 class DashboardService:
     """Service layer exposing backend queries for the Web Dashboard."""
@@ -59,7 +58,7 @@ class DashboardService:
         offset: int = 0,
     ) -> List[Dict[str, Any]]:
         """Queries opportunities matching search & filter parameters."""
-        raw_opps = self.opp_repo.find_all(limit=limit, offset=offset)
+        raw_opps = self.opp_repo.search(limit=limit, offset=offset)
         results = []
         for opp in raw_opps:
             opp_dict = opp if isinstance(opp, dict) else opp.to_dict() if hasattr(opp, "to_dict") else {}
@@ -84,7 +83,7 @@ class DashboardService:
 
     def get_collectors_status(self) -> List[Dict[str, Any]]:
         """Returns status list for all configured source collectors."""
-        sources = self.source_repo.get_all_sources()
+        sources = self.source_repo.search(limit=100)
         collectors_list = []
         for s in sources:
             s_dict = s if isinstance(s, dict) else (s.to_dict() if hasattr(s, "to_dict") else {})

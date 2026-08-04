@@ -1,11 +1,7 @@
 """
 Main CLI entry point for CyberScout AI.
 
-<<<<<<< HEAD
 Handles command-line flags (--version, --health, --config-check, --db-check, --dashboard, --run-once, --daemon, --dry-run, --scheduler-status, --metrics, --email-test)
-=======
-Handles command-line flags (--version, --health, --config-check, --db-check, --run-once, --daemon, --dry-run, --scheduler-status, --metrics, --email-test)
->>>>>>> feature/phase10-hardening
 and manages application startup & shutdown execution.
 """
 
@@ -128,7 +124,6 @@ def main(args_list: list | None = None) -> int:
         print(json.dumps(result.to_dict(), indent=2))
         return 0 if result.status else 1
 
-<<<<<<< HEAD
     # Phase 11 Launch Dashboard Server
     if args.dashboard:
         from dashboard.app import create_app
@@ -137,8 +132,6 @@ def main(args_list: list | None = None) -> int:
         app.run(host="127.0.0.1", port=5000, debug=False)
         return 0
 
-=======
->>>>>>> feature/phase10-hardening
     # Automation Engine Integrations
     if args.email_test:
         client = EmailClient()
@@ -148,10 +141,6 @@ def main(args_list: list | None = None) -> int:
 
     if args.scheduler_status or args.metrics:
         engine = AutomationEngine()
-<<<<<<< HEAD
-=======
-        # Mock or retrieve basic status metadata
->>>>>>> feature/phase10-hardening
         print(json.dumps(engine.status(), indent=2))
         return 0
 
@@ -166,11 +155,7 @@ def main(args_list: list | None = None) -> int:
         engine.run_forever(dry_run=args.dry_run)
         return 0
 
-<<<<<<< HEAD
-    # Default execution
-=======
     # Default execution: run full application bootstrap and graceful shutdown
->>>>>>> feature/phase10-hardening
     app = CyberScoutApp()
     try:
         app.startup()

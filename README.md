@@ -25,6 +25,15 @@ Internet ➔ Search Intelligence ➔ Collectors ➔ Processors ➔ Ranking ➔ S
 CyberScout AI includes built-in diagnostic and health management CLI commands:
 
 ```bash
+# Launch Web Dashboard & Control Center (http://127.0.0.1:5000)
+python main.py --dashboard
+
+# Run Single Automated Pipeline Scan Loop
+python main.py --run-once
+
+# Run Continuous Scheduler Daemon
+python main.py --daemon
+
 # View Version & Build Information
 python main.py --version
 
@@ -36,9 +45,6 @@ python main.py --config-check
 
 # Verify Database Connectivity & Schema Integrity
 python main.py --db-check
-
-# Run Default Application Bootstrap & Shutdown
-python main.py
 
 # Display Help
 python main.py --help
