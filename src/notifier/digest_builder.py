@@ -46,8 +46,28 @@ class DigestBuilder:
         # Fetch active opportunities, ordered by score descending
         all_active = self.opp_repo.get_active_opportunities(limit=100)
 
+        # Strict quality & safety filtering for email digest (Task 6)
+        valid_opps = []
+        for opp in all_active:
+            if opp.is_rejected:
+                continue
+            if getattr(opp, "expired", False):
+                continue
+            if getattr(opp, "archived", False):
+                continue
+            if getattr(opp, "spam_score", 0.0) > 0.0:
+                continue
+            conf = getattr(opp, "confidence_score", 0.0) or 0.0
+            if conf > 0 and conf < 60.0:
+                continue
+            if getattr(opp, "verification_status", "VERIFIED") == "REJECTED":
+                continue
+            if getattr(opp, "link_status", "VALID") == "DEAD":
+                continue
+            valid_opps.append(opp)
+
         # Truncate to max items limit
-        opps = all_active[:self.max_items]
+        opps = valid_opps[:self.max_items]
 
         # Group by category
         categories = {}

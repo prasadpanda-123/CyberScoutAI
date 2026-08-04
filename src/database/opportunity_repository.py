@@ -218,13 +218,13 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
     ) -> List[Opportunity]:
         if category:
             return self.search(
-                where_clause="status = ? AND (is_rejected = 0 OR is_rejected IS NULL) AND category = ?",
+                where_clause="status = ? AND (is_rejected = 0 OR is_rejected IS NULL) AND (expired = 0 OR expired IS NULL) AND (archived = 0 OR archived IS NULL) AND category = ?",
                 params=(Status.ACTIVE.value, category),
                 order_by="score DESC, discovered_date DESC",
                 limit=limit,
             )
         return self.search(
-            where_clause="status = ? AND (is_rejected = 0 OR is_rejected IS NULL)",
+            where_clause="status = ? AND (is_rejected = 0 OR is_rejected IS NULL) AND (expired = 0 OR expired IS NULL) AND (archived = 0 OR archived IS NULL)",
             params=(Status.ACTIVE.value,),
             order_by="score DESC, discovered_date DESC",
             limit=limit,

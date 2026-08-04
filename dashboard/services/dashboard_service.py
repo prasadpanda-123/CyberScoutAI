@@ -58,18 +58,20 @@ class DashboardService:
         offset: int = 0,
     ) -> List[Dict[str, Any]]:
         """Queries opportunities matching search & filter parameters."""
-        raw_opps = self.opp_repo.search(limit=limit, offset=offset)
+        raw_opps = self.opp_repo.get_active_opportunities(
+            limit=limit,
+            category=category if category and category.lower() != "all" else None,
+        )
         results = []
         for opp in raw_opps:
             opp_dict = opp if isinstance(opp, dict) else opp.to_dict() if hasattr(opp, "to_dict") else {}
             if not opp_dict and hasattr(opp, "__dict__"):
                 opp_dict = opp.__dict__
             
-            # Category filter
-            if category and category.lower() != "all":
-                if opp_dict.get("category", "").lower() != category.lower():
-                    continue
-            
+            # Rejection safety filter
+            if opp_dict.get("is_rejected"):
+                continue
+
             # Search query filter
             if search_query:
                 q = search_query.lower()

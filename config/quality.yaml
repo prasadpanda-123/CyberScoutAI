@@ -41,6 +41,9 @@ approved_topics:
   - infosec
   - soc
   - siem
+  - mitre
+  - att&ck
+  - mitre-attack
 
 approved_languages:
   - Python
@@ -67,25 +70,34 @@ penalized_languages:
 blacklist_keywords:
   - iptv
   - m3u
+  - m3u8
   - playlist
+  - playlists
   - "#extm3u"
   - movie
   - movies
   - anime
   - music
   - spotify
+  - "spotify downloader"
   - netflix
+  - "netflix downloader"
   - "telegram dump"
   - "proxy list"
+  - "proxy-list"
   - adult
   - porn
   - warez
   - keygen
+  - "keygen repository"
   - crack
+  - "crack repository"
   - serial
   - coupon
   - "ebook collection"
   - torrent
+  - torrents
+  - "torrent index"
   - "free movies"
   - "streaming channels"
   - "radio playlist"
@@ -93,9 +105,18 @@ blacklist_keywords:
   - "television streams"
   - "channel list"
   - "live tv"
+  - "indonesian channels"
+  - "free iptv"
+  - pirated
+  - "pirated software"
+  - piracy
 
 preferred_keywords:
   - OWASP
+  - MITRE
+  - ATT&CK
+  - "MITRE ATT&CK Framework"
+  - TTPs
   - CVE
   - Exploit
   - Vulnerability

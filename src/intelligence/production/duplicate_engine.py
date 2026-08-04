@@ -61,7 +61,7 @@ class SemanticDuplicateEngine:
                 continue
 
             # 2. Semantic Signature check
-            for existing_sig, existing_opp in self.seen_signatures.items():
+            for existing_sig, existing_opp in list(self.seen_signatures.items()):
                 if len(sig) > 5 and len(existing_sig) > 5:
                     sim = self.calculate_similarity(sig, existing_sig)
                     if sim >= self.similarity_threshold:

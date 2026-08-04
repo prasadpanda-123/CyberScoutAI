@@ -31,9 +31,17 @@ class SpamDetector:
 
         clean_text = text.lower()
 
-        # Hardcoded immediate discard check for IPTV / #EXTM3U
-        if "#extm3u" in clean_text or "iptv" in clean_text:
-            return True, "iptv / #EXTM3U playlist"
+        # Hardcoded immediate discard check for IPTV / #EXTM3U / M3U8 / Playlists / Piracy
+        immediate_terms = [
+            "#extm3u", "iptv", "m3u8", ".m3u", "m3u", "playlist", "playlists",
+            "indonesian channels", "television streams", "radio playlist",
+            "channel list", "live tv", "free movies", "torrent index",
+            "spotify downloader", "netflix downloader", "keygen", "warez",
+            "pirated software"
+        ]
+        for iterm in immediate_terms:
+            if iterm in clean_text:
+                return True, f"Blacklisted term: '{iterm}'"
 
         for term in self.rules.blacklist_keywords:
             term_clean = term.lower()
