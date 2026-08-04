@@ -1,69 +1,63 @@
 # Contributing to CyberScout AI
 
-## Repository Setup
+Thank you for your interest in contributing to CyberScout AI! We welcome contributions from developers, security researchers, technical writers, and testers.
 
-1. Clone the repository and create a virtual environment.
-2. Install dependencies from `requirements.txt`.
-3. Review the architecture documents in `docs/architecture/` before making changes.
-4. Keep configuration changes in `config/` and avoid committing secrets.
+---
 
-## Development Workflow
+## 📜 Code of Conduct
 
-- Create a feature branch from the main branch.
-- Make small, focused changes.
-- Update documentation when behavior or contracts change.
-- Run relevant tests before requesting review.
+All contributors must adhere to our [Code of Conduct](CODE_OF_CONDUCT.md). Please read it before participating.
 
-## Coding Standards
+---
 
-- Prefer readable, well-documented Python code.
-- Keep modules focused on a single responsibility.
-- Follow the existing architecture boundaries between collectors, processors, intelligence, database, and notifier layers.
-- Avoid introducing new configuration into code when YAML can express it instead.
+## 🌿 Git Branching Model
 
-## Branch Strategy
+- `main`: Production release branch. Must remain stable and tested.
+- `feature/<feature-name>`: Development branch for new features or subsystems (e.g. `feature/plugin-framework`).
+- `fix/<bug-description>`: Branch for bug fixes (e.g. `fix/rss-parser-timeout`).
 
-- `main` is the stable branch.
-- Use short-lived feature branches for work.
-- Use descriptive branch names such as `docs/architecture-consistency` or `feature/collector-health`.
+---
 
-## Commit Message Conventions
+## 📝 Commit Message Conventions
 
-Use concise, descriptive commit messages such as:
-- `docs: align opportunity model terminology`
-- `docs: add collector health strategy`
-- `docs: add testing strategy`
+We follow Conventional Commits format:
 
-## Pull Request Checklist
+```text
+<type>(<scope>): <short summary>
 
-- Documentation is updated when contracts change.
-- Tests were added or updated for the affected behavior.
-- The change does not introduce contradictions with the architecture documents.
-- The PR description clearly explains the intent and scope.
+[optional body description]
+```
 
-## Collector Development Guide
+Types:
+- `feat`: New feature or capability
+- `fix`: Bug fix
+- `docs`: Documentation updates
+- `test`: Adding or updating test cases
+- `refactor`: Code change that neither fixes a bug nor adds a feature
+- `chore`: Repository maintenance or configuration changes
 
-When adding a collector:
-- implement the contract defined in `docs/architecture/collector_contract.md`
-- register the source in `config/sources.yaml`
-- preserve the original payload in `raw_data`
-- keep the collector responsible only for fetch/parse behavior
+Example:
+```bash
+git commit -m "feat(collectors): add custom parser for RSS feeds"
+```
 
-## Documentation Requirements
+---
 
-- Keep documentation accurate and consistent with the current architecture.
-- Use the canonical field names and enums from the architecture docs.
-- Link to related documents instead of duplicating content unnecessarily.
+## 🧪 Testing Guidelines
 
-## Testing Requirements
+- Every code change must include corresponding unit tests in `tests/unit/`.
+- Ensure all automated tests pass prior to submitting a Pull Request:
+```bash
+python -m unittest discover -s tests/unit
+```
+- Ensure zero memory leaks and proper resource cleanup.
 
-- Add or update tests for any behavior change.
-- Prefer fixture-based tests for collectors and processors.
-- Include regression tests for bug fixes.
+---
 
-## Definition of Done
+## 📥 Pull Request (PR) Checklist
 
-A task is considered complete when:
-- the intended behavior is documented
-- the relevant tests pass
-- the change is understandable to the next contributor
+1. Fork repository and create your feature branch from `main`.
+2. Ensure code follows PEP 8 guidelines and SOLID design principles.
+3. Write/update unit tests for all modified logic.
+4. Run `python -m unittest discover -s tests/unit` (100% pass rate required).
+5. Open a Pull Request using our [PR Template](.github/pull_request_template.md).

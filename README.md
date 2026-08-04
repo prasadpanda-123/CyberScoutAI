@@ -1,153 +1,186 @@
 # CyberScout AI
 
-> **Tagline:** Never Miss a Cybersecurity Opportunity Again.
+```text
+  ____ _   _ ____  _____ ____  ____   ____ ___  _   _ _____   _    ___ 
+ / ___| | | | __ )| ____|  _ \/ ___| / ___/ _ \| | | |_   _| / \  |_ _|
+| |   | | | |  _ \|  _| | |_) \___ \| |  | | | | | | | | |  / _ \  | | 
+| |___| |_| | |_) | |___|  _ < ___) | |__| |_| | |_| | | | / ___ \ | | 
+ \____|\___/|____/|_____|_| \_\____/ \____\___/ \___/  |_|/_/   \_\___|
+```
 
-CyberScout AI is an open-source Cybersecurity Opportunity Intelligence Platform designed to automatically discover, normalize, rank, and report high-value cybersecurity opportunities—including internships, jobs, free courses, certifications, scholarships, hackathons, CTFs, security tools, and news.
+> **Never Miss a Cybersecurity Opportunity Again.**
+
+[![Python Version](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Tests Passing](https://img.shields.io/badge/tests-131%2F131%20passing-brightgreen.svg)](tests/)
+[![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)](CHANGELOG.md)
+[![GitHub Stars](https://img.shields.io/badge/stars-★%20placeholder-orange.svg)](#)
+
+CyberScout AI is a 100% free, open-source Cybersecurity Opportunity Intelligence Platform and Control Center. It autonomously scans, aggregates, normalizes, ranks, and delivers high-value cybersecurity opportunities—including internships, jobs, free courses, certifications, scholarships, CTFs, and bug bounties.
 
 ---
 
 ## 🎯 Architecture Overview
 
-CyberScout AI operates as a modular knowledge pipeline:
+CyberScout AI is built on a strictly decoupled presentation-engine-data architecture:
 
-```
-Internet ➔ Search Intelligence ➔ Collectors ➔ Processors ➔ Ranking ➔ SQLite ➔ HTML Email
-```
-
-- **Separation of Concerns:** Each layer has exactly one responsibility.
-- **Data Model:** The `Opportunity` object is the single source of truth across all modules.
-- **Zero Cost Cloud Dependency:** Built using Python 3.12+, Requests, Playwright, BeautifulSoup, PyYAML, and SQLite.
-
----
-
-## 💻 Command Line Interface (CLI)
-
-CyberScout AI includes built-in diagnostic and health management CLI commands:
-
-```bash
-# Launch Web Dashboard & Control Center (http://127.0.0.1:5000)
-python main.py --dashboard
-
-# Run Single Automated Pipeline Scan Loop
-python main.py --run-once
-
-# Run Continuous Scheduler Daemon
-python main.py --daemon
-
-# View Version & Build Information
-python main.py --version
-
-# Run System Health Checks
-python main.py --health
-
-# Verify Configuration Validity
-python main.py --config-check
-
-# Verify Database Connectivity & Schema Integrity
-python main.py --db-check
-
-# Display Help
-python main.py --help
+```text
++-------------------------------------------------------------------------------+
+|                           CYBERSCOUT AI ARCHITECTURE                          |
+|                                                                               |
+|  [ Web Dashboard Presentation Layer (dashboard/) ]                             |
+|    Flask 3.1, Bootstrap 5 Dark Theme, Chart.js Analytics, REST API            |
+|                                                                               |
+|  [ Automation & Scheduler Engine (src/automation/) ]                          |
+|    Background Daemon Thread, YAML Interval Triggers, Signal Handlers          |
+|                                                                               |
+|  [ 6-Stage Intelligence & Processing Pipeline (src/) ]                        |
+|    SearchPlanner ➔ Collectors ➔ Processors ➔ Ranking ➔ KB ➔ Notifier         |
+|                                                                               |
+|  [ SQLite Database Storage (data/cyberscout.db) ]                             |
+|    Schema v2, WAL Mode, Foreign Key Enforcement, 12 Core Tables               |
++-------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 🚀 Quick Start
+## 📸 Screenshots & Control Center
 
-### 1. Prerequisites
+Explore visual previews in our [Screenshots Gallery](docs/screenshots/README.md).
+
+| Control Center View | Description |
+|---|---|
+| **Executive Dashboard** | Real-time KPI statistics, opportunity collection trends, category distribution |
+| **Opportunities Explorer** | Multi-criteria search table with CSV/JSON exports |
+| **Analytics & Trends** | Growth timeline metrics, provider comparison, keyword frequencies |
+| **Collector Management** | Real-time collector status cards and manual trigger execution |
+| **System Health Grid** | Visual health diagnostics matching `python main.py --health` |
+
+---
+
+## 🚀 Quick Start & Installation
+
+### 1. Requirements
 - Python 3.12 or higher
+- Git
 
-### 2. Installation
+### 2. Setup
 ```bash
 # Clone repository
 git clone https://github.com/CyberScoutAI/cyberscout-ai.git
 cd CyberScoutAI
 
-# Set up virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On Windows:
+venv\Scripts\activate
+# On Linux/macOS:
+source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
 ```
 
-### 3. Run Diagnostics
+---
+
+## 💻 Operating CyberScout AI
+
+### Web Dashboard & Control Center
+Launch the browser control center on `http://127.0.0.1:5000`:
 ```bash
-python main.py --health
+python main.py --dashboard
 ```
 
-Expected Output:
-```json
-{
-  "overall_status": "HEALTHY",
-  "healthy": true,
-  "checks": [
-    {
-      "component": "configuration",
-      "status": true,
-      "message": "Configuration loaded and validated.",
-      "details": {
-        "app_env": "development",
-        "db_name": "cyberscout.db"
-      }
-    },
-    {
-      "component": "database",
-      "status": true,
-      "message": "Database healthy.",
-      "details": {
-        "ping": true,
-        "integrity": true,
-        "schema_version": 1,
-        "table_count": 8
-      }
-    },
-    {
-      "component": "directories",
-      "status": true,
-      "message": "All runtime directories verified.",
-      "details": {
-        "verified_count": 3,
-        "failed": []
-      }
-    }
-  ]
-}
+### Automation Daemon
+Run continuous background background scan loops according to `config/scheduler.yaml`:
+```bash
+python main.py --daemon
+```
+
+### CLI Diagnostic Commands
+```bash
+# Execute single pipeline scan iteration
+python main.py --run-once
+
+# Execute single scan in dry-run mode (skip DB writes & emails)
+python main.py --run-once --dry-run
+
+# Inspect system health diagnostic status
+python main.py --health
+
+# Inspect version information
+python main.py --version
 ```
 
 ---
 
-## 📁 Repository Structure
+## 📁 Repository Directory Structure
 
-```
+```text
 CyberScoutAI/
-├── config/             # YAML configuration files (sources, keywords, schedule, weights)
-├── data/               # SQLite database storage (cyberscout.db) & backups
-├── docs/               # Architecture documents and Phase 0/0.5 specifications
-├── logs/               # Rotating application log files
-├── reports/            # Output email HTML and audit summaries
-├── src/
-│   ├── collectors/     # Abstract collector contracts & concrete collectors (Phase 3)
-│   ├── core/           # Config, logging, version, context, health, bootstrap
-│   ├── database/       # SQLite manager, repositories, migrations, seed, backups
-│   ├── intelligence/   # Keyword taxonomy & search query builder
-│   ├── models/         # Canonical Opportunity dataclass & authoritative Enums
-│   ├── notifier/       # Email template rendering and SMTP delivery (Phase 7)
-│   ├── processors/     # Validation, cleaning, normalization, dedup contracts (Phase 4-5)
-│   ├── scheduler/      # Pluggable job scheduler, event bus, metrics, retry backoff
-│   ├── services/       # Core service contracts
-│   ├── utils/          # Helper utilities (date, string, validation, path, file I/O)
-│   └── main.py         # Main CLI entry point
-├── tests/              # Automated unit and smoke tests
-├── .env.example        # Environment variable template
-├── main.py             # Root CLI execution entry point
-├── pyproject.toml      # Project configuration and metadata
-├── README.md           # Project documentation
-└── requirements.txt    # Production & development dependencies
+├── config/                     # YAML Configuration files (settings, sources, keywords, scheduler)
+├── dashboard/                  # Presentation Layer (Flask web application, templates, static CSS/JS)
+│   ├── app.py                  # Flask application factory
+│   ├── routes/                 # 12 Modular Flask Blueprints (dashboard, opportunities, api, etc.)
+│   ├── services/               # Presentation service wrappers (DashboardService, APIService)
+│   ├── static/                 # Custom dark cybersecurity CSS & JavaScript
+│   └── templates/              # 11 Jinja2 HTML templates
+├── docs/                       # Comprehensive documentation & engineering audits
+│   ├── api/                    # REST API Reference docs
+│   ├── audits/                 # System, Performance, Memory, & Security audit reports
+│   ├── design/                 # Architecture design specs
+│   └── screenshots/            # Control center screenshot gallery
+├── src/                        # Core Application Subsystems
+│   ├── automation/             # Scheduler daemon & pipeline runner engine
+│   ├── collectors/             # Universal collection framework & core collectors
+│   ├── core/                   # Bootstrap, logging, health, constants, version
+│   ├── database/               # Database connection, migrations, repositories
+│   ├── intelligence/           # Search planner, query builder, template engine
+│   ├── models/                 # Canonical Opportunity data models & enums
+│   ├── notifier/               # Email client, HTML Jinja2 renderer, SMTP sender
+│   └── processors/             # Processing pipeline (cleaning, deduplication, quality check)
+├── tests/                      # Automated Test Suite (131/131 passing)
+│   └── unit/                   # Unit, resilience, memory leak, security, & route tests
+├── main.py                     # Primary CLI entry point
+├── requirements.txt            # Dependency requirements
+├── LICENSE                     # MIT License
+└── README.md                   # Project documentation
 ```
+
+---
+
+## ❓ FAQ & Troubleshooting
+
+<details>
+<summary><strong>Is CyberScout AI completely free?</strong></summary>
+Yes! CyberScout AI is 100% free and open-source under the MIT license. It uses zero paid APIs, cloud services, or commercial scraping platforms.
+</details>
+
+<details>
+<summary><strong>How does duplicate detection work?</strong></summary>
+CyberScout AI computes SHA-256 hashes of canonical URLs and evaluates title similarity using a dedicated <code>DeduplicatorProcessor</code> with 100% precision.
+</details>
+
+---
+
+## 🗺️ Project Roadmap
+
+See our full [ROADMAP.md](ROADMAP.md) for future vision including:
+- [x] Phase 1–10: Core Foundation, Search Intelligence, Collectors, Processors, KB, Notifier, Hardening
+- [x] Phase 11: Web Dashboard & Control Center (v1.1.0)
+- [ ] Phase 12: Plugin Extension Framework
+- [ ] Phase 13: Containerized Docker Deployment
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please review our [CONTRIBUTING.md](CONTRIBUTING.md) guide and adhere to our [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ---
 
 ## 📄 License
 
-Distributed under the MIT License.
+CyberScout AI is licensed under the [MIT License](LICENSE).

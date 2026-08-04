@@ -14,7 +14,7 @@ class TestSmoke(unittest.TestCase):
     def test_version_info_and_banner(self):
         info = get_version_info()
         self.assertEqual(info["app_name"], "CyberScout AI")
-        self.assertIn(info["version"], ["1.0.0", "1.1.0"])
+        self.assertIn(info["version"], ["1.0.0", "1.1.0", "1.1.1"])
 
         banner = format_banner()
         self.assertIn("CyberScout AI", banner)
