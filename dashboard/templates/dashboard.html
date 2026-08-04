@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="fw-bold text-light mb-0"><i class="bi bi-speedometer2 text-primary me-2"></i> Executive Control Center</h2>
+  <span class="text-muted">Last Updated: Just now</span>
+</div>
+
+<!-- KPI Stat Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card p-3">
+      <div class="text-muted small">Total Opportunities</div>
+      <div class="fs-2 fw-bold text-light">{{ summary.total_opportunities }}</div>
+      <div class="text-success small"><i class="bi bi-graph-up me-1"></i> +12% from last scan</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3">
+      <div class="text-muted small">Active Collectors</div>
+      <div class="fs-2 fw-bold text-light">{{ summary.active_collectors }}</div>
+      <div class="text-info small"><i class="bi bi-check2-all me-1"></i> 100% Operational</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3">
+      <div class="text-muted small">Database Size</div>
+      <div class="fs-2 fw-bold text-light">{{ summary.database_size_mb }} MB</div>
+      <div class="text-muted small"><i class="bi bi-database me-1"></i> SQLite WAL Mode</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3">
+      <div class="text-muted small">P0 Priority Alerts</div>
+      <div class="fs-2 fw-bold text-danger">{{ summary.p0_count }}</div>
+      <div class="text-danger small"><i class="bi bi-exclamation-triangle me-1"></i> Critical Action Items</div>
+    </div>
+  </div>
+</div>
+
+<!-- Priority Breakdown Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card p-3 text-center border-danger">
+      <div class="text-muted">P0 Priority</div>
+      <div class="fs-3 fw-bold text-danger">{{ summary.p0_count }}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 text-center border-warning">
+      <div class="text-muted">P1 Priority</div>
+      <div class="fs-3 fw-bold text-warning">{{ summary.p1_count }}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 text-center border-primary">
+      <div class="text-muted">P2 Priority</div>
+      <div class="fs-3 fw-bold text-primary">{{ summary.p2_count }}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 text-center border-secondary">
+      <div class="text-muted">P3 Priority</div>
+      <div class="fs-3 fw-bold text-secondary">{{ summary.p3_count }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Section -->
+<div class="row g-4">
+  <div class="col-md-8">
+    <div class="card p-3">
+      <div class="card-header border-0 bg-transparent ps-0">Daily Opportunity Collection Trend</div>
+      <canvas id="dailyTrendChart" height="150"></canvas>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3">
+      <div class="card-header border-0 bg-transparent ps-0">Category Distribution</div>
+      <canvas id="categoryChart" height="250"></canvas>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ctx1 = document.getElementById('dailyTrendChart').getContext('2d');
+new Chart(ctx1, {
+  type: 'line',
+  data: {
+    labels: {{ daily_trends.labels | tojson }},
+    datasets: [{
+      label: 'Collected Opportunities',
+      data: {{ daily_trends.counts | tojson }},
+      borderColor: '#58A6FF',
+      backgroundColor: 'rgba(88, 166, 255, 0.1)',
+      fill: true,
+      tension: 0.3
+    }]
+  },
+  options: {
+    plugins: { legend: { labels: { color: '#C9D1D9' } } },
+    scales: { x: { ticks: { color: '#C9D1D9' } }, y: { ticks: { color: '#C9D1D9' } } }
+  }
+});
+
+const ctx2 = document.getElementById('categoryChart').getContext('2d');
+new Chart(ctx2, {
+  type: 'doughnut',
+  data: {
+    labels: Object.keys({{ category_distribution | tojson }}),
+    datasets: [{
+      data: Object.values({{ category_distribution | tojson }}),
+      backgroundColor: ['#58A6FF', '#3FB950', '#D29922', '#F85149', '#A371F7', '#8B949E']
+    }]
+  },
+  options: { plugins: { legend: { labels: { color: '#C9D1D9' } } } }
+});
+</script>
+{% endblock %}

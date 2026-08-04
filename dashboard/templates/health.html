@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="fw-bold text-light mb-0"><i class="bi bi-heart-pulse text-primary me-2"></i> System Health Status</h2>
+  <span class="badge {% if health_report.healthy %}bg-success{% else %}bg-danger{% endif %} fs-6 px-3 py-2">
+    Overall Status: {{ health_report.overall_status }}
+  </span>
+</div>
+
+<div class="row g-4">
+  {% for check in health_report.checks %}
+  <div class="col-md-4">
+    <div class="card p-3 border-{% if check.status %}success{% else %}danger{% endif %}">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="fw-bold text-light mb-0 text-capitalize">{{ check.component }}</h5>
+        <i class="bi bi-{% if check.status %}check-circle-fill text-success{% else %}x-circle-fill text-danger{% endif %} fs-4"></i>
+      </div>
+      <p class="text-muted small mb-2">{{ check.message }}</p>
+      <div class="p-2 bg-dark rounded border border-secondary text-light small font-monospace">
+        {{ check.details | tojson }}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

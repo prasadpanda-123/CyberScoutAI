@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 class="fw-bold text-light mb-4"><i class="bi bi-journal-text text-primary me-2"></i> Knowledge Base & Historical Intelligence</h2>
+
+<div class="row g-4 mb-4">
+  <div class="col-md-3">
+    <div class="card p-3 text-center">
+      <div class="text-muted">Total KB Records</div>
+      <div class="fs-2 fw-bold text-light">{{ kb_stats.total_records }}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 text-center">
+      <div class="text-muted">Archived Records</div>
+      <div class="fs-2 fw-bold text-info">{{ kb_stats.archived_records }}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 text-center">
+      <div class="text-muted">Duplicate Filtering Rate</div>
+      <div class="fs-2 fw-bold text-success">{{ kb_stats.duplicate_rate_pct }}%</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 text-center">
+      <div class="text-muted">Retention Policy</div>
+      <div class="fs-2 fw-bold text-warning">90 Days</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card p-3">
+      <div class="card-header border-0 bg-transparent ps-0">Top Intelligence Sources</div>
+      <ul class="list-group list-group-flush bg-transparent">
+        {% for src in kb_stats.top_sources %}
+        <li class="list-group-item bg-transparent text-light border-secondary d-flex justify-content-between">
+          <span>{{ src }}</span>
+          <span class="badge bg-primary">Verified</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card p-3">
+      <div class="card-header border-0 bg-transparent ps-0">Top Opportunity Providers</div>
+      <ul class="list-group list-group-flush bg-transparent">
+        {% for prov in kb_stats.top_providers %}
+        <li class="list-group-item bg-transparent text-light border-secondary d-flex justify-content-between">
+          <span>{{ prov }}</span>
+          <span class="badge bg-success">Active</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,59 @@
+<div class="sidebar p-3">
+  <ul class="nav nav-pills flex-column">
+    <li class="nav-item">
+      <a href="/" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+        <i class="bi bi-speedometer2 me-2"></i> Dashboard
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/opportunities" class="nav-link {% if active_page == 'opportunities' %}active{% endif %}">
+        <i class="bi bi-briefcase me-2"></i> Opportunities
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/analytics" class="nav-link {% if active_page == 'analytics' %}active{% endif %}">
+        <i class="bi bi-graph-up me-2"></i> Analytics
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/collectors" class="nav-link {% if active_page == 'collectors' %}active{% endif %}">
+        <i class="bi bi-hdd-network me-2"></i> Collectors
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/scheduler" class="nav-link {% if active_page == 'scheduler' %}active{% endif %}">
+        <i class="bi bi-clock-history me-2"></i> Scheduler
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/notifications" class="nav-link {% if active_page == 'notifications' %}active{% endif %}">
+        <i class="bi bi-envelope me-2"></i> Notifications
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/knowledge" class="nav-link {% if active_page == 'knowledge' %}active{% endif %}">
+        <i class="bi bi-journal-text me-2"></i> Knowledge Base
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/configuration" class="nav-link {% if active_page == 'configuration' %}active{% endif %}">
+        <i class="bi bi-gear me-2"></i> Configuration
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/logs" class="nav-link {% if active_page == 'logs' %}active{% endif %}">
+        <i class="bi bi-terminal me-2"></i> Logs
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/health" class="nav-link {% if active_page == 'health' %}active{% endif %}">
+        <i class="bi bi-heart-pulse me-2"></i> System Health
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/system" class="nav-link {% if active_page == 'system' %}active{% endif %}">
+        <i class="bi bi-info-circle me-2"></i> System Info
+      </a>
+    </li>
+  </ul>
+</div>

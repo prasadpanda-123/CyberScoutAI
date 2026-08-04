@@ -1,0 +1,53 @@
+"""
+Flask Application Factory for CyberScout AI Web Dashboard.
+"""
+
+from pathlib import Path
+from flask import Flask
+
+from dashboard.config import DashboardConfig
+from dashboard.routes import (
+    analytics_bp,
+    api_bp,
+    collectors_bp,
+    configuration_bp,
+    dashboard_bp,
+    health_bp,
+    knowledge_bp,
+    logs_bp,
+    notifications_bp,
+    opportunities_bp,
+    scheduler_bp,
+    system_bp,
+)
+
+BASE_DIR = Path(__file__).resolve().parent
+
+def create_app(config_class=DashboardConfig) -> Flask:
+    """Application factory for Flask Web Dashboard."""
+    app = Flask(
+        __name__,
+        template_folder=str(BASE_DIR / "templates"),
+        static_folder=str(BASE_DIR / "static"),
+    )
+    app.config.from_object(config_class)
+
+    # Register Blueprints
+    app.register_blueprint(dashboard_bp)
+    app.register_blueprint(opportunities_bp)
+    app.register_blueprint(analytics_bp)
+    app.register_blueprint(collectors_bp)
+    app.register_blueprint(scheduler_bp)
+    app.register_blueprint(notifications_bp)
+    app.register_blueprint(knowledge_bp)
+    app.register_blueprint(configuration_bp)
+    app.register_blueprint(logs_bp)
+    app.register_blueprint(health_bp)
+    app.register_blueprint(system_bp)
+    app.register_blueprint(api_bp)
+
+    return app
+
+if __name__ == "__main__":
+    app = create_app()
+    app.run(host=DashboardConfig.HOST, port=DashboardConfig.PORT, debug=True)

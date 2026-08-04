@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="fw-bold text-light mb-0"><i class="bi bi-envelope text-primary me-2"></i> Notification & Email Center</h2>
+  <button class="btn btn-primary btn-sm" onclick="sendTestEmail()"><i class="bi bi-send me-1"></i> Dispatch Test Email</button>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-md-3">
+    <div class="card p-3">
+      <div class="text-muted small">Last Email Digest</div>
+      <div class="fw-bold text-light fs-6">{{ email_info.last_email }}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3">
+      <div class="text-muted small">Delivery Status</div>
+      <div class="fw-bold text-success fs-6"><i class="bi bi-check-circle me-1"></i> {{ email_info.last_status }}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3">
+      <div class="text-muted small">Recipients</div>
+      <div class="fw-bold text-light fs-6">{{ email_info.recipient_count }}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3">
+      <div class="text-muted small">SMTP Host</div>
+      <div class="fw-bold text-info fs-6">{{ email_info.smtp_host }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card p-3">
+  <div class="card-header border-0 bg-transparent ps-0">HTML Digest Report Preview</div>
+  <div class="p-3 bg-white text-dark rounded" style="max-height: 400px; overflow-y: auto;">
+    <h3 style="color: #0d1117;">CyberScout AI — Daily Opportunity Digest</h3>
+    <p>Here are your top-ranked cybersecurity opportunities for today:</p>
+    <ul>
+      <li><strong>Senior Penetration Tester</strong> — SANS Cyber Jobs (Score: 92)</li>
+      <li><strong>CTFtime Event: DEFCON 34 Qualifications</strong> — CTFtime (Score: 88)</li>
+      <li><strong>Cloud Security Engineering Course</strong> — YouTube Security (Score: 84)</li>
+    </ul>
+    <hr>
+    <p style="font-size: 12px; color: #666;">Sent automatically by CyberScout AI v1.1.0 presentation engine.</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function sendTestEmail() {
+  fetch('/api/email/test', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => alert('Test email action executed: ' + d.status))
+    .catch(e => alert('Error sending email: ' + e));
+}
+</script>
+{% endblock %}

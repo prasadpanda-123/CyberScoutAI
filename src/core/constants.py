@@ -6,7 +6,7 @@ from pathlib import Path
 
 # Project Application Metadata
 APP_NAME = "CyberScout AI"
-APP_VERSION = "0.1.0"
+APP_VERSION = "1.1.0"
 APP_TAGLINE = "Never Miss a Cybersecurity Opportunity Again."
 
 # Directory Structure

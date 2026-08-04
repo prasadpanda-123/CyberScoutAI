@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="fw-bold text-light mb-0"><i class="bi bi-terminal text-primary me-2"></i> Live Application Logs</h2>
+  <div class="d-flex gap-2">
+    <select class="form-select form-select-sm bg-dark text-light border-secondary" onchange="location.href='/logs?level=' + this.value">
+      <option value="ALL" {% if selected_level == 'ALL' %}selected{% endif %}>All Levels</option>
+      <option value="INFO" {% if selected_level == 'INFO' %}selected{% endif %}>INFO Only</option>
+      <option value="WARNING" {% if selected_level == 'WARNING' %}selected{% endif %}>WARNING Only</option>
+      <option value="ERROR" {% if selected_level == 'ERROR' %}selected{% endif %}>ERROR Only</option>
+      <option value="DEBUG" {% if selected_level == 'DEBUG' %}selected{% endif %}>DEBUG Only</option>
+    </select>
+    <button class="btn btn-outline-secondary btn-sm" onclick="location.reload()"><i class="bi bi-arrow-clockwise me-1"></i> Refresh</button>
+  </div>
+</div>
+
+<div class="card p-3">
+  <pre class="bg-dark text-success p-3 rounded font-monospace mb-0" style="max-height: 550px; overflow-y: auto; font-size: 13px;">{{ log_lines }}</pre>
+</div>
+{% endblock %}
