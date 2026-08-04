@@ -1,37 +1,40 @@
 """
 Search Planner for CyberScout AI Search Intelligence Layer.
 
-Orchestrates Keywords + Templates + Sources + QueryBuilder + QueryValidator
-to produce a structured, source-mapped SearchPlan for Phase 3 Collectors.
+Constructs optimal SearchPlan definitions containing SearchTasks
+mapped from KeywordEngine and SearchTemplateEngine output.
 """
 
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import quote_plus
 
 from src.core.logging import get_logger
 from src.intelligence.keyword_engine import KeywordEngine
 from src.intelligence.planner_models import SearchPlan, SearchTask
-from src.intelligence.query_builder import QueryBuilder
 from src.intelligence.query_validator import QueryValidator
+from src.intelligence.query_builder import QueryBuilder
 from src.intelligence.source_registry import SourceRegistry
+from src.utils.url_utils import sanitize_url
 
 logger = get_logger(__name__)
 
 
-def _parse_priority(val: Any) -> float:
-    """Parses numeric or string priority ('P0', 'P1', 'P2') into float priority weight."""
-    if isinstance(val, (int, float)):
-        return float(val)
-    if isinstance(val, str):
-        v = val.strip().upper()
-        if v == "P0":
+def _parse_priority(prio_val: Any) -> float:
+    """Helper to convert string/numeric priority to float."""
+    if isinstance(prio_val, (int, float)):
+        return float(prio_val)
+    if isinstance(prio_val, str):
+        val = prio_val.upper().strip()
+        if val == "P0":
             return 1.0
-        elif v == "P1":
-            return 0.8
-        elif v == "P2":
-            return 0.6
+        if val == "P1":
+            return 2.0
+        if val == "P2":
+            return 3.0
+        if val == "P3":
+            return 4.0
         try:
-            return float(v)
+            return float(val)
         except ValueError:
             pass
     return 1.0
@@ -39,22 +42,20 @@ def _parse_priority(val: Any) -> float:
 
 class SearchPlanner:
     """
-    Constructs comprehensive SearchPlan execution specifications mapped to target sources.
+    Orchestrates search execution planning by mapping category queries to available sources.
     """
 
     def __init__(
         self,
-        keyword_engine: Optional[KeywordEngine] = None,
         query_builder: Optional[QueryBuilder] = None,
         source_registry: Optional[SourceRegistry] = None,
         validator: Optional[QueryValidator] = None,
     ):
-        self.keyword_engine = keyword_engine or KeywordEngine()
-        self.query_builder = query_builder or QueryBuilder(keyword_engine=self.keyword_engine)
+        self.query_builder = query_builder or QueryBuilder()
         self.source_registry = source_registry or SourceRegistry()
-        self.validator = validator or QueryValidator(source_registry=self.source_registry)
+        self.validator = validator or QueryValidator()
 
-    def create_search_plan(
+    def create_plan(
         self,
         categories: Optional[List[str]] = None,
         max_queries_per_category: int = 10,
@@ -114,14 +115,27 @@ class SearchPlanner:
         logger.info(f"SearchPlanner created plan '{plan.plan_id}' with {plan.total_tasks} tasks targeting {len(plan.sources_targeted)} sources.")
         return plan
 
+    def create_search_plan(self, categories: Optional[List[str]] = None, max_queries_per_category: int = 10) -> SearchPlan:
+        """Backward compatibility alias for create_plan."""
+        return self.create_plan(categories=categories, max_queries_per_category=max_queries_per_category)
+
     def _format_target_url(self, source_id: str, method: str, query_text: str, source_info: dict) -> str:
         """Helper to construct standard target URL endpoint for a search query."""
         encoded_q = quote_plus(query_text)
+        base_url = source_info.get("base_url") or source_info.get("url")
+
         if source_id == "github_search":
-            return f"https://api.github.com/search/repositories?q={encoded_q}"
+            return sanitize_url(f"https://api.github.com/search/repositories?q={encoded_q}")
         elif source_id == "ctftime":
-            return "https://ctftime.org/api/v1/events/"
-        elif method == "rss":
-            return source_info.get("url", f"https://example.com/rss/{source_id}")
+            return sanitize_url("https://ctftime.org/api/v1/events/")
+        elif method == "rss" and base_url and "REPLACE_WITH_CHANNEL_ID" not in base_url:
+            return sanitize_url(base_url)
+        elif base_url and "REPLACE_WITH_CHANNEL_ID" not in base_url:
+            if "{keyword}" in base_url or "{query}" in base_url:
+                raw = base_url.replace("{keyword}", encoded_q).replace("{query}", encoded_q)
+                return sanitize_url(raw)
+            delimiter = "&" if "?" in base_url else "?"
+            return sanitize_url(f"{base_url}{delimiter}q={encoded_q}")
         else:
-            return f"https://{source_id}.com/search?q={encoded_q}"
+            clean_id = source_id.replace("_", "-")
+            return sanitize_url(f"https://{clean_id}.com/search?q={encoded_q}")

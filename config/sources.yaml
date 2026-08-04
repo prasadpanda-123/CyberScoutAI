@@ -9,6 +9,7 @@ sources:
   - id: github_search
     name: "GitHub Search API"
     collection_method: api
+    preferred_collector: "GithubSearchCollector"
     supports_search: true
     supports_rss: false
     requires_login: true
@@ -27,6 +28,7 @@ sources:
   - id: ctftime
     name: "CTFtime"
     collection_method: api
+    preferred_collector: "CtftimeCollector"
     supports_search: false
     supports_rss: false
     requires_login: false
@@ -45,6 +47,7 @@ sources:
   - id: hackernews_rss
     name: "The Hacker News"
     collection_method: rss
+    preferred_collector: "GenericRSSCollector"
     supports_search: false
     supports_rss: true
     requires_login: false
@@ -63,6 +66,7 @@ sources:
   - id: bleepingcomputer_rss
     name: "BleepingComputer"
     collection_method: rss
+    preferred_collector: "GenericRSSCollector"
     supports_search: false
     supports_rss: true
     requires_login: false
@@ -81,6 +85,7 @@ sources:
   - id: krebsonsecurity_rss
     name: "Krebs on Security"
     collection_method: rss
+    preferred_collector: "GenericRSSCollector"
     supports_search: false
     supports_rss: true
     requires_login: false
@@ -99,6 +104,7 @@ sources:
   - id: darkreading_rss
     name: "Dark Reading"
     collection_method: rss
+    preferred_collector: "GenericRSSCollector"
     supports_search: false
     supports_rss: true
     requires_login: false
@@ -117,6 +123,7 @@ sources:
   - id: portswigger_academy
     name: "PortSwigger Web Security Academy"
     collection_method: html
+    preferred_collector: "HtmlScraperCollector"
     supports_search: false
     supports_rss: false
     requires_login: false
@@ -135,6 +142,7 @@ sources:
   - id: tryhackme
     name: "TryHackMe (free rooms)"
     collection_method: html
+    preferred_collector: "HtmlScraperCollector"
     supports_search: false
     supports_rss: false
     requires_login: false
@@ -153,6 +161,7 @@ sources:
   - id: hackthebox_academy
     name: "HackTheBox Academy (free modules)"
     collection_method: html
+    preferred_collector: "HtmlScraperCollector"
     supports_search: false
     supports_rss: false
     requires_login: false
@@ -171,6 +180,7 @@ sources:
   - id: cisco_netacad
     name: "Cisco Networking Academy"
     collection_method: html
+    preferred_collector: "HtmlScraperCollector"
     supports_search: false
     supports_rss: false
     requires_login: false
@@ -189,6 +199,7 @@ sources:
   - id: unstop
     name: "Unstop (competitions, India)"
     collection_method: html
+    preferred_collector: "HtmlScraperCollector"
     supports_search: false
     supports_rss: false
     requires_login: false
@@ -207,6 +218,7 @@ sources:
   - id: devpost
     name: "Devpost"
     collection_method: html
+    preferred_collector: "HtmlScraperCollector"
     supports_search: false
     supports_rss: false
     requires_login: false
@@ -225,6 +237,7 @@ sources:
   - id: internshala
     name: "Internshala"
     collection_method: playwright
+    preferred_collector: "HtmlScraperCollector"
     supports_search: false
     supports_rss: false
     requires_login: false
@@ -243,6 +256,7 @@ sources:
   - id: youtube_johnhammond
     name: "John Hammond (YouTube)"
     collection_method: rss
+    preferred_collector: "YouTubeRSSCollector"
     supports_search: false
     supports_rss: true
     requires_login: false
@@ -261,6 +275,7 @@ sources:
   - id: arxiv_cs_cr
     name: "arXiv cs.CR"
     collection_method: rss
+    preferred_collector: "GenericRSSCollector"
     supports_search: false
     supports_rss: true
     requires_login: false
@@ -279,6 +294,7 @@ sources:
   - id: linkedin_jobs
     name: "LinkedIn Jobs"
     collection_method: html
+    preferred_collector: "HtmlScraperCollector"
     supports_search: false
     supports_rss: false
     requires_login: true

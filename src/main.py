@@ -1,7 +1,7 @@
 """
 Main CLI entry point for CyberScout AI.
 
-Handles command-line flags (--version, --health, --config-check, --db-check, --env-status, --github-status, --dashboard, --run-once, --daemon, --dry-run, --scheduler-status, --metrics, --email-test)
+Handles command-line flags (--version, --health, --config-check, --validate-config, --validate-sources, --provider-health, --config-report, --db-check, --env-status, --github-status, --dashboard, --run-once, --daemon, --dry-run, --scheduler-status, --metrics, --email-test)
 and manages application startup & shutdown execution.
 """
 
@@ -13,8 +13,10 @@ import sys
 
 from src.core.bootstrap import CyberScoutApp, ensure_env_file
 from src.core.config import config
+from src.core.config_validator import ConfigurationValidator
 from src.core.constants import PROJECT_ROOT
 from src.core.health import HealthMonitor
+from src.core.provider_health import ProviderHealthChecker
 from src.core.version import format_banner, get_version_info
 from src.database.connection import DatabaseManager
 from src.automation.engine import AutomationEngine
@@ -41,6 +43,26 @@ def build_parser() -> argparse.ArgumentParser:
         "--config-check",
         action="store_true",
         help="Validate application configuration settings.",
+    )
+    parser.add_argument(
+        "--validate-config",
+        action="store_true",
+        help="Execute comprehensive YAML configuration and collector mapping audit.",
+    )
+    parser.add_argument(
+        "--validate-sources",
+        action="store_true",
+        help="Audit provider sources, URL syntax, and capability matrices.",
+    )
+    parser.add_argument(
+        "--provider-health",
+        action="store_true",
+        help="Run live DNS resolution and reachability checks for all sources.",
+    )
+    parser.add_argument(
+        "--config-report",
+        action="store_true",
+        help="Generate master configuration audit summary report.",
     )
     parser.add_argument(
         "--db-check",
@@ -201,6 +223,18 @@ def main(args_list: list | None = None) -> int:
         result = monitor.check_config()
         print(json.dumps(result.to_dict(), indent=2))
         return 0 if result.status else 1
+
+    if args.validate_config or args.validate_sources or args.config_report:
+        validator = ConfigurationValidator()
+        report = validator.validate_all()
+        print(json.dumps(report.to_dict(), indent=2))
+        return 0 if report.is_valid else 1
+
+    if args.provider_health:
+        checker = ProviderHealthChecker()
+        results = checker.check_all_providers()
+        print(json.dumps([r.to_dict() for r in results], indent=2))
+        return 0
 
     if args.db_check:
         monitor = HealthMonitor()
