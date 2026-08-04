@@ -14,6 +14,7 @@ sources:
       - ctf
     rate_limit_requests_per_minute: 30
     preferred_collector: "GithubSearchCollector"
+    base_url: "https://api.github.com/search/repositories"
 
   ctftime:
     name: "CTFtime Events API"
@@ -24,10 +25,12 @@ sources:
     priority: 1
     supported_categories:
       - ctf
+      - hackathon
     rate_limit_requests_per_minute: 60
     preferred_collector: "CtftimeCollector"
+    base_url: "https://ctftime.org/api/v1/events/"
 
-  thehackernews:
+  hackernews_rss:
     name: "The Hacker News RSS"
     supports_search: false
     supports_api: false
@@ -39,8 +42,9 @@ sources:
       - blog
     rate_limit_requests_per_minute: 120
     preferred_collector: "GenericRSSCollector"
+    base_url: "https://feeds.feedburner.com/TheHackersNews"
 
-  bleepingcomputer:
+  bleepingcomputer_rss:
     name: "BleepingComputer RSS"
     supports_search: false
     supports_api: false
@@ -49,12 +53,42 @@ sources:
     priority: 2
     supported_categories:
       - security_news
+      - news
     rate_limit_requests_per_minute: 120
     preferred_collector: "GenericRSSCollector"
+    base_url: "https://www.bleepingcomputer.com/feed/"
+
+  krebsonsecurity_rss:
+    name: "Krebs on Security RSS"
+    supports_search: false
+    supports_api: false
+    supports_rss: true
+    authentication_required: false
+    priority: 2
+    supported_categories:
+      - security_news
+      - news
+    rate_limit_requests_per_minute: 120
+    preferred_collector: "GenericRSSCollector"
+    base_url: "https://krebsonsecurity.com/feed/"
+
+  darkreading_rss:
+    name: "Dark Reading RSS"
+    supports_search: false
+    supports_api: false
+    supports_rss: true
+    authentication_required: false
+    priority: 2
+    supported_categories:
+      - security_news
+      - news
+    rate_limit_requests_per_minute: 120
+    preferred_collector: "GenericRSSCollector"
+    base_url: "https://www.darkreading.com/rss.xml"
 
   portswigger_academy:
     name: "PortSwigger Web Security Academy"
-    supports_search: true
+    supports_search: false
     supports_api: false
     supports_rss: false
     authentication_required: false
@@ -64,10 +98,11 @@ sources:
       - certification
     rate_limit_requests_per_minute: 10
     preferred_collector: "HtmlScraperCollector"
+    base_url: "https://portswigger.net/web-security/all-topics"
 
   tryhackme:
     name: "TryHackMe Free Content"
-    supports_search: true
+    supports_search: false
     supports_api: false
     supports_rss: false
     authentication_required: false
@@ -77,3 +112,17 @@ sources:
       - ctf
     rate_limit_requests_per_minute: 10
     preferred_collector: "HtmlScraperCollector"
+    base_url: "https://tryhackme.com/hacktivities?tab=all&difficulty=&type=free"
+
+  hackthebox_academy:
+    name: "HackTheBox Academy"
+    supports_search: false
+    supports_api: false
+    supports_rss: false
+    authentication_required: false
+    priority: 2
+    supported_categories:
+      - course
+    rate_limit_requests_per_minute: 10
+    preferred_collector: "HtmlScraperCollector"
+    base_url: "https://academy.hackthebox.com/catalogue"

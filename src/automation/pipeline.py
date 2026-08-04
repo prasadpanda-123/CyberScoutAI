@@ -129,11 +129,16 @@ class PipelineRunner:
             self._record_run_history(run_id, search_plan, raw_items, ranked_items, email_sent, metrics)
 
         return {
+            "status": "success",
             "run_id": run_id,
+            "providers_attempted": getattr(getattr(self.collector_manager, "metrics", None), "providers_attempted", 0),
+            "providers_succeeded": getattr(getattr(self.collector_manager, "metrics", None), "providers_succeeded", 0),
+            "providers_failed": getattr(getattr(self.collector_manager, "metrics", None), "providers_failed", 0),
             "items_collected": len(raw_items),
             "items_processed": len(processed_items),
             "items_ranked": len(ranked_items),
             "email_sent": email_sent,
+            "execution_time_sec": round(metrics.total_time, 2),
             "metrics": metrics.to_dict(),
         }
 

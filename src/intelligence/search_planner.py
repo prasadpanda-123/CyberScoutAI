@@ -11,8 +11,8 @@ from urllib.parse import quote_plus
 from src.core.logging import get_logger
 from src.intelligence.keyword_engine import KeywordEngine
 from src.intelligence.planner_models import SearchPlan, SearchTask
-from src.intelligence.query_validator import QueryValidator
 from src.intelligence.query_builder import QueryBuilder
+from src.intelligence.query_validator import QueryValidator
 from src.intelligence.source_registry import SourceRegistry
 from src.utils.url_utils import sanitize_url
 
@@ -72,6 +72,7 @@ class SearchPlanner:
         """
         target_cats = categories or ["internship", "ctf", "course", "certification", "hackathon"]
         tasks: List[SearchTask] = []
+        processed_static_sources = set()
 
         for cat in target_cats:
             # 1. Get active sources supporting this category
@@ -87,25 +88,64 @@ class SearchPlanner:
             for src in active_sources:
                 sid = src["id"]
                 s_method = src.get("collection_method", src.get("type", "rss"))
-                collector = src.get("preferred_collector", "GenericRSSCollector")
+                collector = src.get("preferred_collector")
+                
+                # Strict Collector Routing
+                if not collector or collector == "GenericCollector":
+                    if s_method == "rss":
+                        collector = "GenericRSSCollector"
+                    elif s_method == "html":
+                        collector = "HtmlScraperCollector"
+                    elif sid == "github_search":
+                        collector = "GithubSearchCollector"
+                    elif sid == "ctftime":
+                        collector = "CtftimeCollector"
+                    else:
+                        collector = "GenericRSSCollector"
+
                 rate_rpm = int(src.get("rate_limit_requests_per_minute", 60))
                 prio = _parse_priority(src.get("priority", 1.0))
+                supports_search = bool(src.get("supports_search", False))
+                base_url = src.get("base_url") or src.get("url")
 
-                for q in queries:
-                    target_url = self._format_target_url(sid, s_method, q.query_text, src)
-                    task = SearchTask(
-                        source_id=sid,
-                        query_text=q.query_text,
-                        target_url=target_url,
-                        category=cat,
-                        collection_method=s_method,
-                        priority=prio,
-                        metadata={
-                            "preferred_collector": collector,
-                            "rate_limit_rpm": rate_rpm,
-                        },
-                    )
-                    tasks.append(task)
+                # RSS feeds, static HTML, and CTFtime API ingest their official URL ONCE per run
+                if not supports_search or s_method == "rss" or sid == "ctftime":
+                    if sid in processed_static_sources:
+                        continue
+                    processed_static_sources.add(sid)
+
+                    target_url = base_url or self._format_target_url(sid, s_method, "", src)
+                    if target_url:
+                        task = SearchTask(
+                            source_id=sid,
+                            query_text="",
+                            target_url=sanitize_url(target_url),
+                            category=src.get("default_category", cat),
+                            collection_method=s_method,
+                            priority=prio,
+                            metadata={
+                                "preferred_collector": collector,
+                                "rate_limit_rpm": rate_rpm,
+                            },
+                        )
+                        tasks.append(task)
+                else:
+                    # Search-supporting API sources (e.g. GitHub Search API)
+                    for q in queries:
+                        target_url = self._format_target_url(sid, s_method, q.query_text, src)
+                        task = SearchTask(
+                            source_id=sid,
+                            query_text=q.query_text,
+                            target_url=target_url,
+                            category=cat,
+                            collection_method=s_method,
+                            priority=prio,
+                            metadata={
+                                "preferred_collector": collector,
+                                "rate_limit_rpm": rate_rpm,
+                            },
+                        )
+                        tasks.append(task)
 
         plan = SearchPlan(tasks=tasks)
         validation = self.validator.validate_plan(plan)

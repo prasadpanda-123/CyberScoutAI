@@ -70,8 +70,8 @@ class QueryValidator:
             return SearchValidationResult(is_valid=False, errors=errors, warnings=warnings, validated_count=0)
 
         for idx, task in enumerate(plan.tasks):
-            # 1. Empty query check
-            if not task.query_text or not task.query_text.strip():
+            # 1. Empty query check (only for dynamic search tasks without target_url)
+            if not task.target_url and (not task.query_text or not task.query_text.strip()):
                 errors.append(f"Task #{idx} ('{task.task_id}'): Query text is empty.")
 
             # 2. Unrendered template check
