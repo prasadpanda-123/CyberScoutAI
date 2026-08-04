@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+        <rss version="2.0">
+            <channel>
+                <item>
+                    <title>Security & Tech News Update</title>
+                    <link>https://example.com/item1</link>
+                    <description>Research & Development & Testing</description>
+                </item>
+            </channel>
+        </rss>

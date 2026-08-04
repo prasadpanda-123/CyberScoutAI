@@ -139,11 +139,43 @@ def build_parser() -> argparse.ArgumentParser:
         help="Display performance timings for the last completed run.",
     )
     parser.add_argument(
+        "--smtp-check",
+        action="store_true",
+        help="Execute end-to-end SMTP configuration, DNS resolution, TCP connection, and authentication checks.",
+    )
+    parser.add_argument(
         "--email-test",
         action="store_true",
         help="Sends a test notification email digest.",
     )
     return parser
+
+
+def run_smtp_check() -> None:
+    """Runs SMTP configuration, DNS resolution, TCP connectivity, and authentication checks."""
+    from src.core.smtp_validator import SMTPValidator
+
+    validator = SMTPValidator()
+    results = validator.run_diagnostics()
+
+    print("===========================================================================")
+    print("CyberScout AI - SMTP Configuration Diagnostics & Validation")
+    print("===========================================================================")
+    print(f"SMTP Host          : {results.get('smtp_host')}")
+    print(f"SMTP Port          : {results.get('smtp_port')}")
+    print(f"TLS Enabled        : {results.get('tls_enabled')}")
+    print(f"SSL Enabled        : {results.get('ssl_enabled')}")
+    print(f"Username           : {results.get('username')}")
+    print(f"Environment Loaded : {'Yes (.env loaded)' if results.get('environment_loaded') else 'No'}")
+    print(f"DNS Resolution     : {results.get('dns_resolution')}")
+    print(f"TCP Connection     : {results.get('tcp_connection')}")
+    print(f"Authentication Result: {results.get('authentication_result')}")
+    print("===========================================================================")
+    if results.get("is_healthy"):
+        print("Overall Status     : [SUCCESS] SMTP Server Authenticated & Ready")
+    else:
+        print(f"Overall Status     : [FAILED] Issues: {', '.join(results.get('errors', []))}")
+    print("===========================================================================")
 
 
 def get_env_status_report() -> str:
@@ -400,6 +432,10 @@ def main(args_list: list | None = None) -> int:
         return 0
 
     # Automation Engine Integrations
+    if args.smtp_check:
+        run_smtp_check()
+        return 0
+
     if args.email_test:
         client = EmailClient()
         res = client.send_daily_digest()

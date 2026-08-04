@@ -32,6 +32,9 @@ python main.py --repair-config
 python main.py --db-check
     Verify SQLite database connectivity and schema integrity.
 
+python main.py --smtp-check
+    Execute end-to-end SMTP configuration, DNS resolution, TCP connection, and authentication checks.
+
 ===========================================================================
 AUTOMATION
 ===========================================================================

@@ -30,6 +30,7 @@
 | **AUTOMATION** | `python main.py --dry-run` | Run full collection and ranking cycle but bypass DB writes and email dispatching. |
 | **AUTOMATION** | `python main.py --scheduler-status` | Inspect scheduler registration queues and current execution status. |
 | **AUTOMATION** | `python main.py --metrics` | Display performance timings for the last completed run. |
+| **SYSTEM** | `python main.py --smtp-check` | Execute end-to-end SMTP configuration, DNS resolution, TCP connection, and authentication checks. |
 | **EMAIL** | `python main.py --email-test` | Sends a test notification email digest. |
 
 ---
