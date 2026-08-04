@@ -1,7 +1,7 @@
 """
 Main CLI entry point for CyberScout AI.
 
-Handles command-line flags (--version, --health, --config-check, --validate-config, --validate-sources, --provider-health, --config-report, --db-check, --env-status, --github-status, --dashboard, --run-once, --daemon, --dry-run, --scheduler-status, --metrics, --email-test)
+Handles command-line flags (--version, --health, --config-check, --validate-config, --validate-sources, --provider-health, --config-report, --db-check, --env-status, --github-status, --generate-command-docs, --dashboard, --run-once, --daemon, --dry-run, --scheduler-status, --metrics, --email-test)
 and manages application startup & shutdown execution.
 """
 
@@ -21,6 +21,7 @@ from src.core.version import format_banner, get_version_info
 from src.database.connection import DatabaseManager
 from src.automation.engine import AutomationEngine
 from src.notifier.email_client import EmailClient
+from src.utils.command_doc_generator import generate_all_command_docs
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -78,6 +79,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--github-status",
         action="store_true",
         help="Display GitHub API token configuration, authentication state, and rate limits.",
+    )
+    parser.add_argument(
+        "--generate-command-docs",
+        action="store_true",
+        help="Automatically generate commands.txt and commands.md CLI documentation files.",
     )
     # Phase 11 Web Dashboard
     parser.add_argument(
@@ -249,6 +255,11 @@ def main(args_list: list | None = None) -> int:
     if args.github_status:
         gh_status = get_github_status()
         print(json.dumps(gh_status, indent=2))
+        return 0
+
+    if args.generate_command_docs:
+        txt_path, md_path = generate_all_command_docs(parser)
+        print(f"Generated CLI documentation:\n  Plain text: {txt_path}\n  Markdown  : {md_path}")
         return 0
 
     # Phase 11 Launch Dashboard Server

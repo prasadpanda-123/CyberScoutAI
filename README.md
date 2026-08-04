@@ -118,7 +118,12 @@ python main.py --health
 
 # Inspect version information
 python main.py --version
+
+# Automatically regenerate commands.txt and commands.md CLI reference files
+python main.py --generate-command-docs
 ```
+
+> 📖 **Full CLI Documentation Reference**: See [commands.txt](commands.txt) and [commands.md](commands.md) for a categorized quick reference table and common operational workflow guides.
 
 ---
 

@@ -1,0 +1,98 @@
+===========================================================================
+CyberScout AI CLI Reference
+===========================================================================
+
+VERSION
+
+python main.py --version
+    Show application version
+
+===========================================================================
+SYSTEM
+===========================================================================
+
+python main.py
+    Start default application bootstrap and graceful shutdown
+
+python main.py --health
+    Run full system health check suite.
+
+python main.py --config-check
+    Validate application configuration settings.
+
+python main.py --db-check
+    Verify SQLite database connectivity and schema integrity.
+
+===========================================================================
+AUTOMATION
+===========================================================================
+
+python main.py --run-once
+    Execute one complete scan & pipeline iteration.
+
+python main.py --daemon
+    Run automation engine daemon scheduler loops continuously.
+
+python main.py --dry-run
+    Run full collection and ranking cycle but bypass DB writes and email dispatching.
+
+python main.py --scheduler-status
+    Inspect scheduler registration queues and current execution status.
+
+python main.py --metrics
+    Display performance timings for the last completed run.
+
+===========================================================================
+EMAIL
+===========================================================================
+
+python main.py --email-test
+    Sends a test notification email digest.
+
+===========================================================================
+DASHBOARD
+===========================================================================
+
+python main.py --dashboard
+    Launch CyberScout AI Web Dashboard & Control Center server.
+
+===========================================================================
+CONFIGURATION
+===========================================================================
+
+python main.py --validate-config
+    Execute comprehensive YAML configuration and collector mapping audit.
+
+python main.py --validate-sources
+    Audit provider sources, URL syntax, and capability matrices.
+
+python main.py --provider-health
+    Run live DNS resolution and reachability checks for all sources.
+
+python main.py --config-report
+    Generate master configuration audit summary report.
+
+===========================================================================
+ENVIRONMENT
+===========================================================================
+
+python main.py --env-status
+    Display local .env environment variable configuration status.
+
+python main.py --github-status
+    Display GitHub API token configuration, authentication state, and rate limits.
+
+===========================================================================
+DOCUMENTATION
+===========================================================================
+
+python main.py --generate-command-docs
+    Automatically generate commands.txt and commands.md CLI documentation files.
+
+===========================================================================
+HELP
+===========================================================================
+
+python main.py --help
+    show this help message and exit
+
