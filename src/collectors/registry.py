@@ -32,8 +32,9 @@ class CollectorRegistry:
             from src.collectors.github_collector import GithubSearchCollector
             from src.collectors.youtube_collector import YouTubeRSSCollector
             from src.collectors.ctftime_collector import CtftimeCollector
+            from src.collectors.html_collector import HtmlScraperCollector
 
-            for cls in [GenericRSSCollector, GithubSearchCollector, YouTubeRSSCollector, CtftimeCollector]:
+            for cls in [GenericRSSCollector, GithubSearchCollector, YouTubeRSSCollector, CtftimeCollector, HtmlScraperCollector]:
                 self.register(cls)
         except Exception as e:
             logger.warning(f"Auto-registration of core collectors failed: {e}")

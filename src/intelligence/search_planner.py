@@ -86,7 +86,7 @@ class SearchPlanner:
             for src in active_sources:
                 sid = src["id"]
                 s_method = src.get("collection_method", src.get("type", "rss"))
-                collector = src.get("preferred_collector", "GenericCollector")
+                collector = src.get("preferred_collector", "GenericRSSCollector")
                 rate_rpm = int(src.get("rate_limit_requests_per_minute", 60))
                 prio = _parse_priority(src.get("priority", 1.0))
 

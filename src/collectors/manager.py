@@ -51,7 +51,7 @@ class CollectorManager:
         source_id = task.source_id
 
         if not collector:
-            preferred_collector_name = task.metadata.get("preferred_collector", "GenericCollector")
+            preferred_collector_name = task.metadata.get("preferred_collector", "GenericRSSCollector")
             try:
                 collector = self.factory.create_collector(preferred_collector_name, source_id=source_id)
             except Exception as e:
