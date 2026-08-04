@@ -488,9 +488,10 @@ def main(args_list: list | None = None) -> int:
     # Phase 11 Launch Dashboard Server
     if args.dashboard:
         from dashboard.app import create_app
+        port = int(os.environ.get("PORT", 5000))
         app = create_app()
-        print("Launching CyberScout AI Web Dashboard on http://127.0.0.1:5000 ...")
-        app.run(host="127.0.0.1", port=5000, debug=False)
+        print(f"Launching CyberScout AI Web Dashboard on http://0.0.0.0:{port} ...")
+        app.run(host="0.0.0.0", port=port, debug=False)
         return 0
 
     # Automation Engine Integrations
@@ -690,7 +691,16 @@ def main(args_list: list | None = None) -> int:
         engine.run_forever(dry_run=args.dry_run)
         return 0
 
-    # Default execution: run full application bootstrap and graceful shutdown
+    # Railway / Web environment automatic detection
+    if "PORT" in os.environ or os.environ.get("RAILWAY_ENVIRONMENT"):
+        from dashboard.app import create_app
+        port = int(os.environ.get("PORT", 5000))
+        app = create_app()
+        print(f"Railway/Web environment detected (PORT={port}). Launching Web Dashboard...")
+        app.run(host="0.0.0.0", port=port, debug=False)
+        return 0
+
+    # Default CLI execution: run full application bootstrap and graceful shutdown
     app = CyberScoutApp()
     try:
         app.startup()

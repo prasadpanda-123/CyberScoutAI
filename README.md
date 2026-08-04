@@ -127,6 +127,32 @@ python main.py --generate-command-docs
 
 ---
 
+## 🚂 Railway Cloud Deployment Guide
+
+CyberScout AI is fully compatible with [Railway](https://railway.app) for zero-downtime containerized cloud hosting.
+
+### 1. Automatic Environment & Port Detection
+When deployed on Railway, the system automatically detects the assigned `PORT` environment variable and launches the continuous Web Dashboard server on `0.0.0.0:${PORT}` instead of exiting CLI startup.
+
+### 2. Operational Modes
+- **Local CLI**: `python main.py` (runs initialization pipeline and CLI startup/shutdown).
+- **Local Dashboard**: `python main.py --dashboard` (launches Flask control center on `0.0.0.0:5000`).
+- **Railway Production Web Server**: Automatically executed via `Procfile` (`web: python main.py` or `gunicorn wsgi:app`).
+
+### 3. Environment Variables
+Configure the following environment variables in your Railway Project Settings:
+- `PORT` (assigned automatically by Railway)
+- `APP_ENV` (set to `production`)
+- `SECRET_KEY` (Flask session secret key)
+- `GITHUB_TOKEN` (optional: Personal Access Token for GitHub API collector)
+- `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD` (optional: email digest notification dispatching)
+
+### 4. Continuous Health Probes
+- `GET /`: Returns HTTP 200 (Dashboard HTML or JSON `{"status": "ok", "application": "CyberScout AI", "version": "1.2.0"}`).
+- `GET /health`: Returns HTTP 200 (System Health Dashboard or JSON `{"healthy": true}`).
+
+---
+
 ## 🔐 Local Environment Configuration (`.env`)
 
 CyberScout AI automatically manages environment settings using a root-level `.env` file:
