@@ -1,33 +1,39 @@
 """
-Log Viewer Route (Page 9).
+Log Control Center Route (Page 9).
 """
 
-from pathlib import Path
 from flask import Blueprint, render_template, request
-from src.core.constants import LOGS_DIR
+from src.database.log_repository import LogRepository
 
 logs_bp = Blueprint("logs_ui", __name__)
+log_repo = LogRepository()
 
 
 @logs_bp.route("/logs")
 def index():
-    """Renders log viewer page."""
-    log_file = LOGS_DIR / "cyberscout.log"
-    log_lines = []
-    if log_file.exists():
-        try:
-            with open(log_file, "r", encoding="utf-8") as f:
-                log_lines = f.readlines()[-300:]  # Last 300 lines
-        except Exception:
-            log_lines = ["Could not read log file."]
+    """Renders persistent structured log control center page."""
+    level = request.args.get("level", "ALL")
+    module = request.args.get("module", "ALL")
+    search_q = request.args.get("q", "")
+    page = int(request.args.get("page", 1))
+    limit = int(request.args.get("limit", 50))
 
-    level_filter = request.args.get("level", "ALL").upper()
-    if level_filter != "ALL":
-        log_lines = [line for line in log_lines if f"[{level_filter}]" in line or f"- {level_filter} -" in line]
+    query_res = log_repo.query_logs(
+        level=level,
+        module=module,
+        search_query=search_q,
+        page=page,
+        limit=limit,
+    )
+    stats = log_repo.get_log_stats()
 
     return render_template(
         "logs.html",
         active_page="logs",
-        log_lines="".join(log_lines),
-        selected_level=level_filter,
+        logs=query_res.get("logs", []),
+        pagination=query_res,
+        stats=stats,
+        selected_level=level,
+        selected_module=module,
+        search_query=search_q,
     )

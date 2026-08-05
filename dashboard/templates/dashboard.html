@@ -1,66 +1,72 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h2 class="fw-bold text-light mb-0"><i class="bi bi-speedometer2 text-primary me-2"></i> Executive Control Center</h2>
-  <span class="text-muted">Last Updated: Just now</span>
+  <div>
+    <h2 class="fw-bold text-light mb-0"><i class="bi bi-speedometer2 text-primary me-2"></i> Executive Control Center</h2>
+    <span class="text-muted small">Real-time application telemetry & database intelligence</span>
+  </div>
+  <div>
+    <button class="btn btn-sm btn-outline-primary me-2" onclick="location.reload();"><i class="bi bi-arrow-clockwise me-1"></i> Refresh</button>
+    <a href="/reports" class="btn btn-sm btn-success"><i class="bi bi-file-earmark-arrow-down me-1"></i> Reports Center</a>
+  </div>
 </div>
 
-<!-- KPI Stat Cards -->
+<!-- Primary Real-Time Metric Cards -->
 <div class="row g-3 mb-4">
   <div class="col-md-3">
-    <div class="card p-3">
+    <div class="card p-3 border-0 bg-dark shadow-sm">
       <div class="text-muted small">Total Opportunities</div>
-      <div class="fs-2 fw-bold text-light">{{ summary.total_opportunities }}</div>
-      <div class="text-success small"><i class="bi bi-graph-up me-1"></i> +12% from last scan</div>
+      <div class="fs-2 fw-bold text-info">{{ summary.total_opportunities }}</div>
+      <div class="text-muted small"><i class="bi bi-database-check me-1"></i> Verified in SQLite DB</div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card p-3">
+    <div class="card p-3 border-0 bg-dark shadow-sm">
+      <div class="text-muted small">Discovered Today</div>
+      <div class="fs-2 fw-bold text-success">{{ summary.today_opportunities }}</div>
+      <div class="text-success small"><i class="bi bi-calendar-check me-1"></i> Today's Intelligence</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 border-0 bg-dark shadow-sm">
       <div class="text-muted small">Active Collectors</div>
-      <div class="fs-2 fw-bold text-light">{{ summary.active_collectors }}</div>
-      <div class="text-info small"><i class="bi bi-check2-all me-1"></i> 100% Operational</div>
+      <div class="fs-2 fw-bold text-primary">{{ summary.active_collectors }}</div>
+      <div class="text-primary small"><i class="bi bi-cpu me-1"></i> Operational Pipeline</div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card p-3">
-      <div class="text-muted small">Database Size</div>
-      <div class="fs-2 fw-bold text-light">{{ summary.database_size_mb }} MB</div>
-      <div class="text-muted small"><i class="bi bi-database me-1"></i> SQLite WAL Mode</div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card p-3">
-      <div class="text-muted small">P0 Priority Alerts</div>
-      <div class="fs-2 fw-bold text-danger">{{ summary.p0_count }}</div>
-      <div class="text-danger small"><i class="bi bi-exclamation-triangle me-1"></i> Critical Action Items</div>
+    <div class="card p-3 border-0 bg-dark shadow-sm">
+      <div class="text-muted small">Emails Dispatched</div>
+      <div class="fs-2 fw-bold text-warning">{{ summary.emails_sent }}</div>
+      <div class="text-warning small"><i class="bi bi-envelope-check me-1"></i> Brevo REST API</div>
     </div>
   </div>
 </div>
 
-<!-- Priority Breakdown Cards -->
+<!-- Pipeline Executions & Telemetry Cards -->
 <div class="row g-3 mb-4">
   <div class="col-md-3">
-    <div class="card p-3 text-center border-danger">
-      <div class="text-muted">P0 Priority</div>
-      <div class="fs-3 fw-bold text-danger">{{ summary.p0_count }}</div>
+    <div class="card p-3 text-center bg-dark border-secondary">
+      <div class="text-muted small">Successful Scans</div>
+      <div class="fs-3 fw-bold text-success">{{ summary.successful_scans }}</div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card p-3 text-center border-warning">
-      <div class="text-muted">P1 Priority</div>
-      <div class="fs-3 fw-bold text-warning">{{ summary.p1_count }}</div>
+    <div class="card p-3 text-center bg-dark border-secondary">
+      <div class="text-muted small">Failed Scans</div>
+      <div class="fs-3 fw-bold text-danger">{{ summary.failed_scans }}</div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card p-3 text-center border-primary">
-      <div class="text-muted">P2 Priority</div>
-      <div class="fs-3 fw-bold text-primary">{{ summary.p2_count }}</div>
+    <div class="card p-3 text-center bg-dark border-secondary">
+      <div class="text-muted small">Database Size</div>
+      <div class="fs-3 fw-bold text-light">{{ summary.database_size_mb }} MB</div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card p-3 text-center border-secondary">
-      <div class="text-muted">P3 Priority</div>
-      <div class="fs-3 fw-bold text-secondary">{{ summary.p3_count }}</div>
+    <div class="card p-3 text-center bg-dark border-secondary">
+      <div class="text-muted small">Generated Reports</div>
+      <div class="fs-3 fw-bold text-info">{{ summary.reports_generated }}</div>
     </div>
   </div>
 </div>
@@ -68,14 +74,14 @@
 <!-- Charts Section -->
 <div class="row g-4">
   <div class="col-md-8">
-    <div class="card p-3">
-      <div class="card-header border-0 bg-transparent ps-0">Daily Opportunity Collection Trend</div>
+    <div class="card p-3 bg-dark border-secondary">
+      <div class="card-header border-0 bg-transparent ps-0 fw-bold text-light">Daily Opportunity Collection Trend</div>
       <canvas id="dailyTrendChart" height="150"></canvas>
     </div>
   </div>
   <div class="col-md-4">
-    <div class="card p-3">
-      <div class="card-header border-0 bg-transparent ps-0">Category Distribution</div>
+    <div class="card p-3 bg-dark border-secondary">
+      <div class="card-header border-0 bg-transparent ps-0 fw-bold text-light">Category Distribution</div>
       <canvas id="categoryChart" height="250"></canvas>
     </div>
   </div>
@@ -92,8 +98,8 @@ new Chart(ctx1, {
     datasets: [{
       label: 'Collected Opportunities',
       data: {{ daily_trends.counts | tojson }},
-      borderColor: '#58A6FF',
-      backgroundColor: 'rgba(88, 166, 255, 0.1)',
+      borderColor: '#38BDF8',
+      backgroundColor: 'rgba(56, 189, 248, 0.15)',
       fill: true,
       tension: 0.3
     }]
@@ -111,7 +117,7 @@ new Chart(ctx2, {
     labels: Object.keys({{ category_distribution | tojson }}),
     datasets: [{
       data: Object.values({{ category_distribution | tojson }}),
-      backgroundColor: ['#58A6FF', '#3FB950', '#D29922', '#F85149', '#A371F7', '#8B949E']
+      backgroundColor: ['#38BDF8', '#4ADE80', '#FACC15', '#F87171', '#C084FC', '#94A3B8']
     }]
   },
   options: { plugins: { legend: { labels: { color: '#C9D1D9' } } } }

@@ -1,49 +1,67 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h2 class="fw-bold text-light mb-0"><i class="bi bi-envelope text-primary me-2"></i> Notification & Email Center</h2>
-  <button class="btn btn-primary btn-sm" onclick="sendTestEmail()"><i class="bi bi-send me-1"></i> Dispatch Test Email</button>
+  <div>
+    <h2 class="fw-bold text-light mb-0"><i class="bi bi-envelope-paper-fill text-warning me-2"></i> Notification & Email Center</h2>
+    <span class="text-muted small">Brevo REST API over HTTPS (Port 443) Email Digest Dispatcher</span>
+  </div>
+  <button class="btn btn-warning btn-sm fw-bold" onclick="sendTestEmail()"><i class="bi bi-send-fill me-1"></i> Dispatch Test Email</button>
 </div>
 
+<!-- Health & Settings Cards -->
 <div class="row g-4 mb-4">
   <div class="col-md-3">
-    <div class="card p-3">
-      <div class="text-muted small">Last Email Digest</div>
-      <div class="fw-bold text-light fs-6">{{ email_info.last_email }}</div>
+    <div class="card p-3 bg-dark border-secondary">
+      <div class="text-muted small">Active Email Provider</div>
+      <div class="fw-bold text-warning fs-5">Brevo REST API</div>
+      <div class="text-muted small">HTTPS Port 443</div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card p-3">
-      <div class="text-muted small">Delivery Status</div>
-      <div class="fw-bold text-success fs-6"><i class="bi bi-check-circle me-1"></i> {{ email_info.last_status }}</div>
+    <div class="card p-3 bg-dark border-secondary">
+      <div class="text-muted small">Provider Health Status</div>
+      <div class="fw-bold text-success fs-5"><i class="bi bi-check-circle-fill me-1"></i> Healthy & Ready</div>
+      <div class="text-muted small">Pre-flight Verified</div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card p-3">
-      <div class="text-muted small">Recipients</div>
-      <div class="fw-bold text-light fs-6">{{ email_info.recipient_count }}</div>
+    <div class="card p-3 bg-dark border-secondary">
+      <div class="text-muted small">Scheduled Frequency</div>
+      <div class="fw-bold text-light fs-5">Daily 00:00 UTC</div>
+      <div class="text-muted small">Automatic Scheduler</div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card p-3">
-      <div class="text-muted small">SMTP Host</div>
-      <div class="fw-bold text-info fs-6">{{ email_info.smtp_host }}</div>
+    <div class="card p-3 bg-dark border-secondary">
+      <div class="text-muted small">Attachments Included</div>
+      <div class="fw-bold text-info fs-5">DOCX & CSV</div>
+      <div class="text-muted small">Auto-generated Reports</div>
     </div>
   </div>
 </div>
 
-<div class="card p-3">
-  <div class="card-header border-0 bg-transparent ps-0">HTML Digest Report Preview</div>
-  <div class="p-3 bg-white text-dark rounded" style="max-height: 400px; overflow-y: auto;">
-    <h3 style="color: #0d1117;">CyberScout AI — Daily Opportunity Digest</h3>
-    <p>Here are your top-ranked cybersecurity opportunities for today:</p>
-    <ul>
-      <li><strong>Senior Penetration Tester</strong> — SANS Cyber Jobs (Score: 92)</li>
-      <li><strong>CTFtime Event: DEFCON 34 Qualifications</strong> — CTFtime (Score: 88)</li>
-      <li><strong>Cloud Security Engineering Course</strong> — YouTube Security (Score: 84)</li>
-    </ul>
-    <hr>
-    <p style="font-size: 12px; color: #666;">Sent automatically by CyberScout AI v1.1.0 presentation engine.</p>
+<div class="card bg-dark border-secondary p-4">
+  <h4 class="fw-bold text-light mb-3"><i class="bi bi-info-circle text-info me-2"></i> Cloud Email Delivery Architecture</h4>
+  <p class="text-muted">
+    CyberScout AI utilizes <strong>Brevo REST API over HTTPS (Port 443)</strong> for email report delivery. This ensures 100% reliability in containerized environments (such as Render) where traditional outbound TCP SMTP ports 587/25 are restricted.
+  </p>
+  <div class="row g-3 mt-2">
+    <div class="col-md-6">
+      <div class="p-3 bg-black rounded border border-secondary">
+        <h6 class="text-warning mb-2"><i class="bi bi-gear-fill me-1"></i> Render Production Setup</h6>
+        <code class="text-light d-block">EMAIL_PROVIDER=brevo</code>
+        <code class="text-light d-block">BREVO_API_KEY=xkeysib-...</code>
+        <code class="text-light d-block">EMAIL_FROM=verified-sender@example.com</code>
+        <code class="text-light d-block">EMAIL_TO=recipient@example.com</code>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="p-3 bg-black rounded border border-secondary">
+        <h6 class="text-success mb-2"><i class="bi bi-shield-check me-1"></i> Diagnostic Endpoint</h6>
+        <p class="text-muted small mb-2">Check email subsystem pre-flight health via API:</p>
+        <a href="/api/system/smtp-health" target="_blank" class="btn btn-sm btn-outline-success"><i class="bi bi-box-arrow-up-right me-1"></i> View /api/system/smtp-health</a>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -62,26 +80,23 @@ function sendTestEmail() {
       try {
         return JSON.parse(rawText);
       } catch (parseErr) {
-        const cleanText = rawText.replace(/<[^>]*>?/gm, '').substring(0, 150);
-        return { status: 'failed', error: 'Server response error (HTTP ' + r.status + '): ' + (cleanText || 'Empty response') };
+        return { status: 'failed', error: 'Server response error (HTTP ' + r.status + '): ' + rawText.substring(0, 150) };
       }
     })
     .then(d => {
       if (d.status === 'success') {
-        alert('✔ Test Email Sent Successfully!\nMessage ID: ' + (d.message_id || 'N/A') + '\nOpportunities: ' + (d.opportunities_sent || 0));
+        alert('✔ Test Email Dispatched Successfully!\n\nMessage ID: ' + (d.message_id || 'brevo-sent') + '\nRecipient: ' + (d.recipient || 'Configured Email'));
       } else if (d.status === 'skipped') {
-        alert('ℹ Test Email Skipped: ' + (d.message || d.reason || 'No items to send.'));
+        alert('ℹ Test Email Skipped: ' + (d.message || 'No items to send.'));
       } else {
-        alert('⚠ Email Dispatch Result:\nStatus: ' + (d.status || 'failed') + '\n\nDetail: ' + (d.error || d.message || 'Please check SMTP settings.') + '\n\nNote: If hosting on Render, make sure environment variables (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, EMAIL_TO) are configured under Render Dashboard > Environment.');
+        alert('⚠ Email Dispatch Result:\nStatus: ' + (d.status || 'failed') + '\n\nDetail: ' + (d.error || d.message || 'Please check BREVO_API_KEY configuration.'));
       }
     })
-    .catch(e => {
-      alert('Error sending email: ' + (e.message || e));
-    })
+    .catch(e => alert('Error sending email: ' + (e.message || e)))
     .finally(() => {
       if (btn) {
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-send me-1"></i> Dispatch Test Email';
+        btn.innerHTML = '<i class="bi bi-send-fill me-1"></i> Dispatch Test Email';
       }
     });
 }

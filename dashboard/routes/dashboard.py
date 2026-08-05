@@ -1,15 +1,18 @@
 """
-Dashboard Overview Page Route (Page 1).
+Dashboard Overview Page Route (Page 1) & Reports Download Center.
 """
 
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, jsonify, render_template, request, send_from_directory, abort
+from dashboard.services.api_service import APIService
 from dashboard.services.dashboard_service import DashboardService
 from dashboard.services.statistics_service import StatisticsService
+from src.core.constants import REPORTS_DIR
 from src.core.version import get_version_info
 
 dashboard_bp = Blueprint("dashboard_ui", __name__)
 dash_service = DashboardService()
 stats_service = StatisticsService()
+api_service = APIService()
 
 
 @dashboard_bp.route("/")
@@ -42,3 +45,23 @@ def index():
         source_distribution=src_dist,
         daily_trends=daily_trends,
     )
+
+
+@dashboard_bp.route("/reports")
+def reports_page():
+    """Renders Reports Download Center page."""
+    reports = api_service.get_reports_list()
+    return render_template(
+        "reports.html",
+        active_page="reports",
+        reports=reports,
+    )
+
+
+@dashboard_bp.route("/reports/download/<path:filename>")
+def download_report(filename):
+    """Safely serves generated DOCX or CSV report files for download."""
+    reports_dir = REPORTS_DIR
+    if not reports_dir.exists():
+        abort(404)
+    return send_from_directory(str(reports_dir), filename, as_attachment=True)

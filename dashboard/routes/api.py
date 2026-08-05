@@ -2,11 +2,13 @@
 REST API Blueprint for CyberScout AI Control Center.
 """
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_from_directory, Response
+import json
 from dashboard.services.analytics_service import AnalyticsService
 from dashboard.services.api_service import APIService
 from dashboard.services.dashboard_service import DashboardService
 from dashboard.services.statistics_service import StatisticsService
+from src.core.constants import REPORTS_DIR
 from src.core.version import get_version_info
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
@@ -25,10 +27,18 @@ def get_health():
 
 
 @api_bp.route("/stats", methods=["GET"])
+@api_bp.route("/dashboard/summary", methods=["GET"])
 def get_stats():
-    """GET /api/stats — KPI metrics summary."""
+    """GET /api/dashboard/summary — KPI metrics summary."""
     summary = dash_service.get_summary_stats()
     return jsonify(summary)
+
+
+@api_bp.route("/dashboard/charts", methods=["GET"])
+def get_charts():
+    """GET /api/dashboard/charts — Historical timeseries and category charts dataset."""
+    data = api_service.get_charts_data()
+    return jsonify(data)
 
 
 @api_bp.route("/opportunities", methods=["GET"])
@@ -36,7 +46,7 @@ def get_opportunities():
     """GET /api/opportunities — Query opportunities."""
     category = request.args.get("category")
     q = request.args.get("q")
-    opps = dash_service.get_opportunities(category=category, search_query=q, limit=100)
+    opps = dash_service.get_opportunities(category=category, search_query=q, limit=200)
     return jsonify({"count": len(opps), "opportunities": opps})
 
 
@@ -102,10 +112,19 @@ def get_history():
 
 
 @api_bp.route("/collectors", methods=["GET"])
+@api_bp.route("/dashboard/collectors", methods=["GET"])
 def get_collectors():
-    """GET /api/collectors — Collector status list."""
+    """GET /api/dashboard/collectors — Collector status list."""
     collectors = dash_service.get_collectors_status()
     return jsonify(collectors)
+
+
+@api_bp.route("/dashboard/reports", methods=["GET"])
+@api_bp.route("/reports", methods=["GET"])
+def get_reports():
+    """GET /api/dashboard/reports — List of generated DOCX & CSV reports."""
+    reports = api_service.get_reports_list()
+    return jsonify({"count": len(reports), "reports": reports})
 
 
 @api_bp.route("/system", methods=["GET"])
@@ -124,18 +143,35 @@ def get_smtp_health():
 
 
 @api_bp.route("/logs", methods=["GET"])
+@api_bp.route("/dashboard/logs", methods=["GET"])
 def get_logs():
-    """GET /api/logs — System logs snippet."""
-    from src.core.constants import LOGS_DIR
-    log_file = LOGS_DIR / "cyberscout.log"
-    content = ""
-    if log_file.exists():
-        try:
-            with open(log_file, "r", encoding="utf-8") as f:
-                content = "".join(f.readlines()[-100:])
-        except Exception as e:
-            content = f"Error reading logs: {e}"
-    return jsonify({"logs": content})
+    """GET /api/dashboard/logs — Structured AppLogs with level/module/search filters and pagination."""
+    level = request.args.get("level")
+    module = request.args.get("module")
+    q = request.args.get("q")
+    page = int(request.args.get("page", 1))
+    limit = int(request.args.get("limit", 50))
+
+    data = api_service.get_logs(
+        level=level,
+        module=module,
+        search_query=q,
+        page=page,
+        limit=limit,
+    )
+    return jsonify(data)
+
+
+@api_bp.route("/logs/export", methods=["GET"])
+def export_logs():
+    """GET /api/logs/export — Export logs in JSON format."""
+    data = api_service.get_logs(limit=1000)
+    json_bytes = json.dumps(data.get("logs", []), indent=2).encode("utf-8")
+    return Response(
+        json_bytes,
+        mimetype="application/json",
+        headers={"Content-Disposition": "attachment;filename=cyberscout_logs.json"},
+    )
 
 
 @api_bp.route("/config", methods=["GET"])

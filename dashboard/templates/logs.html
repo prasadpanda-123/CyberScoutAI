@@ -1,20 +1,178 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h2 class="fw-bold text-light mb-0"><i class="bi bi-terminal text-primary me-2"></i> Live Application Logs</h2>
-  <div class="d-flex gap-2">
-    <select class="form-select form-select-sm bg-dark text-light border-secondary" onchange="location.href='/logs?level=' + this.value">
-      <option value="ALL" {% if selected_level == 'ALL' %}selected{% endif %}>All Levels</option>
-      <option value="INFO" {% if selected_level == 'INFO' %}selected{% endif %}>INFO Only</option>
-      <option value="WARNING" {% if selected_level == 'WARNING' %}selected{% endif %}>WARNING Only</option>
-      <option value="ERROR" {% if selected_level == 'ERROR' %}selected{% endif %}>ERROR Only</option>
-      <option value="DEBUG" {% if selected_level == 'DEBUG' %}selected{% endif %}>DEBUG Only</option>
-    </select>
-    <button class="btn btn-outline-secondary btn-sm" onclick="location.reload()"><i class="bi bi-arrow-clockwise me-1"></i> Refresh</button>
+  <div>
+    <h2 class="fw-bold text-light mb-0"><i class="bi bi-terminal-fill text-primary me-2"></i> Live Application Logs</h2>
+    <span class="text-muted small">Persistent SQLite AppLogs Telemetry & Real-Time Event Viewer</span>
+  </div>
+  <div class="d-flex gap-2 align-items-center">
+    <div class="form-check form-switch text-light me-2">
+      <input class="form-check-input" type="checkbox" id="autoRefreshToggle" onchange="toggleAutoRefresh(this.checked)">
+      <label class="form-check-input-label small text-muted" for="autoRefreshToggle">Live Auto-Refresh</label>
+    </div>
+    <a href="/api/logs/export" class="btn btn-sm btn-outline-info"><i class="bi bi-download me-1"></i> Export JSON</a>
+    <button class="btn btn-sm btn-outline-primary" onclick="loadLogs()"><i class="bi bi-arrow-clockwise me-1"></i> Refresh</button>
   </div>
 </div>
 
-<div class="card p-3">
-  <pre class="bg-dark text-success p-3 rounded font-monospace mb-0" style="max-height: 550px; overflow-y: auto; font-size: 13px;">{{ log_lines }}</pre>
+<!-- Log Statistics Summary Bar -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card p-2 bg-dark text-center border-secondary">
+      <span class="text-muted small">Total Log Records</span>
+      <span class="fs-4 fw-bold text-light" id="totalLogsCnt">{{ stats.total_logs }}</span>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-2 bg-dark text-center border-info">
+      <span class="text-muted small">INFO Events</span>
+      <span class="fs-4 fw-bold text-info" id="infoLogsCnt">{{ stats.info_count }}</span>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-2 bg-dark text-center border-warning">
+      <span class="text-muted small">WARNING Events</span>
+      <span class="fs-4 fw-bold text-warning" id="warningLogsCnt">{{ stats.warning_count }}</span>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-2 bg-dark text-center border-danger">
+      <span class="text-muted small">ERROR Exceptions</span>
+      <span class="fs-4 fw-bold text-danger" id="errorLogsCnt">{{ stats.error_count }}</span>
+    </div>
+  </div>
 </div>
+
+<!-- Filters Bar -->
+<div class="card p-3 bg-dark border-secondary mb-4">
+  <div class="row g-2 align-items-center">
+    <div class="col-md-3">
+      <select class="form-select form-select-sm bg-dark text-light border-secondary" id="levelSelect" onchange="loadLogs()">
+        <option value="ALL" {% if selected_level == 'ALL' %}selected{% endif %}>All Severity Levels</option>
+        <option value="INFO" {% if selected_level == 'INFO' %}selected{% endif %}>INFO</option>
+        <option value="WARNING" {% if selected_level == 'WARNING' %}selected{% endif %}>WARNING</option>
+        <option value="ERROR" {% if selected_level == 'ERROR' %}selected{% endif %}>ERROR</option>
+        <option value="DEBUG" {% if selected_level == 'DEBUG' %}selected{% endif %}>DEBUG</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <select class="form-select form-select-sm bg-dark text-light border-secondary" id="moduleSelect" onchange="loadLogs()">
+        <option value="ALL">All Modules</option>
+        {% for m in stats.modules %}
+          <option value="{{ m }}" {% if selected_module == m %}selected{% endif %}>{{ m }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <div class="input-group input-group-sm">
+        <input type="text" class="form-control bg-dark text-light border-secondary" id="searchInput" placeholder="Search log text..." value="{{ search_query }}" onkeyup="if(event.key==='Enter') loadLogs()">
+        <button class="btn btn-outline-secondary" type="button" onclick="loadLogs()"><i class="bi bi-search"></i></button>
+      </div>
+    </div>
+    <div class="col-md-2 text-end">
+      <span class="badge bg-secondary" id="pageIndicator">Page {{ pagination.page }} of {{ pagination.total_pages }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Log Records Table -->
+<div class="card bg-dark border-secondary overflow-hidden mb-4">
+  <div class="table-responsive">
+    <table class="table table-dark table-hover mb-0 font-monospace align-middle" style="font-size: 13px;">
+      <thead>
+        <tr class="table-secondary text-uppercase small">
+          <th style="width: 170px;">Timestamp</th>
+          <th style="width: 90px;">Level</th>
+          <th style="width: 180px;">Module</th>
+          <th>Message</th>
+          <th style="width: 100px;">Time (ms)</th>
+        </tr>
+      </thead>
+      <tbody id="logsTableBody">
+        {% if logs %}
+          {% for log in logs %}
+            <tr>
+              <td class="text-muted text-nowrap">{{ log.timestamp }}</td>
+              <td>
+                {% if log.level == 'ERROR' %}
+                  <span class="badge bg-danger">ERROR</span>
+                {% elif log.level == 'WARNING' %}
+                  <span class="badge bg-warning text-dark">WARN</span>
+                {% elif log.level == 'INFO' %}
+                  <span class="badge bg-info text-dark">INFO</span>
+                {% else %}
+                  <span class="badge bg-secondary">DEBUG</span>
+                {% endif %}
+              </td>
+              <td class="text-info truncate" style="max-width: 180px;">{{ log.module }}</td>
+              <td class="text-light">
+                {{ log.message }}
+                {% if log.exception_text %}
+                  <br><pre class="text-danger small mb-0 mt-1" style="font-size: 11px;">{{ log.exception_text }}</pre>
+                {% endif %}
+              </td>
+              <td class="text-muted">{{ log.execution_time_ms or '-' }}</td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="5" class="text-center text-muted py-4">No log entries found matching criteria.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let autoRefreshTimer = null;
+
+function loadLogs() {
+  const level = document.getElementById('levelSelect').value;
+  const module = document.getElementById('moduleSelect').value;
+  const q = document.getElementById('searchInput').value;
+
+  fetch(`/api/dashboard/logs?level=${encodeURIComponent(level)}&module=${encodeURIComponent(module)}&q=${encodeURIComponent(q)}`)
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById('pageIndicator').innerText = `Page ${data.page} of ${data.total_pages}`;
+      const tbody = document.getElementById('logsTableBody');
+      if (!data.logs || data.logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No log entries found matching criteria.</td></tr>';
+        return;
+      }
+      let html = '';
+      data.logs.forEach(log => {
+        let badgeClass = 'bg-secondary';
+        if (log.level === 'ERROR') badgeClass = 'bg-danger';
+        else if (log.level === 'WARNING') badgeClass = 'bg-warning text-dark';
+        else if (log.level === 'INFO') badgeClass = 'bg-info text-dark';
+
+        let excHtml = log.exception_text ? `<br><pre class="text-danger small mb-0 mt-1" style="font-size: 11px;">${log.exception_text}</pre>` : '';
+        let msText = log.execution_time_ms ? log.execution_time_ms : '-';
+
+        html += `<tr>
+          <td class="text-muted text-nowrap">${log.timestamp}</td>
+          <td><span class="badge ${badgeClass}">${log.level}</span></td>
+          <td class="text-info truncate" style="max-width: 180px;">${log.module}</td>
+          <td class="text-light">${log.message}${excHtml}</td>
+          <td class="text-muted">${msText}</td>
+        </tr>`;
+      });
+      tbody.innerHTML = html;
+    })
+    .catch(err => console.error("Failed to load logs:", err));
+}
+
+function toggleAutoRefresh(enabled) {
+  if (enabled) {
+    autoRefreshTimer = setInterval(loadLogs, 3000);
+  } else if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
+}
+</script>
 {% endblock %}

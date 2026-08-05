@@ -1,13 +1,56 @@
 """
 Centralized logging for the CyberScout AI application.
+
+Supports stdout, rotating file logging, and SQLite AppLogs table persistence.
 """
 
 import logging
 import logging.handlers
 from pathlib import Path
+import traceback
 from typing import Optional
 
 from src.core.constants import DEFAULT_LOG_FORMAT, LOGS_DIR
+
+
+class DatabaseLogHandler(logging.Handler):
+    """
+    Custom logging handler persisting structured log records into SQLite AppLogs table.
+    """
+
+    def __init__(self, level=logging.NOTSET):
+        super().__init__(level=level)
+        self._repo = None
+
+    @property
+    def repo(self):
+        if self._repo is None:
+            try:
+                from src.database.log_repository import LogRepository
+                self._repo = LogRepository()
+            except Exception:
+                pass
+        return self._repo
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            if not self.repo:
+                return
+            msg = record.getMessage()
+            exc_text = None
+            if record.exc_info:
+                exc_text = "".join(traceback.format_exception(*record.exc_info))
+            self.repo.insert_log(
+                level=record.levelname,
+                module=record.name or record.module or "app",
+                message=msg,
+                function_name=record.funcName,
+                execution_time_ms=getattr(record, "execution_time_ms", None),
+                exception_text=exc_text,
+                correlation_id=getattr(record, "correlation_id", None),
+            )
+        except Exception:
+            self.handleError(record)
 
 
 def setup_logging(
@@ -62,7 +105,12 @@ def setup_logging(
     file_handler.setFormatter(formatter)
     root_logger.addHandler(file_handler)
 
-    logging.info("Centralized logging system initialized.")
+    # Database Log Handler (SQLite AppLogs Table)
+    db_handler = DatabaseLogHandler(level=log_level)
+    db_handler.setFormatter(formatter)
+    root_logger.addHandler(db_handler)
+
+    logging.info("Centralized logging system initialized with SQLite AppLogs persistence.")
     return root_logger
 
 

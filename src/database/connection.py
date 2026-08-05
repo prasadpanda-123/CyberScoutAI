@@ -299,6 +299,19 @@ class DatabaseManager:
             updated_at TEXT
         );
 
+        -- 10. Structured Persistent AppLogs Table
+        CREATE TABLE IF NOT EXISTS AppLogs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            level TEXT NOT NULL,
+            module TEXT NOT NULL,
+            function_name TEXT,
+            message TEXT NOT NULL,
+            execution_time_ms REAL,
+            exception_text TEXT,
+            correlation_id TEXT
+        );
+
         -- Indexes
         CREATE INDEX IF NOT EXISTS idx_opportunities_url_hash ON Opportunities(url_hash);
         CREATE INDEX IF NOT EXISTS idx_opportunities_status ON Opportunities(status);
@@ -308,6 +321,9 @@ class DatabaseManager:
         CREATE INDEX IF NOT EXISTS idx_opportunities_category ON Opportunities(category);
         CREATE INDEX IF NOT EXISTS idx_searchhistory_triggered_at ON SearchHistory(triggered_at);
         CREATE INDEX IF NOT EXISTS idx_emailhistory_opportunity_id ON EmailHistory(opportunity_id);
+        CREATE INDEX IF NOT EXISTS idx_applogs_timestamp ON AppLogs(timestamp);
+        CREATE INDEX IF NOT EXISTS idx_applogs_level ON AppLogs(level);
+        CREATE INDEX IF NOT EXISTS idx_applogs_module ON AppLogs(module);
         """
         cursor = conn.cursor()
         cursor.executescript(schema_sql)
