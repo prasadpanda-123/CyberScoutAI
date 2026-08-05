@@ -59,11 +59,12 @@ function sendTestEmail() {
   fetch('/api/email/test', { method: 'POST' })
     .then(async r => {
       const contentType = r.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        return r.json();
-      } else {
-        const text = await r.text();
-        return { status: 'failed', error: 'Server returned HTTP ' + r.status + ': ' + text.substring(0, 100) };
+      try {
+        const data = await r.json();
+        return data;
+      } catch (parseErr) {
+        const rawText = await r.text();
+        return { status: 'failed', error: 'Server returned HTTP ' + r.status + ': ' + rawText.replace(/<[^>]*>?/gm, '').substring(0, 150) };
       }
     })
     .then(d => {
@@ -72,7 +73,7 @@ function sendTestEmail() {
       } else if (d.status === 'skipped') {
         alert('ℹ Test Email Skipped: ' + (d.message || d.reason || 'No items to send.'));
       } else {
-        alert('⚠ Email Dispatch Result:\nStatus: ' + d.status + '\nDetail: ' + (d.error || d.message || 'Please verify SMTP credentials in environment variables (SMTP_HOST, SMTP_USER, SMTP_PASSWORD).'));
+        alert('⚠ Email Dispatch Result:\nStatus: ' + d.status + '\n\nDetail: ' + (d.error || d.message || 'Please check SMTP settings.') + '\n\nNote: If hosting on Render, make sure environment variables (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, EMAIL_TO) are configured under Render Dashboard > Environment.');
       }
     })
     .catch(e => {

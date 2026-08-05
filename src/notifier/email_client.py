@@ -179,6 +179,7 @@ class EmailClient:
     def send_daily_digest(self, send_empty: bool = False) -> Dict[str, Any]:
         """
         Retrieves active data, generates DOCX & CSV report files, and sends a summary email with attachments.
+        Safely catches all configuration, database, and SMTP errors returning a JSON outcome dictionary.
 
         Args:
             send_empty: If True, dispatches an empty report email when no active opportunities exist.
@@ -186,66 +187,60 @@ class EmailClient:
         Returns:
             Outcome summary dictionary containing status and delivery logs.
         """
-        # 1. Fetch active opportunities from database
-        all_active = self.opp_repo.get_active_opportunities(limit=200)
-        date_str = datetime.now(timezone.utc).strftime("%Y_%m_%d")
-        date_formatted = date_str.replace("_", "-")
-
-        if not all_active:
-            if send_empty:
-                subject = f"CyberScout AI Daily Intelligence Report - {date_formatted}"
-                plain_content = f"Hello,\n\nNo new cybersecurity opportunities were discovered today ({date_formatted}).\n\nCyberScout AI"
-                html_content = f"""<!DOCTYPE html><html><body style="font-family: Arial, sans-serif; padding: 20px;">
-                <h3>CyberScout AI Daily Intelligence Report</h3>
-                <p>No new cybersecurity opportunities were discovered today ({date_formatted}).</p>
-                <p>Thank you.<br>CyberScout AI</p></body></html>"""
-                try:
-                    msg_id = self.smtp_sender.send_email(
-                        html_content=html_content,
-                        plain_content=plain_content,
-                        subject=subject,
-                        attachments=[],
-                    )
-                    return {"status": "success", "message": "Empty report email sent successfully.", "message_id": msg_id}
-                except Exception as e:
-                    return {"status": "failed", "error": str(e)}
-            return {"status": "skipped", "message": "No active opportunities found to send."}
-
-        # 2. Generate DOCX & CSV report attachments via ReportManager
-        report_res = self.report_manager.generate_reports(all_active, date_str=date_str)
-        payload = self.report_manager.prepare_payload(all_active, date_str=date_str)
-
-        if payload.summary.total_opportunities == 0:
-            if send_empty:
-                subject = f"CyberScout AI Daily Intelligence Report - {date_formatted}"
-                plain_content = f"Hello,\n\nNo new cybersecurity opportunities were discovered today ({date_formatted}).\n\nCyberScout AI"
-                html_content = f"""<!DOCTYPE html><html><body style="font-family: Arial, sans-serif; padding: 20px;">
-                <h3>CyberScout AI Daily Intelligence Report</h3>
-                <p>No new cybersecurity opportunities were discovered today ({date_formatted}).</p>
-                <p>Thank you.<br>CyberScout AI</p></body></html>"""
-                try:
-                    msg_id = self.smtp_sender.send_email(
-                        html_content=html_content,
-                        plain_content=plain_content,
-                        subject=subject,
-                        attachments=[],
-                    )
-                    return {"status": "success", "message": "Empty report email sent successfully.", "message_id": msg_id}
-                except Exception as e:
-                    return {"status": "failed", "error": str(e)}
-            return {"status": "skipped", "message": "No accepted opportunities found to send."}
-
-        # 3. Render summary & opportunity list body
-        render_start = time.time()
-        html, text = self.generate_summary_body(payload, date_str=date_str)
-        self.metrics.record_render(time.time() - render_start)
-
-        # 4. Transmit email via SMTP with attachments
-        send_start = time.time()
-        subject = f"CyberScout AI Daily Intelligence Report - {date_formatted}"
-        run_id = f"email-run-{int(time.time())}"
-
         try:
+            # 1. Fetch active opportunities from database
+            all_active = self.opp_repo.get_active_opportunities(limit=200)
+            date_str = datetime.now(timezone.utc).strftime("%Y_%m_%d")
+            date_formatted = date_str.replace("_", "-")
+
+            if not all_active:
+                if send_empty:
+                    subject = f"CyberScout AI Daily Intelligence Report - {date_formatted}"
+                    plain_content = f"Hello,\n\nNo new cybersecurity opportunities were discovered today ({date_formatted}).\n\nCyberScout AI"
+                    html_content = f"""<!DOCTYPE html><html><body style="font-family: Arial, sans-serif; padding: 20px;">
+                    <h3>CyberScout AI Daily Intelligence Report</h3>
+                    <p>No new cybersecurity opportunities were discovered today ({date_formatted}).</p>
+                    <p>Thank you.<br>CyberScout AI</p></body></html>"""
+                    msg_id = self.smtp_sender.send_email(
+                        html_content=html_content,
+                        plain_content=plain_content,
+                        subject=subject,
+                        attachments=[],
+                    )
+                    return {"status": "success", "message": "Empty report email sent successfully.", "message_id": msg_id}
+                return {"status": "skipped", "message": "No active opportunities found to send."}
+
+            # 2. Generate DOCX & CSV report attachments via ReportManager
+            report_res = self.report_manager.generate_reports(all_active, date_str=date_str)
+            payload = self.report_manager.prepare_payload(all_active, date_str=date_str)
+
+            if payload.summary.total_opportunities == 0:
+                if send_empty:
+                    subject = f"CyberScout AI Daily Intelligence Report - {date_formatted}"
+                    plain_content = f"Hello,\n\nNo new cybersecurity opportunities were discovered today ({date_formatted}).\n\nCyberScout AI"
+                    html_content = f"""<!DOCTYPE html><html><body style="font-family: Arial, sans-serif; padding: 20px;">
+                    <h3>CyberScout AI Daily Intelligence Report</h3>
+                    <p>No new cybersecurity opportunities were discovered today ({date_formatted}).</p>
+                    <p>Thank you.<br>CyberScout AI</p></body></html>"""
+                    msg_id = self.smtp_sender.send_email(
+                        html_content=html_content,
+                        plain_content=plain_content,
+                        subject=subject,
+                        attachments=[],
+                    )
+                    return {"status": "success", "message": "Empty report email sent successfully.", "message_id": msg_id}
+                return {"status": "skipped", "message": "No accepted opportunities found to send."}
+
+            # 3. Render summary & opportunity list body
+            render_start = time.time()
+            html, text = self.generate_summary_body(payload, date_str=date_str)
+            self.metrics.record_render(time.time() - render_start)
+
+            # 4. Transmit email via SMTP with attachments
+            send_start = time.time()
+            subject = f"CyberScout AI Daily Intelligence Report - {date_formatted}"
+            run_id = f"email-run-{int(time.time())}"
+
             msg_id = self.smtp_sender.send_email(
                 html_content=html,
                 plain_content=text,

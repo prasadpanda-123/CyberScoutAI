@@ -60,9 +60,7 @@ def create_app(config_class=DashboardConfig) -> Flask:
 
     @app.errorhandler(500)
     def handle_500_error(e):
-        if request.path.startswith("/api/"):
-            return jsonify({"status": "failed", "error": "Internal Server Error", "detail": str(e)}), 200
-        return ("<h2 style='color:red;'>500 Internal Server Error</h2>", 500)
+        return jsonify({"status": "failed", "error": "Internal Server Error", "detail": str(e)}), 200
 
     @app.errorhandler(404)
     def handle_404_error(e):
