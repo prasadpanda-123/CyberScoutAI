@@ -224,24 +224,20 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def run_smtp_check() -> None:
-    """Runs SMTP configuration, DNS resolution, TCP connectivity, and authentication checks."""
-    from src.notifier.smtp_sender import SMTPSender
+    """Runs email provider pre-flight connectivity and authentication checks."""
+    from src.notifier.email_sender import EmailSender
 
-    sender = SMTPSender()
+    sender = EmailSender()
     results = sender.check_health()
 
     print("===========================================================================")
     print("CyberScout AI — Email Subsystem & Provider Diagnostics")
     print("===========================================================================")
-    print(f"Provider           : {results.get('provider', 'smtp')}")
-    print(f"Host               : {results.get('host', 'N/A')}")
-    print(f"Port               : {results.get('port', 'N/A')}")
-    print(f"TLS Enabled        : {results.get('tls_enabled', False)}")
-    print(f"SSL Enabled        : {results.get('ssl_enabled', False)}")
-    print(f"Username           : {results.get('username', 'N/A')}")
-    print(f"DNS Resolution     : {results.get('dns', 'FAILED')}")
-    print(f"TCP Connection     : {results.get('tcp', 'FAILED')}")
-    print(f"SMTP Handshake     : {results.get('smtp', 'FAILED')}")
+    print(f"Provider           : {results.get('provider', 'brevo')}")
+    print(f"HTTPS Connection   : {results.get('https', results.get('tcp', 'OK'))}")
+    print(f"Authentication     : {results.get('authentication', results.get('api', 'OK'))}")
+    print(f"Account Email      : {results.get('account_email', 'N/A')}")
+    print(f"API Endpoint       : {results.get('api_url', 'https://api.brevo.com/v3/smtp/email')}")
     print("===========================================================================")
     if results.get("is_healthy"):
         print("Overall Status     : [SUCCESS] Email Provider Healthy & Connected")

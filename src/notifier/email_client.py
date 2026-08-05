@@ -1,7 +1,7 @@
 """
 Notification Client Facade for CyberScout AI.
 
-Generates DOCX/CSV report attachments and delivers a concise summary email.
+Generates DOCX/CSV report attachments and delivers a concise summary email via Brevo API.
 """
 
 from datetime import datetime, timezone
@@ -11,39 +11,41 @@ from typing import Any, Dict, Optional
 
 from src.database.connection import DatabaseManager
 from src.database.opportunity_repository import OpportunityRepository
+from src.notifier.email_sender import EmailSender
 from src.notifier.history import HistoryTracker
 from src.notifier.metrics import NotifierMetrics
-from src.notifier.smtp_sender import SMTPSender
 from src.reporting.report_manager import ReportManager
 
 
 class EmailClient:
     """
     Unified manager client coordinating report generation, concise summary email rendering,
-    and delivering email notifications with DOCX & CSV attachments.
+    and delivering email notifications with DOCX & CSV attachments via Brevo API.
     """
 
     def __init__(
         self,
         db_manager: Optional[DatabaseManager] = None,
         config_path: Optional[Path] = None,
-        smtp_sender: Optional[SMTPSender] = None,
+        email_sender: Optional[EmailSender] = None,
         history_tracker: Optional[HistoryTracker] = None,
         report_manager: Optional[ReportManager] = None,
     ):
         self.db_manager = db_manager or DatabaseManager()
         self.config_path = config_path
         self.opp_repo = OpportunityRepository(db_manager=self.db_manager)
-        self.smtp_sender = smtp_sender or SMTPSender(config_path=self.config_path)
+        self.email_sender = email_sender or EmailSender(config_path=self.config_path)
+        # Backward compatibility alias
+        self.smtp_sender = self.email_sender
         self.history_tracker = history_tracker or HistoryTracker(db_manager=self.db_manager)
         self.report_manager = report_manager or ReportManager()
         self.metrics = NotifierMetrics()
 
     def check_smtp_connectivity(self) -> Dict[str, Any]:
         """
-        Executes pre-flight DNS, TCP, and handshake diagnostics via active email provider.
+        Executes pre-flight HTTPS API authentication & connectivity check against Brevo REST API.
         """
-        return self.smtp_sender.check_health()
+        return self.email_sender.check_health()
 
     def generate_summary_body(self, payload: Any, date_str: str) -> tuple[str, str]:
         """
@@ -185,7 +187,7 @@ class EmailClient:
     def send_daily_digest(self, send_empty: bool = False) -> Dict[str, Any]:
         """
         Retrieves active data, generates DOCX & CSV report files, and sends a summary email with attachments.
-        Safely catches all configuration, database, and SMTP errors returning a JSON outcome dictionary.
+        Safely catches all configuration, database, and notification errors returning a JSON outcome dictionary.
 
         Args:
             send_empty: If True, dispatches an empty report email when no active opportunities exist.
@@ -207,7 +209,7 @@ class EmailClient:
                     <h3>CyberScout AI Daily Intelligence Report</h3>
                     <p>No new cybersecurity opportunities were discovered today ({date_formatted}).</p>
                     <p>Thank you.<br>CyberScout AI</p></body></html>"""
-                    msg_id = self.smtp_sender.send_email(
+                    msg_id = self.email_sender.send_email(
                         html_content=html_content,
                         plain_content=plain_content,
                         subject=subject,
@@ -228,7 +230,7 @@ class EmailClient:
                     <h3>CyberScout AI Daily Intelligence Report</h3>
                     <p>No new cybersecurity opportunities were discovered today ({date_formatted}).</p>
                     <p>Thank you.<br>CyberScout AI</p></body></html>"""
-                    msg_id = self.smtp_sender.send_email(
+                    msg_id = self.email_sender.send_email(
                         html_content=html_content,
                         plain_content=plain_content,
                         subject=subject,
@@ -242,12 +244,12 @@ class EmailClient:
             html, text = self.generate_summary_body(payload, date_str=date_str)
             self.metrics.record_render(time.time() - render_start)
 
-            # 4. Transmit email via SMTP with attachments
+            # 4. Transmit email via EmailSender with attachments
             send_start = time.time()
             subject = f"CyberScout AI Daily Intelligence Report - {date_formatted}"
             run_id = f"email-run-{int(time.time())}"
 
-            msg_id = self.smtp_sender.send_email(
+            msg_id = self.email_sender.send_email(
                 html_content=html,
                 plain_content=text,
                 subject=subject,

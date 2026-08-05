@@ -1,7 +1,7 @@
 """
 Email Provider Factory for CyberScout AI.
 
-Resolves active provider based on EMAIL_PROVIDER environment variable or configured API keys.
+Instantiates Brevo API as primary email provider with support for auxiliary providers.
 """
 
 import os
@@ -13,7 +13,6 @@ from src.notifier.providers.brevo_provider import BrevoEmailProvider
 from src.notifier.providers.console_provider import ConsoleEmailProvider
 from src.notifier.providers.resend_provider import ResendEmailProvider
 from src.notifier.providers.sendgrid_provider import SendGridEmailProvider
-from src.notifier.providers.smtp_provider import SMTPEmailProvider
 
 logger = get_logger(__name__)
 
@@ -21,11 +20,10 @@ logger = get_logger(__name__)
 class EmailProviderFactory:
     """
     Factory creating configured BaseEmailProvider adapters.
+    Brevo REST API is the primary default provider.
     """
 
     _PROVIDERS: Dict[str, Type[BaseEmailProvider]] = {
-        "smtp": SMTPEmailProvider,
-        "gmail": SMTPEmailProvider,
         "brevo": BrevoEmailProvider,
         "sendinblue": BrevoEmailProvider,
         "sendgrid": SendGridEmailProvider,
@@ -38,26 +36,16 @@ class EmailProviderFactory:
     def get_provider(cls, name: str = None) -> BaseEmailProvider:
         """
         Instantiates provider matching target name or EMAIL_PROVIDER env variable.
-        Auto-detects API keys if EMAIL_PROVIDER is unconfigured.
+        Defaults to Brevo REST API.
         """
-        provider_name = (name or os.getenv("EMAIL_PROVIDER") or "").strip().lower()
-
-        if not provider_name:
-            if os.getenv("BREVO_API_KEY") or os.getenv("SENDINBLUE_API_KEY"):
-                provider_name = "brevo"
-            elif os.getenv("RESEND_API_KEY"):
-                provider_name = "resend"
-            elif os.getenv("SENDGRID_API_KEY"):
-                provider_name = "sendgrid"
-            else:
-                provider_name = "smtp"
+        provider_name = (name or os.getenv("EMAIL_PROVIDER") or "brevo").strip().lower()
 
         provider_cls = cls._PROVIDERS.get(provider_name)
 
         if not provider_cls:
             logger.warning(
-                f"Unknown EMAIL_PROVIDER '{provider_name}'. Falling back to 'smtp' provider."
+                f"Unknown EMAIL_PROVIDER '{provider_name}'. Falling back to 'brevo' provider."
             )
-            provider_cls = SMTPEmailProvider
+            provider_cls = BrevoEmailProvider
 
         return provider_cls()

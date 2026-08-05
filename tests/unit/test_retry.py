@@ -1,15 +1,15 @@
 """
-Unit tests for SMTP retry mechanisms.
+Unit tests for notification transmission retry mechanisms.
 """
 
 import unittest
 from unittest.mock import MagicMock
 
-from src.notifier.exceptions import RetryExceeded, SMTPError
+from src.notifier.exceptions import NotificationError, RetryExceeded
 from src.notifier.retry import retry_smtp
 
 
-class TestSMTPRetry(unittest.TestCase):
+class TestNotificationRetry(unittest.TestCase):
     def test_retry_success_after_failure(self):
         call_count = 0
 
@@ -18,7 +18,7 @@ class TestSMTPRetry(unittest.TestCase):
             nonlocal call_count
             call_count += 1
             if call_count < 2:
-                raise SMTPError("Temporary SMTP server error")
+                raise NotificationError("Temporary connection error")
             return "delivered"
 
         res = mock_send()
@@ -32,7 +32,7 @@ class TestSMTPRetry(unittest.TestCase):
         def mock_send_fail():
             nonlocal call_count
             call_count += 1
-            raise SMTPError("Persistent connection failure")
+            raise NotificationError("Persistent connection failure")
 
         with self.assertRaises(RetryExceeded):
             mock_send_fail()

@@ -11,7 +11,7 @@ from src.database.opportunity_repository import OpportunityRepository
 from src.database.source_repository import SourceRepository
 from src.models.opportunity import Opportunity
 from src.notifier.email_client import EmailClient
-from src.notifier.smtp_sender import SMTPSender
+from src.notifier.email_sender import EmailSender
 
 
 class TestEmailClient(unittest.TestCase):
@@ -49,10 +49,10 @@ class TestEmailClient(unittest.TestCase):
         self.db_manager.close()
 
     def test_send_daily_digest(self):
-        smtp_mock = MagicMock(spec=SMTPSender)
-        smtp_mock.send_email.return_value = "<mock-msg-id@cyberscout.ai>"
+        sender_mock = MagicMock(spec=EmailSender)
+        sender_mock.send_email.return_value = "<mock-msg-id@cyberscout.ai>"
 
-        client = EmailClient(db_manager=self.db_manager, smtp_sender=smtp_mock)
+        client = EmailClient(db_manager=self.db_manager, email_sender=sender_mock)
         res = client.send_daily_digest()
 
         self.assertEqual(res["status"], "success")
