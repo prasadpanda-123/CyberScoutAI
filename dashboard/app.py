@@ -27,6 +27,14 @@ BASE_DIR = Path(__file__).resolve().parent
 
 def create_app(config_class=DashboardConfig) -> Flask:
     """Application factory for Flask Web Dashboard."""
+    # Ensure database is safely initialized and seeded on deployment
+    from src.database.connection import DatabaseManager
+    from src.database.seed import SeedManager
+    db_mgr = DatabaseManager()
+    db_mgr.initialize_database()
+    seed_mgr = SeedManager(db_mgr)
+    seed_mgr.run_all_seeds()
+
     app = Flask(
         __name__,
         template_folder=str(BASE_DIR / "templates"),

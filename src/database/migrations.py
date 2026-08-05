@@ -155,8 +155,29 @@ class MigrationManager:
     def __init__(self, db_manager: Optional[DatabaseManager] = None):
         self.db_manager = db_manager or DatabaseManager()
 
+    def initialize_metadata_tables(self) -> None:
+        """
+        Ensures that metadata tables required by the migration framework
+        (specifically 'schema_version') exist before any migration operations execute.
+        """
+        sql = """
+        CREATE TABLE IF NOT EXISTS schema_version (
+            version INTEGER PRIMARY KEY,
+            applied_at TIMESTAMP NOT NULL,
+            description TEXT
+        );
+        """
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.executescript(sql)
+            conn.commit()
+        finally:
+            cursor.close()
+
     def get_current_version(self) -> int:
         """Returns highest applied schema version, or 0 if uninitialized."""
+        self.initialize_metadata_tables()
         sql = "SELECT MAX(version) as current_version FROM schema_version;"
         try:
             conn = self.db_manager.get_connection()
@@ -185,6 +206,8 @@ class MigrationManager:
     def _apply_v3_quality_columns(self) -> None:
         """Safely adds Phase 11.5 quality columns if they don't exist."""
         existing = self._get_existing_columns("Opportunities")
+        if not existing:
+            return
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
@@ -202,6 +225,8 @@ class MigrationManager:
     def _apply_v4_production_columns(self) -> None:
         """Safely adds Phase 12 production columns if they don't exist."""
         existing = self._get_existing_columns("Opportunities")
+        if not existing:
+            return
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
@@ -223,9 +248,15 @@ class MigrationManager:
         Returns:
             Number of newly applied migrations.
         """
+        # 1. Open connection
+        conn = self.db_manager.get_connection()
+        # 2. Initialize migration metadata tables
+        self.initialize_metadata_tables()
+        # 3. Read current version
         current_version = self.get_current_version()
         applied_count = 0
 
+        # 4. Run pending migrations
         for migration in MIGRATIONS:
             if migration.version > current_version:
                 logger.info(f"Applying migration v{migration.version}: {migration.description}...")
@@ -238,6 +269,7 @@ class MigrationManager:
                     elif migration.version == 4:
                         self._apply_v4_production_columns()
 
+                    # 5 & 6. Record applied migration and commit
                     with self.db_manager.transaction() as cursor:
                         cursor.executescript(migration.sql)
                         cursor.execute(

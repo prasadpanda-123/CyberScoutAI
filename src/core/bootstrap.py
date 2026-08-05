@@ -105,8 +105,7 @@ class CyberScoutApp:
 
             # 4. Initialize Database & Run Migrations
             db_mgr = DatabaseManager()
-            mig_mgr = MigrationManager(db_mgr)
-            mig_mgr.apply_migrations()
+            db_mgr.initialize_database()
 
             # 5. Seed Initial Database Tables
             seed_mgr = SeedManager(db_mgr)
