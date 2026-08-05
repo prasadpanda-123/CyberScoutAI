@@ -67,9 +67,17 @@
 <script>
 function schedAction(action) {
   fetch('/api/scheduler/' + action, { method: 'POST' })
-    .then(r => r.json())
-    .then(d => { alert(d.message); location.reload(); })
-    .catch(e => alert('Error: ' + e));
+    .then(async r => {
+      const contentType = r.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        return r.json();
+      } else {
+        const text = await r.text();
+        throw new Error('Server returned HTTP ' + r.status);
+      }
+    })
+    .then(d => { alert(d.message || d.status); location.reload(); })
+    .catch(e => alert('Error: ' + (e.message || e)));
 }
 </script>
 {% endblock %}

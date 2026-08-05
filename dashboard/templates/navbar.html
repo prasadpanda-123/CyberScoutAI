@@ -78,7 +78,15 @@ function triggerScan() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ dry_run: false })
   })
-    .then(r => r.json())
+    .then(async r => {
+      const contentType = r.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        return r.json();
+      } else {
+        const text = await r.text();
+        throw new Error('Server error (HTTP ' + r.status + ')');
+      }
+    })
     .then(d => {
       clearTimeout(stepTimer1);
       clearTimeout(stepTimer2);

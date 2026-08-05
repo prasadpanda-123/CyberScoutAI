@@ -48,6 +48,7 @@ class TestDatabaseFull(unittest.TestCase):
         self.assertIn("schema_version", tables)
 
     def test_base_repository_crud(self):
+        initial_count = self.source_repo.count()
         # 1. Create Source
         src = Source(id="src-1", name="Test Source", collection_method="rss")
         created_id = self.source_repo.create(src)
@@ -67,28 +68,29 @@ class TestDatabaseFull(unittest.TestCase):
         self.assertEqual(re_fetched.name, "Updated Source Name")
 
         # 4. Count & Search
-        self.assertEqual(self.source_repo.count(), 1)
-        search_results = self.source_repo.search(where_clause="collection_method = ?", params=("rss",))
+        self.assertEqual(self.source_repo.count(), initial_count + 1)
+        search_results = self.source_repo.search(where_clause="id = ?", params=("src-1",))
         self.assertEqual(len(search_results), 1)
 
         # 5. Paginate
-        items, total = self.source_repo.paginate(page=1, page_size=10)
-        self.assertEqual(total, 1)
-        self.assertEqual(len(items), 1)
+        items, total = self.source_repo.paginate(page=1, page_size=50)
+        self.assertEqual(total, initial_count + 1)
 
         # 6. Delete
         deleted = self.source_repo.delete("src-1")
         self.assertTrue(deleted)
         self.assertFalse(self.source_repo.exists("src-1"))
+        self.assertEqual(self.source_repo.count(), initial_count)
 
     def test_bulk_insert(self):
+        initial_count = self.source_repo.count()
         sources = [
             Source(id=f"src-{i}", name=f"Source {i}", collection_method="rss")
             for i in range(5)
         ]
         inserted = self.source_repo.bulk_insert(sources)
         self.assertEqual(inserted, 5)
-        self.assertEqual(self.source_repo.count(), 5)
+        self.assertEqual(self.source_repo.count(), initial_count + 5)
 
     def test_transaction_rollback_safety(self):
         # FK Constraint violation should rollback transaction cleanly

@@ -137,47 +137,65 @@ def get_config():
     return jsonify(config.as_dict())
 
 
-# POST Action Commands
+# POST Action Commands with JSON error safety
 @api_bp.route("/run", methods=["POST"])
 def trigger_run():
     """POST /api/run — Trigger single scan iteration."""
-    dry_run = False
-    if request.is_json and request.json:
-        dry_run = bool(request.json.get("dry_run", False))
-    res = api_service.trigger_scan(dry_run=dry_run)
-    return jsonify(res)
+    try:
+        dry_run = False
+        if request.is_json and request.json:
+            dry_run = bool(request.json.get("dry_run", False))
+        res = api_service.trigger_scan(dry_run=dry_run)
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"success": False, "status": "failed", "error": str(e)}), 500
 
 
 @api_bp.route("/email/test", methods=["POST"])
 def email_test():
     """POST /api/email/test — Dispatch test HTML email."""
-    res = api_service.send_test_email()
-    return jsonify(res)
+    try:
+        res = api_service.send_test_email()
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"status": "failed", "error": str(e)}), 500
 
 
 @api_bp.route("/config/save", methods=["POST"])
 def save_config():
     """POST /api/config/save — Save configuration parameters."""
-    return jsonify({"status": "success", "message": "Configuration updated."})
+    try:
+        return jsonify({"status": "success", "message": "Configuration updated."})
+    except Exception as e:
+        return jsonify({"status": "failed", "error": str(e)}), 500
 
 
 @api_bp.route("/scheduler/pause", methods=["POST"])
 def scheduler_pause():
     """POST /api/scheduler/pause — Pause scheduler."""
-    res = api_service.pause_scheduler()
-    return jsonify(res)
+    try:
+        res = api_service.pause_scheduler()
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"status": "failed", "error": str(e)}), 500
 
 
 @api_bp.route("/scheduler/resume", methods=["POST"])
 def scheduler_resume():
     """POST /api/scheduler/resume — Resume scheduler."""
-    res = api_service.resume_scheduler()
-    return jsonify(res)
+    try:
+        res = api_service.resume_scheduler()
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"status": "failed", "error": str(e)}), 500
 
 
 @api_bp.route("/scheduler/restart", methods=["POST"])
 def scheduler_restart():
     """POST /api/scheduler/restart — Restart scheduler."""
-    api_service.pause_scheduler()
-    res = api_service.resume_scheduler()
-    return jsonify({"status": "restarted", "message": "Scheduler service restarted successfully."})
+    try:
+        api_service.pause_scheduler()
+        res = api_service.resume_scheduler()
+        return jsonify({"status": "restarted", "message": "Scheduler service restarted successfully."})
+    except Exception as e:
+        return jsonify({"status": "failed", "error": str(e)}), 500

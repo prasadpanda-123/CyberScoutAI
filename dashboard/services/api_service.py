@@ -22,8 +22,11 @@ class APIService:
         return run_pipeline_once(dry_run=dry_run, db_manager=self.db_manager)
 
     def send_test_email(self) -> Dict[str, Any]:
-        """Triggers test notification email digest."""
-        return self.email_client.send_daily_digest()
+        """Triggers test notification email digest safely."""
+        try:
+            return self.email_client.send_daily_digest(send_empty=True)
+        except Exception as e:
+            return {"status": "failed", "error": str(e)}
 
     def get_scheduler_status(self) -> Dict[str, Any]:
         """Returns background scheduler & daily report scheduler status."""

@@ -27,9 +27,17 @@
 <script>
 function saveConfig() {
   fetch('/api/config/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
-    .then(r => r.json())
-    .then(d => alert(d.message))
-    .catch(e => alert('Error saving config: ' + e));
+    .then(async r => {
+      const contentType = r.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        return r.json();
+      } else {
+        const text = await r.text();
+        throw new Error('Server returned HTTP ' + r.status);
+      }
+    })
+    .then(d => alert(d.message || d.status))
+    .catch(e => alert('Error saving config: ' + (e.message || e)));
 }
 </script>
 {% endblock %}

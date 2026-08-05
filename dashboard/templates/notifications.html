@@ -51,10 +51,39 @@
 {% block scripts %}
 <script>
 function sendTestEmail() {
+  const btn = event ? event.target : null;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Dispatching...';
+  }
   fetch('/api/email/test', { method: 'POST' })
-    .then(r => r.json())
-    .then(d => alert('Test email action executed: ' + d.status))
-    .catch(e => alert('Error sending email: ' + e));
+    .then(async r => {
+      const contentType = r.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        return r.json();
+      } else {
+        const text = await r.text();
+        throw new Error('Server returned non-JSON response (HTTP ' + r.status + ')');
+      }
+    })
+    .then(d => {
+      if (d.status === 'success') {
+        alert('✔ Test Email Sent Successfully!\nMessage ID: ' + (d.message_id || 'N/A') + '\nOpportunities: ' + (d.opportunities_sent || 0));
+      } else if (d.status === 'skipped') {
+        alert('ℹ Test Email Skipped: ' + (d.message || d.reason || 'No items to send.'));
+      } else {
+        alert('⚠ Email Dispatch Status: ' + d.status + '\nDetail: ' + (d.error || d.message || 'Please check SMTP settings in environment.'));
+      }
+    })
+    .catch(e => {
+      alert('Error sending email: ' + (e.message || e));
+    })
+    .finally(() => {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send me-1"></i> Dispatch Test Email';
+      }
+    });
 }
 </script>
 {% endblock %}
