@@ -69,6 +69,7 @@ class HealthMonitor:
     def check_database(self) -> HealthCheckResult:
         """Verifies database connectivity, table schema, and integrity."""
         try:
+            self.db_manager.initialize_database()
             ping_ok = self.db_manager.ping()
             integrity_ok = self.db_manager.verify_integrity()
             mig_mgr = MigrationManager(self.db_manager)
