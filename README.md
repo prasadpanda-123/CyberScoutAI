@@ -139,13 +139,25 @@ When deployed on Railway, the system automatically detects the assigned `PORT` e
 - **Local Dashboard**: `python main.py --dashboard` (launches Flask control center on `0.0.0.0:5000`).
 - **Railway Production Web Server**: Automatically executed via `Procfile` (`web: python main.py` or `gunicorn wsgi:app`).
 
-### 3. Environment Variables
-Configure the following environment variables in your Railway Project Settings:
-- `PORT` (assigned automatically by Railway)
+### 3. Environment Variables & Production Email Setup
+Configure the following environment variables in your Render / Cloud Project Settings:
+- `PORT` (assigned automatically by cloud platforms)
 - `APP_ENV` (set to `production`)
 - `SECRET_KEY` (Flask session secret key)
 - `GITHUB_TOKEN` (optional: Personal Access Token for GitHub API collector)
-- `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD` (optional: email digest notification dispatching)
+
+#### Production Email Delivery via Brevo REST API (Recommended for Render)
+Cloud container environments (such as Render) restrict outbound TCP connections on SMTP ports 587/25. CyberScout AI supports **Brevo REST API over HTTPS (Port 443)** for zero-downtime, non-blocking email delivery:
+- `EMAIL_PROVIDER`: Set to `brevo` (Production) or `smtp` (Local dev default)
+- `BREVO_API_KEY`: Your Brevo v3 API key (`xkeysib-...`)
+- `EMAIL_FROM`: Sender email address verified in Brevo
+- `EMAIL_TO`: Recipient email address for intelligence reports
+
+##### Step-by-Step Brevo API Setup for Render:
+1. Create a free account at [Brevo (formerly Sendinblue)](https://www.brevo.com/).
+2. Navigate to **SMTP & API** -> **API Keys** and click **Generate a new API key**.
+3. In your **Render Dashboard** -> **Environment**, add `EMAIL_PROVIDER=brevo` and `BREVO_API_KEY=xkeysib-...`.
+4. Click **Save Changes**. Email reports will now be delivered via HTTPS REST API port 443!
 
 ### 4. Continuous Health Probes
 - `GET /`: Returns HTTP 200 (Dashboard HTML or JSON `{"status": "ok", "application": "CyberScout AI", "version": "1.2.0"}`).

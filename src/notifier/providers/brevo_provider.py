@@ -61,7 +61,9 @@ class BrevoEmailProvider(BaseEmailProvider):
                     "is_healthy": True,
                     "dns": "OK",
                     "tcp": "OK",
+                    "https": "OK",
                     "api": "OK",
+                    "authentication": "OK",
                     "account_email": email,
                     "api_url": self.api_url,
                 }
