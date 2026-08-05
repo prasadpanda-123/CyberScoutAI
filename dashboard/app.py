@@ -3,7 +3,7 @@ Flask Application Factory for CyberScout AI Web Dashboard.
 """
 
 from pathlib import Path
-from flask import Flask, jsonify, request, session
+from flask import Flask, jsonify, redirect, request, session, url_for
 
 from dashboard.config import DashboardConfig
 from dashboard.routes import (
@@ -66,6 +66,17 @@ def create_app(config_class=DashboardConfig) -> Flask:
     app.register_blueprint(quality_bp)
     app.register_blueprint(production_bp)
 
+    @app.before_request
+    def check_first_run_setup():
+        """Redirects unconfigured application to /setup if no users exist."""
+        if request.endpoint and request.endpoint in ("auth_ui.setup", "static"):
+            return None
+        from src.database.user_repository import UserRepository
+        user_repo = UserRepository()
+        if not user_repo.has_users() and not request.path.startswith("/setup"):
+            return redirect(url_for("auth_ui.setup"))
+        return None
+
     @app.context_processor
     def inject_user():
         """Injects active user session details into Jinja2 templates."""
@@ -100,12 +111,12 @@ def create_app(config_class=DashboardConfig) -> Flask:
 
     @app.errorhandler(500)
     def handle_500_error(e):
-        return jsonify({"status": "failed", "error": "Internal Server Error", "detail": str(e)}), 200
+        return jsonify({"status": "failed", "error": "Internal Server Error"}), 500
 
     @app.errorhandler(404)
     def handle_404_error(e):
         if request.path.startswith("/api/"):
-            return jsonify({"status": "failed", "error": "API endpoint not found"}), 200
+            return jsonify({"status": "failed", "error": "API endpoint not found"}), 404
         return ("<h2>404 Not Found</h2>", 404)
 
     return app

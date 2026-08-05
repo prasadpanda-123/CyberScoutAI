@@ -9,6 +9,44 @@ auth_bp = Blueprint("auth_ui", __name__)
 user_repo = UserRepository()
 
 
+@auth_bp.route("/setup", methods=["GET", "POST"])
+def setup():
+    """One-Time First-Run Setup flow when no administrator accounts exist."""
+    if user_repo.has_admin():
+        flash("First-run setup is permanently disabled because administrator accounts already exist.", "info")
+        return redirect(url_for("auth_ui.login"))
+
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "").strip()
+        confirm_password = request.form.get("confirm_password", "").strip()
+
+        if not username or not email or not password:
+            flash("All fields are required.", "warning")
+        elif password != confirm_password:
+            flash("Passwords do not match.", "danger")
+        else:
+            try:
+                user = user_repo.create_user(
+                    username=username,
+                    email=email,
+                    password=password,
+                    role="Super Admin",
+                )
+                session.clear()
+                session["user_id"] = user["id"]
+                session["username"] = user["username"]
+                session["email"] = user["email"]
+                session["role"] = user["role"]
+                flash(f"First-run setup complete! Super Admin '{username}' created successfully.", "success")
+                return redirect(url_for("dashboard_ui.index"))
+            except Exception as e:
+                flash(f"Setup error: {e}", "danger")
+
+    return render_template("setup.html")
+
+
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     """Renders login page and handles user authentication."""
@@ -22,6 +60,8 @@ def login():
 
         user = user_repo.authenticate(identifier, password)
         if user:
+            # Session Fixation Defense: Clear existing session dictionary before setting authenticated session keys
+            session.clear()
             session["user_id"] = user["id"]
             session["username"] = user["username"]
             session["email"] = user["email"]

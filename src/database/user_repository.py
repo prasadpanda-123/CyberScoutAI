@@ -154,3 +154,23 @@ class UserRepository:
             return [dict(r) for r in cursor.fetchall()]
         finally:
             cursor.close()
+
+    def has_users(self) -> bool:
+        """Returns True if at least one user exists in the database."""
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT COUNT(*) FROM Users")
+            return cursor.fetchone()[0] > 0
+        finally:
+            cursor.close()
+
+    def has_admin(self) -> bool:
+        """Returns True if a Super Admin or Administrator user exists."""
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT COUNT(*) FROM Users WHERE role IN ('Super Admin', 'Administrator') AND is_active = 1")
+            return cursor.fetchone()[0] > 0
+        finally:
+            cursor.close()

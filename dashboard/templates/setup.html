@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CyberScout AI — First-Run System Setup</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    body { background-color: #0B0F19; color: #E2E8F0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .card { background-color: #111827; border: 1px solid #1E293B; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    .btn-primary { background-color: #0284C7; border: none; }
+    .btn-primary:hover { background-color: #0369A1; }
+  </style>
+</head>
+<body>
+<div class="container" style="max-width: 480px;">
+  <div class="card p-4">
+    <div class="text-center mb-4">
+      <h3 class="fw-bold text-primary"><i class="bi bi-gear-fill me-2"></i>First-Run Setup</h3>
+      <span class="text-muted small d-block">Create Initial Super Admin Credentials</span>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show small" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <p class="text-muted small mb-4">
+      Welcome to CyberScout AI v2.1! No administrator accounts were detected. Please create your primary <strong>Super Admin</strong> account to manage the system.
+    </p>
+
+    <form method="POST" action="/setup">
+      <div class="mb-3">
+        <label class="form-label small text-muted">Super Admin Username</label>
+        <input type="text" name="username" class="form-control bg-dark text-light border-secondary" placeholder="admin" required autofocus>
+      </div>
+      <div class="mb-3">
+        <label class="form-label small text-muted">Admin Email Address</label>
+        <input type="email" name="email" class="form-control bg-dark text-light border-secondary" placeholder="admin@cyberscout.ai" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label small text-muted">Password</label>
+        <input type="password" name="password" class="form-control bg-dark text-light border-secondary" placeholder="••••••••••••" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label small text-muted">Confirm Password</label>
+        <input type="password" name="confirm_password" class="form-control bg-dark text-light border-secondary" placeholder="••••••••••••" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-100 fw-bold py-2 mt-2"><i class="bi bi-shield-check me-1"></i> Complete First-Run Setup</button>
+    </form>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

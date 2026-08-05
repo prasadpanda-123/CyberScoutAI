@@ -1,5 +1,5 @@
 """
-Unit tests for CyberScout AI v2.0 Authentication, RBAC, and Security Headers.
+Unit tests for CyberScout AI v2.1 Authentication, RBAC, Setup Flow, and Security Headers.
 """
 
 import json
@@ -78,6 +78,12 @@ class TestSecurityAuth(unittest.TestCase):
         # Viewer trying to access Super Admin logs route
         res_logs = self.client.get("/logs")
         self.assertEqual(res_logs.status_code, 302)
+
+    def test_first_run_setup_flow_disabled_when_admin_exists(self):
+        """Verify GET /setup redirects to /login when administrator accounts exist."""
+        res = self.client.get("/setup")
+        self.assertEqual(res.status_code, 302)
+        self.assertIn("/login", res.location)
 
 
 if __name__ == "__main__":
