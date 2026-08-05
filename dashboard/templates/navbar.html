@@ -3,15 +3,119 @@
     <i class="bi bi-shield-lock-fill text-primary me-2 fs-4"></i> CyberScout AI <span class="badge bg-secondary ms-2 fs-6">v1.1.0</span>
   </a>
   <div class="d-flex align-items-center">
-    <button class="btn btn-outline-primary btn-sm me-2" onclick="triggerScan()"><i class="bi bi-play-circle me-1"></i> Run Scan Now</button>
+    <button id="runScanBtn" class="btn btn-outline-primary btn-sm me-2" onclick="triggerScan()"><i class="bi bi-play-circle me-1"></i> Run Scan Now</button>
     <span class="badge bg-success me-3"><i class="bi bi-check-circle me-1"></i> System Healthy</span>
   </div>
 </nav>
+
+<!-- Scan Status Modal -->
+<div class="modal fade" id="scanModal" tabindex="-1" aria-labelledby="scanModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark text-light border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title fw-bold" id="scanModalLabel"><i class="bi bi-cpu text-primary me-2"></i> CyberScout AI Scan Execution</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" id="scanModalCloseBtn" style="display: none;"></button>
+      </div>
+      <div class="modal-body py-4 text-center">
+        <div id="scanSpinner" class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <div id="scanSuccessIcon" class="mb-3 text-success fs-1" style="display: none;">
+          <i class="bi bi-check-circle-fill"></i>
+        </div>
+        <h5 id="scanStatusTitle" class="fw-bold text-light mb-2">Starting scan...</h5>
+        <p id="scanStatusSub" class="text-muted small mb-0">Initializing search planner and collectors...</p>
+      </div>
+      <div class="modal-footer border-secondary justify-content-center">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" id="scanModalFooterBtn" style="display: none;" onclick="window.location.reload();">Close & Refresh</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 function triggerScan() {
-  fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dry_run: true }) })
+  const btn = document.getElementById('runScanBtn');
+  const modalEl = document.getElementById('scanModal');
+  const title = document.getElementById('scanStatusTitle');
+  const sub = document.getElementById('scanStatusSub');
+  const spinner = document.getElementById('scanSpinner');
+  const icon = document.getElementById('scanSuccessIcon');
+  const closeBtn = document.getElementById('scanModalCloseBtn');
+  const footerBtn = document.getElementById('scanModalFooterBtn');
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Scanning...';
+
+  spinner.style.display = 'inline-block';
+  icon.style.display = 'none';
+  closeBtn.style.display = 'none';
+  footerBtn.style.display = 'none';
+
+  title.innerText = 'Starting scan...';
+  sub.innerText = 'Initializing search planner and collectors...';
+
+  const modal = new bootstrap.Modal(modalEl);
+  modal.show();
+
+  const stepTimer1 = setTimeout(() => {
+    title.innerText = 'Collecting...';
+    sub.innerText = 'Fetching cybersecurity opportunities across all sources...';
+  }, 1200);
+
+  const stepTimer2 = setTimeout(() => {
+    title.innerText = 'Filtering...';
+    sub.innerText = 'Running Quality Engine 100-point weighted evaluation...';
+  }, 3500);
+
+  const stepTimer3 = setTimeout(() => {
+    title.innerText = 'Saving...';
+    sub.innerText = 'Persisting accepted opportunities to SQLite database...';
+  }, 7000);
+
+  fetch('/api/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dry_run: false })
+  })
     .then(r => r.json())
-    .then(d => alert('Scan completed! Collected ' + d.items_collected + ' items.'))
-    .catch(e => alert('Error running scan: ' + e));
+    .then(d => {
+      clearTimeout(stepTimer1);
+      clearTimeout(stepTimer2);
+      clearTimeout(stepTimer3);
+
+      title.innerText = 'Completed';
+      const count = d.saved !== undefined ? d.saved : (d.accepted || d.items_quality_accepted || 0);
+      sub.innerText = '✔ Scan Complete: ' + count + ' new opportunities found.';
+      sub.className = 'text-success fw-bold fs-6 mb-0';
+
+      spinner.style.display = 'none';
+      icon.style.display = 'block';
+      closeBtn.style.display = 'block';
+      footerBtn.style.display = 'block';
+
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-play-circle me-1"></i> Run Scan Now';
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    })
+    .catch(e => {
+      clearTimeout(stepTimer1);
+      clearTimeout(stepTimer2);
+      clearTimeout(stepTimer3);
+
+      title.innerText = 'Scan Failed';
+      sub.innerText = 'Error: ' + e;
+      sub.className = 'text-danger mb-0';
+
+      spinner.style.display = 'none';
+      closeBtn.style.display = 'block';
+      footerBtn.style.display = 'block';
+
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-play-circle me-1"></i> Run Scan Now';
+    });
 }
 </script>

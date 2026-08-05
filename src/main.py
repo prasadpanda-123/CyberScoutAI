@@ -729,8 +729,8 @@ def main(args_list: list | None = None) -> int:
         return 0
 
     if args.run_once:
-        engine = AutomationEngine()
-        res = engine.run_once(dry_run=args.dry_run)
+        from src.automation.pipeline import run_pipeline_once
+        res = run_pipeline_once(dry_run=args.dry_run)
         print(json.dumps(res, indent=2))
         return 0
 

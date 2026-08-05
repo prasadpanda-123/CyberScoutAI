@@ -1,7 +1,11 @@
 """
 Automated Pipeline Runner for CyberScout AI.
+
+Provides the single source of truth scan execution function `run_pipeline_once()`
+used identically by the CLI, Web Dashboard REST API (`POST /api/run`), and Daily Scheduler.
 """
 
+from datetime import datetime, timezone
 import time
 from typing import Any, Dict, List, Optional
 import uuid
@@ -22,6 +26,258 @@ from src.automation.metrics import RunMetrics
 logger = get_logger(__name__)
 
 
+def extract_normalized_description(item: Any) -> str:
+    """
+    Normalizes description from multiple potential payload fields before validation:
+    description OR summary OR content OR body OR readme OR text OR title.
+    """
+    if isinstance(item, Opportunity):
+        if item.description and item.description.strip():
+            return item.description.strip()
+        raw = getattr(item, "raw_data", {}) or {}
+        if not isinstance(raw, dict):
+            raw = {}
+        for field in ["description", "summary", "content", "body", "readme", "text", "title"]:
+            val = raw.get(field) or getattr(item, field, None)
+            if isinstance(val, str) and val.strip():
+                return val.strip()
+        return item.title or "Cybersecurity Opportunity"
+    elif isinstance(item, dict):
+        for field in ["description", "summary", "content", "body", "readme", "text", "title"]:
+            val = item.get(field)
+            if isinstance(val, str) and val.strip():
+                return val.strip()
+        return item.get("title") or "Cybersecurity Opportunity"
+    return "Cybersecurity Opportunity"
+
+
+def run_pipeline_once(
+    dry_run: bool = False,
+    send_email: bool = False,
+    db_manager: Optional[DatabaseManager] = None,
+    search_planner: Optional[SearchPlanner] = None,
+    collector_manager: Optional[CollectorManager] = None,
+    processing_pipeline: Optional[ProcessingPipeline] = None,
+    quality_engine: Optional[QualityEngine] = None,
+    production_engine: Optional[ProductionEngine] = None,
+    ranking_engine: Optional[RankingEngine] = None,
+    knowledge_manager: Optional[KnowledgeManager] = None,
+    email_client: Optional[EmailClient] = None,
+) -> Dict[str, Any]:
+    """
+    Single source of truth scanning pipeline function.
+
+    Performs the complete 10-stage scan sequence:
+    Initialization -> Planning -> Resilient Collection -> Coercion & Description Normalization
+    -> Deduplication & Processing -> Quality Evaluation -> Production Validation -> Ranking
+    -> Knowledge Base Database Saving -> Optional Email Digest -> Log Summary & Return API JSON.
+
+    Args:
+        dry_run: If True, bypasses database persistence and email sending.
+        send_email: If True, dispatches notification email digest after scan.
+        db_manager: Optional DatabaseManager instance.
+
+    Returns:
+        Structured API summary response dictionary.
+    """
+    start_time = time.time()
+    started_iso = datetime.now(timezone.utc).isoformat()
+    run_id = f"run-{uuid.uuid4()}"
+    db = db_manager or DatabaseManager()
+
+    sp = search_planner or SearchPlanner()
+    cm = collector_manager or CollectorManager()
+    pp = processing_pipeline or ProcessingPipeline()
+    qe = quality_engine or QualityEngine()
+    pe = production_engine or ProductionEngine()
+    re = ranking_engine or RankingEngine()
+    km = knowledge_manager or KnowledgeManager(db_manager=db)
+    ec = email_client or EmailClient(db_manager=db)
+
+    metrics = RunMetrics(run_id=run_id)
+
+    # 1. Search Planning Phase
+    plan_start = time.time()
+    search_plan = sp.create_search_plan()
+    metrics.planning_time = time.time() - plan_start
+
+    # 2. Collection Phase with Per-Collector Resilience
+    collect_start = time.time()
+    collector_results = cm.execute_plan(search_plan)
+    metrics.collection_time = time.time() - collect_start
+
+    collectors_count: Dict[str, int] = {}
+    collector_status: Dict[str, str] = {}
+    raw_items: List[Opportunity] = []
+
+    for res in collector_results:
+        sid = getattr(res, "source_id", "unknown") or "unknown"
+        is_succ = getattr(res, "status", "") == "success" or getattr(res, "success", False) or not getattr(res, "errors", [])
+        collector_status[sid] = "success" if is_succ else "failed"
+
+        items = getattr(res, "items", []) or []
+        count = len(items)
+        collectors_count[sid] = collectors_count.get(sid, 0) + count
+
+        for item in items:
+            norm_desc = extract_normalized_description(item)
+            if isinstance(item, Opportunity):
+                item.description = norm_desc
+                raw_items.append(item)
+            elif isinstance(item, dict):
+                try:
+                    opp = Opportunity(
+                        title=item.get("title", "Untitled"),
+                        url=item.get("url", item.get("link", "")),
+                        source_id=item.get("source_id", sid),
+                        description=norm_desc,
+                        category=item.get("category", "other"),
+                        published_date=item.get("published", item.get("published_date", None)),
+                        raw_data=item,
+                    )
+                    raw_items.append(opp)
+                except Exception as conv_err:
+                    logger.debug(f"Skipping unconvertible item from {sid}: {conv_err}")
+
+    # 3. Processing Phase
+    process_start = time.time()
+    processed_items = pp.process_batch(raw_items)
+    metrics.processing_time = time.time() - process_start
+    duplicates_removed = len(raw_items) - len(processed_items)
+
+    # 4. Quality Intelligence Evaluation Phase
+    quality_start = time.time()
+    quality_evaluated = qe.evaluate_batch(processed_items)
+    accepted_quality = [opp for opp in quality_evaluated if not opp.is_rejected]
+    rejected_items = [opp for opp in quality_evaluated if opp.is_rejected]
+    quality_time = time.time() - quality_start
+
+    # 5. Production Intelligence Evaluation Phase
+    prod_start = time.time()
+    prod_evaluated = pe.evaluate_batch(accepted_quality)
+    accepted_items = [opp for opp in prod_evaluated if not opp.is_rejected]
+
+    # 6. Ranking Phase
+    rank_start = time.time()
+    ranked_items = re.rank_batch(accepted_items)
+    metrics.ranking_time = time.time() - rank_start
+
+    # 7. Knowledge Base Database Persistence
+    db_start = time.time()
+    saved_count = 0
+    sources_str = ",".join(getattr(search_plan, "sources_targeted", []))
+
+    if not dry_run:
+        # Create SearchHistory row first to satisfy FOREIGN KEY (run_id) REFERENCES SearchHistory(run_id)
+        sql_init_hist = """
+            INSERT OR REPLACE INTO SearchHistory (
+                run_id, triggered_at, completed_at, status, sources_run,
+                items_collected, items_after_dedup, items_emailed, errors
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """
+        try:
+            with db.transaction() as cursor:
+                cursor.execute(
+                    sql_init_hist,
+                    (run_id, started_iso, started_iso, "running", sources_str, len(raw_items), len(ranked_items), 0, ""),
+                )
+        except Exception as hist_err:
+            logger.warning(f"Could not initialize SearchHistory row: {hist_err}")
+
+        for opp in ranked_items:
+            opp.run_id = run_id
+            state = km.process_opportunity_state(opp)
+            if state in ("NEVER_SEEN", "UPDATED", "SEEN_BEFORE"):
+                saved_count += 1
+    metrics.db_update_time = time.time() - db_start
+
+    # 8. Notifications Phase
+    notify_start = time.time()
+    email_sent = False
+    if not dry_run and send_email:
+        email_res = ec.send_daily_digest()
+        email_sent = email_res.get("status") == "success"
+    metrics.notification_time = time.time() - notify_start
+
+    finished_time = time.time()
+    finished_iso = datetime.now(timezone.utc).isoformat()
+    duration_sec = round(finished_time - start_time, 2)
+    metrics.total_time = duration_sec
+
+    # Update completed SearchHistory record
+    if not dry_run:
+        sql_update_hist = """
+            UPDATE SearchHistory SET
+                completed_at = ?,
+                status = ?,
+                items_collected = ?,
+                items_after_dedup = ?,
+                items_emailed = ?
+            WHERE run_id = ?;
+        """
+        try:
+            with db.transaction() as cursor:
+                cursor.execute(
+                    sql_update_hist,
+                    (finished_iso, "success", len(raw_items), len(ranked_items), saved_count if email_sent else 0, run_id),
+                )
+        except Exception as e:
+            logger.warning(f"Could not update pipeline run history in DB: {e}")
+
+    # Structured Formatted Logging Block
+    log_block = [
+        "",
+        "=================================================",
+        f"Starting Pipeline Scan (Run ID: {run_id})",
+        "=================================================",
+    ]
+    for collector, count in collectors_count.items():
+        log_block.append(f"Collector: {collector}")
+        log_block.append(f"Collected: {count}")
+        log_block.append("")
+
+    log_block.extend([
+        f"Raw Items:\n{len(raw_items)}",
+        "",
+        f"Duplicates Removed:\n{duplicates_removed}",
+        "",
+        f"Quality Accepted:\n{len(accepted_items)}",
+        "",
+        f"Quality Rejected:\n{len(rejected_items)}",
+        "",
+        f"Saved:\n{saved_count if not dry_run else 0}",
+        "",
+        f"Scan Complete ({duration_sec}s)",
+        "=================================================",
+    ])
+    logger.info("\n".join(log_block))
+
+    return {
+        "success": True,
+        "status": "success",
+        "run_id": run_id,
+        "started": started_iso,
+        "finished": finished_iso,
+        "duration_seconds": duration_sec,
+        "collectors": collectors_count,
+        "collector_status": collector_status,
+        "raw_items": len(raw_items),
+        "items_collected": len(raw_items),
+        "items_processed": len(processed_items),
+        "duplicates": duplicates_removed,
+        "accepted": len(accepted_items),
+        "items_quality_accepted": len(accepted_items),
+        "rejected": len(rejected_items),
+        "items_quality_rejected": len(rejected_items),
+        "items_ranked": len(ranked_items),
+        "saved": saved_count if not dry_run else 0,
+        "email_sent": email_sent,
+        "execution_time_sec": duration_sec,
+        "quality_metrics": qe.metrics.to_dict(),
+        "metrics": metrics.to_dict(),
+    }
+
+
 class PipelineRunner:
     """
     Executes the complete end-to-end CyberScout AI scan loop.
@@ -40,168 +296,27 @@ class PipelineRunner:
         email_client: Optional[EmailClient] = None,
     ):
         self.db_manager = db_manager or DatabaseManager()
-        self.search_planner = search_planner or SearchPlanner()
-        self.collector_manager = collector_manager or CollectorManager()
-        self.processing_pipeline = processing_pipeline or ProcessingPipeline()
-        self.quality_engine = quality_engine or QualityEngine()
-        self.production_engine = production_engine or ProductionEngine()
-        self.ranking_engine = ranking_engine or RankingEngine()
-        self.knowledge_manager = knowledge_manager or KnowledgeManager(db_manager=self.db_manager)
-        self.email_client = email_client or EmailClient(db_manager=self.db_manager)
+        self.search_planner = search_planner
+        self.collector_manager = collector_manager
+        self.processing_pipeline = processing_pipeline
+        self.quality_engine = quality_engine
+        self.production_engine = production_engine
+        self.ranking_engine = ranking_engine
+        self.knowledge_manager = knowledge_manager
+        self.email_client = email_client
 
     def run_pipeline(self, dry_run: bool = False, send_email: bool = False) -> Dict[str, Any]:
-        """
-        Runs one complete scan loop.
-
-        Args:
-            dry_run: If True, bypasses database writes and email sending.
-            send_email: If True, dispatches the daily email digest after scan. Defaults to False.
-
-        Returns:
-            Dictionary containing metrics and stats summaries.
-        """
-        run_id = f"run-{uuid.uuid4()}"
-        metrics = RunMetrics(run_id=run_id)
-        start_time = time.time()
-        logger.info(f"Starting pipeline runner execution. Run ID: {run_id} (Dry Run: {dry_run}, Send Email: {send_email})")
-
-        # 1. Search Planning Phase
-        plan_start = time.time()
-        search_plan = self.search_planner.create_search_plan()
-        metrics.planning_time = time.time() - plan_start
-        logger.info(f"Pipeline: Planning complete. Time: {metrics.planning_time:.4f}s")
-
-        # 2. Collection Phase
-        collect_start = time.time()
-        collector_results = self.collector_manager.execute_plan(search_plan)
-        metrics.collection_time = time.time() - collect_start
-
-        # Extract items and coerce dicts → Opportunity models
-        raw_items = []
-        for res in collector_results:
-            if res.items:
-                for item in res.items:
-                    if isinstance(item, Opportunity):
-                        raw_items.append(item)
-                    elif isinstance(item, dict):
-                        try:
-                            opp = Opportunity(
-                                title=item.get("title", "Untitled"),
-                                url=item.get("url", item.get("link", "")),
-                                source_id=item.get("source_id", res.source_id),
-                                description=item.get("description", item.get("summary", None)),
-                                category=item.get("category", "other"),
-                                published_date=item.get("published", item.get("published_date", None)),
-                                raw_data=item,
-                            )
-                            raw_items.append(opp)
-                        except Exception as conv_err:
-                            logger.debug(f"Skipping unconvertible item from {res.source_id}: {conv_err}")
-        logger.info(f"Pipeline: Collection complete. Collected {len(raw_items)} items. Time: {metrics.collection_time:.4f}s")
-
-        # 3. Processing Phase
-        process_start = time.time()
-        processed_items = self.processing_pipeline.process_batch(raw_items)
-        metrics.processing_time = time.time() - process_start
-        logger.info(f"Pipeline: Processing complete. Processed {len(processed_items)} items. Time: {metrics.processing_time:.4f}s")
-
-        # 3.5 Quality Intelligence Evaluation Phase
-        quality_start = time.time()
-        quality_evaluated = self.quality_engine.evaluate_batch(processed_items)
-        accepted_quality = [opp for opp in quality_evaluated if not opp.is_rejected]
-        rejected_items = [opp for opp in quality_evaluated if opp.is_rejected]
-        quality_time = time.time() - quality_start
-        logger.info(f"Pipeline: Quality Intelligence complete. Accepted {len(accepted_quality)}/{len(quality_evaluated)}, Rejected {len(rejected_items)}. Time: {quality_time:.4f}s")
-
-        # 3.7 Production Intelligence Evaluation Phase (Phase 12)
-        prod_start = time.time()
-        prod_evaluated = self.production_engine.evaluate_batch(accepted_quality)
-        accepted_items = [opp for opp in prod_evaluated if not opp.is_rejected]
-        prod_time = time.time() - prod_start
-        logger.info(f"Pipeline: Production Intelligence complete. Validated {len(accepted_items)}/{len(accepted_quality)}. Time: {prod_time:.4f}s")
-
-        # 4. Ranking Phase (only accepted items)
-        rank_start = time.time()
-        ranked_items = self.ranking_engine.rank_batch(accepted_items)
-        metrics.ranking_time = time.time() - rank_start
-        logger.info(f"Pipeline: Ranking complete. Ranked {len(ranked_items)} items. Time: {metrics.ranking_time:.4f}s")
-
-        # 5. Knowledge Base Updates
-        db_start = time.time()
-        if not dry_run:
-            for opp in ranked_items:
-                self.knowledge_manager.process_opportunity_state(opp)
-        metrics.db_update_time = time.time() - db_start
-        logger.info(f"Pipeline: Knowledge Base update complete. Time: {metrics.db_update_time:.4f}s")
-
-        # 6. Notifications Phase (Decoupled: only sent when send_email=True)
-        notify_start = time.time()
-        email_sent = False
-        if not dry_run and send_email:
-            email_res = self.email_client.send_daily_digest()
-            email_sent = email_res.get("status") == "success"
-        metrics.notification_time = time.time() - notify_start
-        logger.info(f"Pipeline: Notification complete. Sent: {email_sent}. Time: {metrics.notification_time:.4f}s")
-
-        metrics.total_time = time.time() - start_time
-        logger.info(f"Pipeline run completed in {metrics.total_time:.2f} seconds.")
-
-        # Record run history to DB if not dry run
-        if not dry_run:
-            self._record_run_history(run_id, search_plan, raw_items, ranked_items, email_sent, metrics)
-
-        return {
-            "status": "success",
-            "run_id": run_id,
-            "providers_attempted": getattr(getattr(self.collector_manager, "metrics", None), "providers_attempted", 0),
-            "providers_succeeded": getattr(getattr(self.collector_manager, "metrics", None), "providers_succeeded", 0),
-            "providers_failed": getattr(getattr(self.collector_manager, "metrics", None), "providers_failed", 0),
-            "items_collected": len(raw_items),
-            "items_processed": len(processed_items),
-            "items_quality_accepted": len(accepted_items),
-            "items_quality_rejected": len(rejected_items),
-            "items_ranked": len(ranked_items),
-            "email_sent": email_sent,
-            "execution_time_sec": round(metrics.total_time, 2),
-            "quality_metrics": self.quality_engine.metrics.to_dict(),
-            "metrics": metrics.to_dict(),
-        }
-
-    def _record_run_history(
-        self,
-        run_id: str,
-        plan: Any,
-        raw_items: List[Any],
-        ranked_items: List[Any],
-        email_sent: bool,
-        metrics: RunMetrics,
-    ) -> None:
-        """Saves run execution log inside SearchHistory database table."""
-        sql = """
-            INSERT INTO SearchHistory (
-                run_id, triggered_at, completed_at, status, sources_run,
-                items_collected, items_after_dedup, items_emailed, errors
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
-        """
-        from datetime import datetime, timezone
-
-        now = datetime.now(timezone.utc).isoformat()
-        sources_str = ",".join(getattr(plan, "sources_targeted", []))
-        try:
-            with self.db_manager.transaction() as cursor:
-                cursor.execute(
-                    sql,
-                    (
-                        run_id,
-                        now,
-                        now,
-                        "success",
-                        sources_str,
-                        len(raw_items),
-                        len(ranked_items),
-                        len(ranked_items) if email_sent else 0,
-                        "",
-                    ),
-                )
-        except Exception as e:
-            logger.warning(f"Could not record pipeline run history to DB: {e}")
+        """Delegates directly to the single source of truth run_pipeline_once function."""
+        return run_pipeline_once(
+            dry_run=dry_run,
+            send_email=send_email,
+            db_manager=self.db_manager,
+            search_planner=self.search_planner,
+            collector_manager=self.collector_manager,
+            processing_pipeline=self.processing_pipeline,
+            quality_engine=self.quality_engine,
+            production_engine=self.production_engine,
+            ranking_engine=self.ranking_engine,
+            knowledge_manager=self.knowledge_manager,
+            email_client=self.email_client,
+        )

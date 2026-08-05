@@ -44,6 +44,8 @@ class DatabaseManager:
             self._create_schema(conn)
             from src.database.migrations import MigrationManager
             MigrationManager(db_manager=self).apply_migrations()
+            from src.database.seed import SeedManager
+            SeedManager(db_manager=self).run_all_seeds()
             logger.info(f"Database successfully initialized at '{self.db_path}'.")
         except sqlite3.Error as e:
             raise DatabaseConnectionError(f"Failed to initialize SQLite database at '{self.db_path}': {e}", original_exception=e)

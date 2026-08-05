@@ -141,7 +141,9 @@ def get_config():
 @api_bp.route("/run", methods=["POST"])
 def trigger_run():
     """POST /api/run — Trigger single scan iteration."""
-    dry_run = request.json.get("dry_run", True) if request.is_json else True
+    dry_run = False
+    if request.is_json and request.json:
+        dry_run = bool(request.json.get("dry_run", False))
     res = api_service.trigger_scan(dry_run=dry_run)
     return jsonify(res)
 

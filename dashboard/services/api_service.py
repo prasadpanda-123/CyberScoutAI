@@ -17,8 +17,9 @@ class APIService:
         self.email_client = EmailClient(db_manager=self.db_manager)
 
     def trigger_scan(self, dry_run: bool = False) -> Dict[str, Any]:
-        """Triggers single scan pipeline execution."""
-        return self.automation_engine.run_once(dry_run=dry_run)
+        """Triggers single scan pipeline execution using run_pipeline_once."""
+        from src.automation.pipeline import run_pipeline_once
+        return run_pipeline_once(dry_run=dry_run, db_manager=self.db_manager)
 
     def send_test_email(self) -> Dict[str, Any]:
         """Triggers test notification email digest."""
