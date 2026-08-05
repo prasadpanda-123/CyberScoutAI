@@ -28,6 +28,13 @@ class APIService:
         except Exception as e:
             return {"status": "failed", "error": str(e)}
 
+    def check_smtp_health(self) -> Dict[str, Any]:
+        """Runs pre-flight email provider diagnostics."""
+        try:
+            return self.email_client.check_smtp_connectivity()
+        except Exception as e:
+            return {"status": "failed", "stage": "CONFIG", "reason": str(e), "is_healthy": False}
+
     def get_scheduler_status(self) -> Dict[str, Any]:
         """Returns background scheduler & daily report scheduler status."""
         from src.scheduler.daily_report_scheduler import DailyReportScheduler

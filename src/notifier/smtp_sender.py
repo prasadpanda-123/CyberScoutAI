@@ -1,20 +1,15 @@
 """
-SMTP Email Sender for CyberScout AI.
+SMTP / Multi-Provider Email Sender Facade for CyberScout AI.
 """
 
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-import os
 from pathlib import Path
-import smtplib
-from typing import Optional
-import uuid
+from typing import Any, Dict, Optional
 
 from src.core.constants import CONFIG_DIR
-from src.core.exceptions import ConfigurationError
 from src.core.logging import get_logger
 from src.core.smtp_validator import SMTPValidator
 from src.notifier.exceptions import SMTPError
+from src.notifier.providers.factory import EmailProviderFactory
 from src.notifier.retry import retry_smtp
 
 logger = get_logger(__name__)
@@ -22,8 +17,8 @@ logger = get_logger(__name__)
 
 class SMTPSender:
     """
-    SMTP transmission client supporting TLS, SSL, credentials authentication,
-    and automatic startup configuration validation.
+    Email transmission facade supporting pluggable providers (Gmail SMTP, Brevo,
+    SendGrid, Resend, Console) with dual-stack socket fallback and diagnostic monitoring.
     """
 
     def __init__(self, config_path: Optional[Path] = None, validator: Optional[SMTPValidator] = None):
@@ -57,15 +52,23 @@ class SMTPSender:
         self.tls = cfg["tls_enabled"]
         self.ssl_enabled = cfg["ssl_enabled"]
 
+    def check_health(self) -> Dict[str, Any]:
+        """
+        Executes pre-flight connectivity and credential diagnostics using active provider.
+        """
+        provider = EmailProviderFactory.get_provider()
+        return provider.check_health()
+
     def validate_startup(self) -> None:
         """
-        Validates SMTP configuration presence and DNS reachability.
-        Raises ConfigurationError or SMTPError on failure.
+        Validates email configuration presence and provider reachability.
+        Raises SMTPError on failure.
         """
-        cfg = self.validator.validate_configuration()
-        dns_ok, dns_msg = self.validator.verify_dns(cfg["smtp_host"])
-        if not dns_ok:
-            raise SMTPError(f"DNS resolution failed: {dns_msg}")
+        provider = EmailProviderFactory.get_provider()
+        diag = provider.check_health()
+        if not diag.get("is_healthy"):
+            err_msg = diag.get("reason") or (diag.get("errors")[0] if diag.get("errors") else "Health check failed")
+            raise SMTPError(f"Email Provider Diagnostics Failed: {err_msg}")
 
     @retry_smtp(attempts=3, delay_secs=1.0)
     def send_email(
@@ -76,100 +79,28 @@ class SMTPSender:
         attachments: Optional[list] = None,
     ) -> str:
         """
-        Transmits HTML/Text email payload and optional file attachments via SMTP.
+        Transmits HTML/Text email report via active provider.
 
         Args:
             html_content: Email HTML body.
             plain_content: Fallback plain text body.
             subject: Email subject header.
-            attachments: Optional list of Path or str filepaths.
+            attachments: Optional list of filepaths.
 
         Returns:
             Generated message id string.
         """
-        from email import encoders
-        from email.mime.base import MIMEBase
-        import mimetypes
+        provider = EmailProviderFactory.get_provider()
+        res = provider.send_email(
+            html_content=html_content,
+            plain_content=plain_content,
+            subject=subject,
+            attachments=attachments,
+        )
 
-        # Validate configuration & DNS before attempting network connection
-        cfg = self.validator.validate_configuration()
-        host = cfg["smtp_host"]
-        port = cfg["smtp_port"]
-        user = cfg["smtp_username"]
-        password = cfg["smtp_password"]
-        sender = cfg["email_from"]
-        recipient = cfg["email_to"]
+        if res.get("status") == "success":
+            return res.get("message_id") or "sent-ok"
 
-        dns_ok, dns_msg = self.validator.verify_dns(host)
-        if not dns_ok:
-            raise SMTPError(dns_msg)
-
-        # Compile mime message (mixed container if attachments present)
-        msg = MIMEMultipart("mixed") if attachments else MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = sender
-        msg["To"] = recipient
-
-        msg_id = f"<{uuid.uuid4()}@cyberscout.ai>"
-        msg["Message-ID"] = msg_id
-
-        if attachments:
-            body_part = MIMEMultipart("alternative")
-            body_part.attach(MIMEText(plain_content, "plain"))
-            body_part.attach(MIMEText(html_content, "html"))
-            msg.attach(body_part)
-
-            for att in attachments:
-                path = Path(att)
-                if not path.exists():
-                    logger.warning(f"Attachment file not found: {path}")
-                    continue
-
-                suffix = path.suffix.lower()
-                if suffix == ".docx":
-                    maintype, subtype = "application", "vnd.openxmlformats-officedocument.wordprocessingml.document"
-                elif suffix == ".csv":
-                    maintype, subtype = "text", "csv"
-                else:
-                    mime_type, _ = mimetypes.guess_type(str(path))
-                    if mime_type:
-                        maintype, subtype = mime_type.split("/", 1)
-                    else:
-                        maintype, subtype = "application", "octet-stream"
-
-                try:
-                    with open(path, "rb") as f:
-                        part = MIMEBase(maintype, subtype)
-                        part.set_payload(f.read())
-                        encoders.encode_base64(part)
-                        part.add_header(
-                            "Content-Disposition",
-                            f'attachment; filename="{path.name}"',
-                        )
-                        msg.attach(part)
-                        logger.info(f"Attached file '{path.name}' to email.")
-                except Exception as att_err:
-                    logger.error(f"Failed to attach file '{path}': {att_err}")
-        else:
-            msg.attach(MIMEText(plain_content, "plain"))
-            msg.attach(MIMEText(html_content, "html"))
-
-        try:
-            if port == 465 or cfg["ssl_enabled"]:
-                server = smtplib.SMTP_SSL(host, port, timeout=15)
-            else:
-                server = smtplib.SMTP(host, port, timeout=15)
-                if cfg["tls_enabled"]:
-                    server.starttls()
-
-            if user and password:
-                server.login(user, password)
-
-            server.sendmail(sender, [recipient], msg.as_string())
-            server.quit()
-            logger.info(f"Email successfully delivered via SMTP to {recipient}. Message-ID: {msg_id}")
-            return msg_id
-
-        except Exception as e:
-            logger.error(f"SMTP delivery failed: {e}")
-            raise SMTPError(f"SMTP transmission error: {e}", original_exception=e)
+        stage = res.get("stage", "MAIL_SEND")
+        reason = res.get("reason", "Failed to transmit email")
+        raise SMTPError(f"[{stage}] {reason}")

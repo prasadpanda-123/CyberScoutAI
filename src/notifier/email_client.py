@@ -39,6 +39,12 @@ class EmailClient:
         self.report_manager = report_manager or ReportManager()
         self.metrics = NotifierMetrics()
 
+    def check_smtp_connectivity(self) -> Dict[str, Any]:
+        """
+        Executes pre-flight DNS, TCP, and handshake diagnostics via active email provider.
+        """
+        return self.smtp_sender.check_health()
+
     def generate_summary_body(self, payload: Any, date_str: str) -> tuple[str, str]:
         """
         Generates text & HTML email report body including category summary breakdown

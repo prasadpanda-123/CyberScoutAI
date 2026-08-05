@@ -115,6 +115,14 @@ def get_system():
     return jsonify(info)
 
 
+@api_bp.route("/system/smtp-health", methods=["GET"])
+@api_bp.route("/email/health", methods=["GET"])
+def get_smtp_health():
+    """GET /api/system/smtp-health — Returns email provider pre-flight diagnostics."""
+    res = api_service.check_smtp_health()
+    return jsonify(res)
+
+
 @api_bp.route("/logs", methods=["GET"])
 def get_logs():
     """GET /api/logs — System logs snippet."""

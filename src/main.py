@@ -225,28 +225,29 @@ def build_parser() -> argparse.ArgumentParser:
 
 def run_smtp_check() -> None:
     """Runs SMTP configuration, DNS resolution, TCP connectivity, and authentication checks."""
-    from src.core.smtp_validator import SMTPValidator
+    from src.notifier.smtp_sender import SMTPSender
 
-    validator = SMTPValidator()
-    results = validator.run_diagnostics()
+    sender = SMTPSender()
+    results = sender.check_health()
 
     print("===========================================================================")
-    print("CyberScout AI - SMTP Configuration Diagnostics & Validation")
+    print("CyberScout AI — Email Subsystem & Provider Diagnostics")
     print("===========================================================================")
-    print(f"SMTP Host          : {results.get('smtp_host')}")
-    print(f"SMTP Port          : {results.get('smtp_port')}")
-    print(f"TLS Enabled        : {results.get('tls_enabled')}")
-    print(f"SSL Enabled        : {results.get('ssl_enabled')}")
-    print(f"Username           : {results.get('username')}")
-    print(f"Environment Loaded : {'Yes (.env loaded)' if results.get('environment_loaded') else 'No'}")
-    print(f"DNS Resolution     : {results.get('dns_resolution')}")
-    print(f"TCP Connection     : {results.get('tcp_connection')}")
-    print(f"Authentication Result: {results.get('authentication_result')}")
+    print(f"Provider           : {results.get('provider', 'smtp')}")
+    print(f"Host               : {results.get('host', 'N/A')}")
+    print(f"Port               : {results.get('port', 'N/A')}")
+    print(f"TLS Enabled        : {results.get('tls_enabled', False)}")
+    print(f"SSL Enabled        : {results.get('ssl_enabled', False)}")
+    print(f"Username           : {results.get('username', 'N/A')}")
+    print(f"DNS Resolution     : {results.get('dns', 'FAILED')}")
+    print(f"TCP Connection     : {results.get('tcp', 'FAILED')}")
+    print(f"SMTP Handshake     : {results.get('smtp', 'FAILED')}")
     print("===========================================================================")
     if results.get("is_healthy"):
-        print("Overall Status     : [SUCCESS] SMTP Server Authenticated & Ready")
+        print("Overall Status     : [SUCCESS] Email Provider Healthy & Connected")
     else:
-        print(f"Overall Status     : [FAILED] Issues: {', '.join(results.get('errors', []))}")
+        errs = results.get('errors') or [results.get('reason', 'Failed')]
+        print(f"Overall Status     : [FAILED] Stage: {results.get('stage', 'N/A')} - Reason: {', '.join(errs)}")
     print("===========================================================================")
 
 
