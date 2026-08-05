@@ -51,9 +51,18 @@ class TestSecurityAuth(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.headers.get("X-Content-Type-Options"), "nosniff")
         self.assertEqual(res.headers.get("X-Frame-Options"), "DENY")
-        self.assertIn("strict-origin-when-cross-origin", res.headers.get("Referrer-Policy"))
-        self.assertIn("max-age=31536000", res.headers.get("Strict-Transport-Security"))
-        self.assertIn("default-src 'self'", res.headers.get("Content-Security-Policy"))
+
+        ref_policy = res.headers.get("Referrer-Policy")
+        self.assertIsNotNone(ref_policy)
+        self.assertIn("strict-origin-when-cross-origin", ref_policy or "")
+
+        hsts = res.headers.get("Strict-Transport-Security")
+        self.assertIsNotNone(hsts)
+        self.assertIn("max-age=31536000", hsts or "")
+
+        csp = res.headers.get("Content-Security-Policy")
+        self.assertIsNotNone(csp)
+        self.assertIn("default-src 'self'", csp or "")
         self.assertNotIn("Server", res.headers)
 
     def test_rbac_access_control(self):
