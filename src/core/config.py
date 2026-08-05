@@ -153,6 +153,14 @@ class Config:
             curr = curr[p]
         curr[parts[-1]] = value
 
+    def as_dict(self) -> Dict[str, Any]:
+        """Returns dictionary representation of current loaded config."""
+        return self._config.copy()
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Returns dictionary representation of current loaded config."""
+        return self._config.copy()
+
     @property
     def raw_config(self) -> Dict[str, Any]:
         """Returns read-only view of current loaded config dictionary."""
