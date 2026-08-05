@@ -1,7 +1,7 @@
 """
 Email Provider Factory for CyberScout AI.
 
-Resolves active provider based on EMAIL_PROVIDER environment variable.
+Resolves active provider based on EMAIL_PROVIDER environment variable or configured API keys.
 """
 
 import os
@@ -38,9 +38,20 @@ class EmailProviderFactory:
     def get_provider(cls, name: str = None) -> BaseEmailProvider:
         """
         Instantiates provider matching target name or EMAIL_PROVIDER env variable.
-        Defaults to 'smtp'.
+        Auto-detects API keys if EMAIL_PROVIDER is unconfigured.
         """
-        provider_name = (name or os.getenv("EMAIL_PROVIDER") or "smtp").strip().lower()
+        provider_name = (name or os.getenv("EMAIL_PROVIDER") or "").strip().lower()
+
+        if not provider_name:
+            if os.getenv("BREVO_API_KEY") or os.getenv("SENDINBLUE_API_KEY"):
+                provider_name = "brevo"
+            elif os.getenv("RESEND_API_KEY"):
+                provider_name = "resend"
+            elif os.getenv("SENDGRID_API_KEY"):
+                provider_name = "sendgrid"
+            else:
+                provider_name = "smtp"
+
         provider_cls = cls._PROVIDERS.get(provider_name)
 
         if not provider_cls:

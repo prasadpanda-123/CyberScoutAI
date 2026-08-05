@@ -22,19 +22,22 @@ logger = get_logger(__name__)
 class BrevoEmailProvider(BaseEmailProvider):
     """
     Delivers email reports using Brevo REST API (https://api.brevo.com/v3/smtp/email).
-    Works reliably on cloud hosts (like Render) where outbound port 587/25 may be restricted.
+    Uses HTTPS port 443 exclusively, bypassing cloud outbound SMTP port restrictions.
     """
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = (api_key or os.getenv("BREVO_API_KEY") or os.getenv("SENDINBLUE_API_KEY") or "").strip()
         self.api_url = "https://api.brevo.com/v3/smtp/email"
+        self.account_url = "https://api.brevo.com/v3/account"
 
     @property
     def provider_name(self) -> str:
         return "brevo"
 
     def check_health(self) -> Dict[str, Any]:
-        """Checks presence of Brevo API Key."""
+        """
+        Executes pre-flight HTTPS API authentication & connectivity check against Brevo REST API.
+        """
         if not self.api_key:
             return {
                 "provider": self.provider_name,
@@ -43,12 +46,44 @@ class BrevoEmailProvider(BaseEmailProvider):
                 "reason": "Missing BREVO_API_KEY environment variable",
                 "errors": ["Missing BREVO_API_KEY environment variable"],
             }
-        return {
-            "provider": self.provider_name,
-            "is_healthy": True,
-            "api_url": self.api_url,
-            "api_key_configured": True,
-        }
+
+        req = urllib.request.Request(self.account_url, method="GET")
+        req.add_header("api-key", self.api_key)
+        req.add_header("Accept", "application/json")
+
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                body = resp.read().decode("utf-8")
+                data = json.loads(body)
+                email = data.get("email") or "account-valid"
+                return {
+                    "provider": self.provider_name,
+                    "is_healthy": True,
+                    "dns": "OK",
+                    "tcp": "OK",
+                    "api": "OK",
+                    "account_email": email,
+                    "api_url": self.api_url,
+                }
+        except urllib.error.HTTPError as http_err:
+            err_body = http_err.read().decode("utf-8", errors="ignore")
+            logger.error(f"Brevo Account Health Check API error (HTTP {http_err.code}): {err_body}")
+            return {
+                "provider": self.provider_name,
+                "is_healthy": False,
+                "stage": "API_AUTH",
+                "reason": f"Brevo API Authentication Failed (HTTP {http_err.code}): {err_body}",
+                "errors": [f"HTTP {http_err.code}: {err_body}"],
+            }
+        except Exception as err:
+            logger.error(f"Brevo Account Health Check request failed: {err}")
+            return {
+                "provider": self.provider_name,
+                "is_healthy": False,
+                "stage": "TCP_CONNECT",
+                "reason": f"Brevo HTTPS connection error: {err}",
+                "errors": [str(err)],
+            }
 
     def send_email(
         self,
