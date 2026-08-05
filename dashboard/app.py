@@ -3,7 +3,7 @@ Flask Application Factory for CyberScout AI Web Dashboard.
 """
 
 from pathlib import Path
-from flask import Flask
+from flask import Flask, jsonify, request
 
 from dashboard.config import DashboardConfig
 from dashboard.routes import (
@@ -57,6 +57,18 @@ def create_app(config_class=DashboardConfig) -> Flask:
     app.register_blueprint(api_bp)
     app.register_blueprint(quality_bp)
     app.register_blueprint(production_bp)
+
+    @app.errorhandler(500)
+    def handle_500_error(e):
+        if request.path.startswith("/api/"):
+            return jsonify({"status": "failed", "error": "Internal Server Error", "detail": str(e)}), 200
+        return ("<h2 style='color:red;'>500 Internal Server Error</h2>", 500)
+
+    @app.errorhandler(404)
+    def handle_404_error(e):
+        if request.path.startswith("/api/"):
+            return jsonify({"status": "failed", "error": "API endpoint not found"}), 200
+        return ("<h2>404 Not Found</h2>", 404)
 
     return app
 

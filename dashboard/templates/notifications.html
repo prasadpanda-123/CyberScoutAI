@@ -63,7 +63,7 @@ function sendTestEmail() {
         return r.json();
       } else {
         const text = await r.text();
-        throw new Error('Server returned non-JSON response (HTTP ' + r.status + ')');
+        return { status: 'failed', error: 'Server returned HTTP ' + r.status + ': ' + text.substring(0, 100) };
       }
     })
     .then(d => {
@@ -72,7 +72,7 @@ function sendTestEmail() {
       } else if (d.status === 'skipped') {
         alert('ℹ Test Email Skipped: ' + (d.message || d.reason || 'No items to send.'));
       } else {
-        alert('⚠ Email Dispatch Status: ' + d.status + '\nDetail: ' + (d.error || d.message || 'Please check SMTP settings in environment.'));
+        alert('⚠ Email Dispatch Result:\nStatus: ' + d.status + '\nDetail: ' + (d.error || d.message || 'Please verify SMTP credentials in environment variables (SMTP_HOST, SMTP_USER, SMTP_PASSWORD).'));
       }
     })
     .catch(e => {

@@ -148,7 +148,7 @@ def trigger_run():
         res = api_service.trigger_scan(dry_run=dry_run)
         return jsonify(res)
     except Exception as e:
-        return jsonify({"success": False, "status": "failed", "error": str(e)}), 500
+        return jsonify({"success": False, "status": "failed", "error": str(e)})
 
 
 @api_bp.route("/email/test", methods=["POST"])
@@ -158,7 +158,7 @@ def email_test():
         res = api_service.send_test_email()
         return jsonify(res)
     except Exception as e:
-        return jsonify({"status": "failed", "error": str(e)}), 500
+        return jsonify({"status": "failed", "error": str(e)})
 
 
 @api_bp.route("/config/save", methods=["POST"])
@@ -167,7 +167,7 @@ def save_config():
     try:
         return jsonify({"status": "success", "message": "Configuration updated."})
     except Exception as e:
-        return jsonify({"status": "failed", "error": str(e)}), 500
+        return jsonify({"status": "failed", "error": str(e)})
 
 
 @api_bp.route("/scheduler/pause", methods=["POST"])
@@ -177,7 +177,7 @@ def scheduler_pause():
         res = api_service.pause_scheduler()
         return jsonify(res)
     except Exception as e:
-        return jsonify({"status": "failed", "error": str(e)}), 500
+        return jsonify({"status": "failed", "error": str(e)})
 
 
 @api_bp.route("/scheduler/resume", methods=["POST"])
@@ -187,7 +187,7 @@ def scheduler_resume():
         res = api_service.resume_scheduler()
         return jsonify(res)
     except Exception as e:
-        return jsonify({"status": "failed", "error": str(e)}), 500
+        return jsonify({"status": "failed", "error": str(e)})
 
 
 @api_bp.route("/scheduler/restart", methods=["POST"])
@@ -198,4 +198,4 @@ def scheduler_restart():
         res = api_service.resume_scheduler()
         return jsonify({"status": "restarted", "message": "Scheduler service restarted successfully."})
     except Exception as e:
-        return jsonify({"status": "failed", "error": str(e)}), 500
+        return jsonify({"status": "failed", "error": str(e)})
