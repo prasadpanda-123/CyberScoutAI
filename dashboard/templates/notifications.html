@@ -58,13 +58,12 @@ function sendTestEmail() {
   }
   fetch('/api/email/test', { method: 'POST' })
     .then(async r => {
-      const contentType = r.headers.get('content-type') || '';
+      const rawText = await r.text();
       try {
-        const data = await r.json();
-        return data;
+        return JSON.parse(rawText);
       } catch (parseErr) {
-        const rawText = await r.text();
-        return { status: 'failed', error: 'Server returned HTTP ' + r.status + ': ' + rawText.replace(/<[^>]*>?/gm, '').substring(0, 150) };
+        const cleanText = rawText.replace(/<[^>]*>?/gm, '').substring(0, 150);
+        return { status: 'failed', error: 'Server response error (HTTP ' + r.status + '): ' + (cleanText || 'Empty response') };
       }
     })
     .then(d => {
@@ -73,7 +72,7 @@ function sendTestEmail() {
       } else if (d.status === 'skipped') {
         alert('ℹ Test Email Skipped: ' + (d.message || d.reason || 'No items to send.'));
       } else {
-        alert('⚠ Email Dispatch Result:\nStatus: ' + d.status + '\n\nDetail: ' + (d.error || d.message || 'Please check SMTP settings.') + '\n\nNote: If hosting on Render, make sure environment variables (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, EMAIL_TO) are configured under Render Dashboard > Environment.');
+        alert('⚠ Email Dispatch Result:\nStatus: ' + (d.status || 'failed') + '\n\nDetail: ' + (d.error || d.message || 'Please check SMTP settings.') + '\n\nNote: If hosting on Render, make sure environment variables (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, EMAIL_TO) are configured under Render Dashboard > Environment.');
       }
     })
     .catch(e => {

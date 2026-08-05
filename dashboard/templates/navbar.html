@@ -79,12 +79,11 @@ function triggerScan() {
     body: JSON.stringify({ dry_run: false })
   })
     .then(async r => {
-      const contentType = r.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        return r.json();
-      } else {
-        const text = await r.text();
-        throw new Error('Server error (HTTP ' + r.status + ')');
+      const rawText = await r.text();
+      try {
+        return JSON.parse(rawText);
+      } catch (parseErr) {
+        return { success: false, status: 'failed', error: 'Server error (HTTP ' + r.status + ')' };
       }
     })
     .then(d => {
