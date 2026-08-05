@@ -103,6 +103,10 @@ class HealthMonitor:
         dirs = [DATA_DIR, LOGS_DIR, REPORTS_DIR]
         failed_dirs = []
         for d in dirs:
+            try:
+                d.mkdir(parents=True, exist_ok=True)
+            except Exception:
+                pass
             if not d.exists() or not os.access(str(d), os.W_OK):
                 failed_dirs.append(str(d))
 
