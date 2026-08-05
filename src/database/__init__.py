@@ -25,6 +25,7 @@ from src.database.provider_statistics import ProviderStatisticsTracker
 from src.database.reporting import ReportGenerator
 from src.database.retention import RetentionPolicyManager
 from src.database.search_history import SearchHistoryTracker
+from src.database.scheduler_repository import SchedulerRepository
 from src.database.seed import SeedManager
 from src.database.source_repository import SourceRepository
 from src.database.stats_repository import PreferencesRepository, StatisticsRepository
@@ -41,6 +42,7 @@ __all__ = [
     "EmailHistoryRepository",
     "StatisticsRepository",
     "PreferencesRepository",
+    "SchedulerRepository",
     "MigrationManager",
     "SeedManager",
     "BackupManager",

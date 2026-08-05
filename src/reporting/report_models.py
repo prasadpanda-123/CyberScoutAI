@@ -22,6 +22,7 @@ class ReportSummary:
     research: int = 0
     security_news: int = 0
     github_projects: int = 0
+    tools: int = 0
     total_opportunities: int = 0
 
     def to_dict(self) -> Dict[str, int]:
@@ -35,6 +36,7 @@ class ReportSummary:
             "Research": self.research,
             "Security News": self.security_news,
             "GitHub Projects": self.github_projects,
+            "Tools": self.tools,
             "Total Opportunities": self.total_opportunities,
         }
 

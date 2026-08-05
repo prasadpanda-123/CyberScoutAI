@@ -122,6 +122,18 @@ MIGRATIONS: List[Migration] = [
         );
         """,
     ),
+    Migration(
+        version=5,
+        description="Phase 12.3 Scheduler State Table Creation",
+        sql="""
+        CREATE TABLE IF NOT EXISTS scheduler_state (
+            id INTEGER PRIMARY KEY DEFAULT 1,
+            last_email_sent TEXT,
+            last_pipeline_run TEXT,
+            updated_at TEXT
+        );
+        """,
+    ),
 ]
 
 

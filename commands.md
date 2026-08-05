@@ -28,7 +28,9 @@
 | **AUTOMATION** | `python main.py --run-once` | Execute one complete scan & pipeline iteration. |
 | **AUTOMATION** | `python main.py --daemon` | Run automation engine daemon scheduler loops continuously. |
 | **AUTOMATION** | `python main.py --dry-run` | Run full collection and ranking cycle but bypass DB writes and email dispatching. |
-| **AUTOMATION** | `python main.py --scheduler-status` | Inspect scheduler registration queues and current execution status. |
+| **AUTOMATION** | `python main.py --scheduler-status` | Inspect scheduler state, timezone, next scheduled run, and email status. |
+| **SYSTEM** | `python main.py --run-scheduler` | Run daily report scheduler daemon loop in background execution mode. |
+| **SYSTEM** | `python main.py --send-report` | Immediately generate and send today's intelligence report, updating scheduler state. |
 | **AUTOMATION** | `python main.py --metrics` | Display performance timings for the last completed run. |
 | **SYSTEM** | `python main.py --smtp-check` | Execute end-to-end SMTP configuration, DNS resolution, TCP connection, and authentication checks. |
 | **EMAIL** | `python main.py --email-test` | Sends a test notification email digest. |

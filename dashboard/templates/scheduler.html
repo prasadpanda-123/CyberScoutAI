@@ -5,37 +5,52 @@
 <div class="card p-4 mb-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-      <h4 class="fw-bold text-light mb-1">Background Daemon Scheduler</h4>
-      <p class="text-muted mb-0">Runs periodic scan cycles across registered sources.</p>
+      <h4 class="fw-bold text-light mb-1">Daily Midnight Report Scheduler</h4>
+      <p class="text-muted mb-0">Delivers consolidated daily intelligence email reports at scheduled time.</p>
     </div>
-    <span class="badge {% if scheduler_status.running %}bg-success{% else %}bg-warning text-dark{% endif %} fs-5 px-3 py-2">
-      {% if scheduler_status.running %}RUNNING{% else %}PAUSED / STOPPED{% endif %}
+    <span class="badge {% if scheduler_status.enabled %}bg-success{% else %}bg-danger{% endif %} fs-5 px-3 py-2">
+      {% if scheduler_status.enabled %}ENABLED{% else %}DISABLED{% endif %}
     </span>
   </div>
   
   <div class="row g-3 mb-4">
     <div class="col-md-3">
       <div class="p-3 bg-dark rounded border border-secondary">
-        <div class="text-muted small">Schedule Mode</div>
-        <div class="fw-bold text-light fs-5">{{ scheduler_status.schedule_type|upper }}</div>
+        <div class="text-muted small">Frequency</div>
+        <div class="fw-bold text-light fs-5">{{ scheduler_status.frequency|upper }}</div>
       </div>
     </div>
     <div class="col-md-3">
       <div class="p-3 bg-dark rounded border border-secondary">
-        <div class="text-muted small">Interval</div>
-        <div class="fw-bold text-light fs-5">{{ scheduler_status.interval_seconds }} seconds</div>
+        <div class="text-muted small">Configured Time</div>
+        <div class="fw-bold text-light fs-5">{{ scheduler_status.report_time }}</div>
       </div>
     </div>
     <div class="col-md-3">
       <div class="p-3 bg-dark rounded border border-secondary">
-        <div class="text-muted small">Registered Jobs</div>
-        <div class="fw-bold text-light fs-5">{{ scheduler_status.job_count }}</div>
+        <div class="text-muted small">Timezone</div>
+        <div class="fw-bold text-info fs-5">{{ scheduler_status.timezone }}</div>
       </div>
     </div>
     <div class="col-md-3">
       <div class="p-3 bg-dark rounded border border-secondary">
-        <div class="text-muted small">Clock Drift</div>
-        <div class="fw-bold text-success fs-5">0.00s</div>
+        <div class="text-muted small">Next Scheduled Run</div>
+        <div class="fw-bold text-warning fs-6">{{ scheduler_status.next_run }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-6">
+      <div class="p-3 bg-dark rounded border border-secondary">
+        <div class="text-muted small"><i class="bi bi-envelope-check text-success me-1"></i> Last Email Sent</div>
+        <div class="fw-bold text-light fs-6">{{ scheduler_status.last_email_sent }}</div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="p-3 bg-dark rounded border border-secondary">
+        <div class="text-muted small"><i class="bi bi-play-circle text-primary me-1"></i> Last Pipeline Run</div>
+        <div class="fw-bold text-light fs-6">{{ scheduler_status.last_pipeline_run }}</div>
       </div>
     </div>
   </div>
@@ -43,7 +58,7 @@
   <div class="d-flex gap-2">
     <button class="btn btn-success" onclick="schedAction('resume')"><i class="bi bi-play-fill me-1"></i> Resume / Start</button>
     <button class="btn btn-warning" onclick="schedAction('pause')"><i class="bi bi-pause-fill me-1"></i> Pause</button>
-    <button class="btn btn-primary" onclick="schedAction('restart')"><i class="bi bi-arrow-clockwise me-1"></i> Restart Service</button>
+    <button class="btn btn-primary" onclick="schedAction('restart')"><i class="bi bi-arrow-clockwise me-1"></i> Trigger Now</button>
   </div>
 </div>
 {% endblock %}

@@ -101,6 +101,8 @@ class ReportManager:
                 summary.security_news += 1
             elif cat in ["github_repository", "project"]:
                 summary.github_projects += 1
+            elif cat in ["tool", "tools"]:
+                summary.tools += 1
 
         summary.total_opportunities = len(accepted)
 

@@ -25,8 +25,12 @@ class APIService:
         return self.email_client.send_daily_digest()
 
     def get_scheduler_status(self) -> Dict[str, Any]:
-        """Returns background scheduler status."""
-        return self.automation_engine.scheduler_service.get_status()
+        """Returns background scheduler & daily report scheduler status."""
+        from src.scheduler.daily_report_scheduler import DailyReportScheduler
+        daily_sched = DailyReportScheduler(db_manager=self.db_manager)
+        status = daily_sched.get_status()
+        status["background_daemon"] = self.automation_engine.scheduler_service.get_status()
+        return status
 
     def pause_scheduler(self) -> Dict[str, Any]:
         """Pauses scheduler background daemon service."""

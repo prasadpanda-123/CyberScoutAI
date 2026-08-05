@@ -288,6 +288,14 @@ class DatabaseManager:
             description TEXT
         );
 
+        -- 9. Scheduler State Table (for Daily Email Delivery & Restart Safety)
+        CREATE TABLE IF NOT EXISTS scheduler_state (
+            id INTEGER PRIMARY KEY DEFAULT 1,
+            last_email_sent TEXT,
+            last_pipeline_run TEXT,
+            updated_at TEXT
+        );
+
         -- Indexes
         CREATE INDEX IF NOT EXISTS idx_opportunities_url_hash ON Opportunities(url_hash);
         CREATE INDEX IF NOT EXISTS idx_opportunities_status ON Opportunities(status);

@@ -131,7 +131,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--scheduler-status",
         action="store_true",
-        help="Inspect scheduler registration queues and current execution status.",
+        help="Inspect scheduler state, timezone, next scheduled run, and email status.",
+    )
+    parser.add_argument(
+        "--run-scheduler",
+        action="store_true",
+        help="Run daily report scheduler daemon loop in background execution mode.",
+    )
+    parser.add_argument(
+        "--send-report",
+        action="store_true",
+        help="Immediately generate and send today's intelligence report, updating scheduler state.",
     )
     parser.add_argument(
         "--metrics",
@@ -675,7 +685,45 @@ def main(args_list: list | None = None) -> int:
         print(json.dumps(pe.metrics.to_dict(), indent=2))
         return 0
 
-    if args.scheduler_status or args.metrics:
+    if args.scheduler_status:
+        from src.scheduler.daily_report_scheduler import DailyReportScheduler
+        sched = DailyReportScheduler()
+        status = sched.get_status()
+        print("===========================================================================")
+        print("CyberScout AI — Daily Report Scheduler Status")
+        print("===========================================================================")
+        print(f"Scheduler Enabled : {status['enabled']}")
+        print(f"Frequency         : {status['frequency']}")
+        print(f"Timezone          : {status['timezone']}")
+        print(f"Report Time       : {status['report_time']}")
+        print(f"Next Run          : {status['next_run']}")
+        print(f"Last Email Sent   : {status['last_email_sent']}")
+        print(f"Last Pipeline Run : {status['last_pipeline_run']}")
+        print(f"Scheduler Healthy : {status['healthy']}")
+        print("===========================================================================")
+        return 0
+
+    if args.send_report:
+        from src.scheduler.daily_report_scheduler import DailyReportScheduler
+        sched = DailyReportScheduler()
+        res = sched.run_midnight_workflow(force=True, dry_run=args.dry_run)
+        print(json.dumps(res, indent=2))
+        return 0 if res.get("status") == "success" else 1
+
+    if args.run_scheduler:
+        from src.scheduler.daily_report_scheduler import DailyReportScheduler
+        sched = DailyReportScheduler()
+        print(f"Starting CyberScout AI Daily Report Scheduler ({sched.report_time_str} {sched.timezone_name})...")
+        sched.start()
+        try:
+            import time
+            while True:
+                time.sleep(1)
+        except (KeyboardInterrupt, SystemExit):
+            sched.stop()
+        return 0
+
+    if args.metrics:
         engine = AutomationEngine()
         print(json.dumps(engine.status(), indent=2))
         return 0

@@ -49,12 +49,13 @@ class PipelineRunner:
         self.knowledge_manager = knowledge_manager or KnowledgeManager(db_manager=self.db_manager)
         self.email_client = email_client or EmailClient(db_manager=self.db_manager)
 
-    def run_pipeline(self, dry_run: bool = False) -> Dict[str, Any]:
+    def run_pipeline(self, dry_run: bool = False, send_email: bool = False) -> Dict[str, Any]:
         """
         Runs one complete scan loop.
 
         Args:
             dry_run: If True, bypasses database writes and email sending.
+            send_email: If True, dispatches the daily email digest after scan. Defaults to False.
 
         Returns:
             Dictionary containing metrics and stats summaries.
@@ -62,7 +63,7 @@ class PipelineRunner:
         run_id = f"run-{uuid.uuid4()}"
         metrics = RunMetrics(run_id=run_id)
         start_time = time.time()
-        logger.info(f"Starting pipeline runner execution. Run ID: {run_id} (Dry Run: {dry_run})")
+        logger.info(f"Starting pipeline runner execution. Run ID: {run_id} (Dry Run: {dry_run}, Send Email: {send_email})")
 
         # 1. Search Planning Phase
         plan_start = time.time()
@@ -133,10 +134,10 @@ class PipelineRunner:
         metrics.db_update_time = time.time() - db_start
         logger.info(f"Pipeline: Knowledge Base update complete. Time: {metrics.db_update_time:.4f}s")
 
-        # 6. Notifications Phase
+        # 6. Notifications Phase (Decoupled: only sent when send_email=True)
         notify_start = time.time()
         email_sent = False
-        if not dry_run:
+        if not dry_run and send_email:
             email_res = self.email_client.send_daily_digest()
             email_sent = email_res.get("status") == "success"
         metrics.notification_time = time.time() - notify_start
