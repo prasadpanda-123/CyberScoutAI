@@ -1,13 +1,18 @@
-<nav class="navbar navbar-dark sticky-top px-3">
-  <a class="navbar-brand d-flex align-items-center text-light fw-bold" href="/">
-    <i class="bi bi-shield-lock-fill text-primary me-2 fs-4"></i> CyberScout AI <span class="badge bg-primary ms-2 fs-6">v2.0</span>
+<nav class="navbar sticky-top px-3">
+  <a class="navbar-brand d-flex align-items-center fw-bold" href="/">
+    <i class="bi bi-shield-lock-fill text-primary me-2 fs-4"></i> CyberScout AI <span class="badge bg-primary ms-2 fs-6">v2.1</span>
   </a>
   <div class="d-flex align-items-center">
+    <!-- Dark / Light Theme Toggle Button -->
+    <button id="themeToggleBtn" class="btn btn-outline-secondary btn-sm me-3" onclick="toggleTheme()" title="Toggle Dark/Light Mode" aria-label="Toggle Theme">
+      <i id="themeToggleIcon" class="bi bi-sun-fill text-warning"></i>
+    </button>
+
     {% if current_user.is_authenticated %}
       {% if current_user.role in ['Super Admin', 'Administrator'] %}
         <button id="runScanBtn" class="btn btn-outline-primary btn-sm me-3" onclick="triggerScan()"><i class="bi bi-play-circle me-1"></i> Run Scan Now</button>
       {% endif %}
-      <span class="text-light small me-3"><i class="bi bi-person-circle me-1 text-info"></i> {{ current_user.username }} <span class="badge bg-secondary font-monospace ms-1">{{ current_user.role }}</span></span>
+      <span class="small me-3"><i class="bi bi-person-circle me-1 text-info"></i> {{ current_user.username }} <span class="badge bg-secondary font-monospace ms-1">{{ current_user.role }}</span></span>
       <a href="/logout" class="btn btn-outline-danger btn-sm" title="Sign Out"><i class="bi bi-box-arrow-right"></i></a>
     {% else %}
       <a href="/login" class="btn btn-primary btn-sm me-2">Sign In</a>
@@ -19,10 +24,10 @@
 <!-- Scan Status Modal -->
 <div class="modal fade" id="scanModal" tabindex="-1" aria-labelledby="scanModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content bg-dark text-light border-secondary">
-      <div class="modal-header border-secondary">
+    <div class="modal-content">
+      <div class="modal-header">
         <h5 class="modal-title fw-bold" id="scanModalLabel"><i class="bi bi-cpu text-primary me-2"></i> CyberScout AI Scan Execution</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" id="scanModalCloseBtn" style="display: none;"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="scanModalCloseBtn" style="display: none;"></button>
       </div>
       <div class="modal-body py-4 text-center">
         <div id="scanSpinner" class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
@@ -31,10 +36,10 @@
         <div id="scanSuccessIcon" class="mb-3 text-success fs-1" style="display: none;">
           <i class="bi bi-check-circle-fill"></i>
         </div>
-        <h5 id="scanStatusTitle" class="fw-bold text-light mb-2">Starting scan...</h5>
+        <h5 id="scanStatusTitle" class="fw-bold mb-2">Starting scan...</h5>
         <p id="scanStatusSub" class="text-muted small mb-0">Initializing search planner and collectors...</p>
       </div>
-      <div class="modal-footer border-secondary justify-content-center">
+      <div class="modal-footer justify-content-center">
         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" id="scanModalFooterBtn" style="display: none;" onclick="window.location.reload();">Close & Refresh</button>
       </div>
     </div>

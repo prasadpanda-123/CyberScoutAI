@@ -40,7 +40,7 @@
     {% endif %}
 
     {% if current_user.role == 'Super Admin' %}
-    <li class="nav-item border-top border-secondary my-2 pt-2"></li>
+    <li class="nav-item border-top my-2 pt-2" style="border-color: var(--border-subtle) !important;"></li>
     <li class="nav-item">
       <a href="/configuration" class="nav-link {% if active_page == 'configuration' %}active{% endif %}">
         <i class="bi bi-gear me-2"></i> Configuration
@@ -55,10 +55,10 @@
   </ul>
 
   <!-- Active User Account Footer Card -->
-  <div class="card p-3 bg-dark border-secondary mt-4">
+  <div class="card p-3 mt-4">
     <div class="d-flex align-items-center justify-content-between">
       <div class="truncate me-2">
-        <div class="fw-bold text-light small truncate">{{ current_user.username }}</div>
+        <div class="fw-bold small truncate">{{ current_user.username }}</div>
         <span class="badge {% if current_user.role == 'Super Admin' %}bg-danger{% elif current_user.role == 'Administrator' %}bg-primary{% else %}bg-secondary{% endif %} font-monospace" style="font-size: 10px;">{{ current_user.role }}</span>
       </div>
       <a href="/logout" class="btn btn-sm btn-outline-danger" title="Sign Out"><i class="bi bi-box-arrow-right"></i></a>
