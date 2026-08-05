@@ -312,6 +312,18 @@ class DatabaseManager:
             correlation_id TEXT
         );
 
+        -- 11. User Authentication & RBAC Table
+        CREATE TABLE IF NOT EXISTS Users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'Viewer',
+            is_active INTEGER NOT NULL DEFAULT 1,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_login TIMESTAMP
+        );
+
         -- Indexes
         CREATE INDEX IF NOT EXISTS idx_opportunities_url_hash ON Opportunities(url_hash);
         CREATE INDEX IF NOT EXISTS idx_opportunities_status ON Opportunities(status);
@@ -324,6 +336,8 @@ class DatabaseManager:
         CREATE INDEX IF NOT EXISTS idx_applogs_timestamp ON AppLogs(timestamp);
         CREATE INDEX IF NOT EXISTS idx_applogs_level ON AppLogs(level);
         CREATE INDEX IF NOT EXISTS idx_applogs_module ON AppLogs(module);
+        CREATE INDEX IF NOT EXISTS idx_users_email ON Users(email);
+        CREATE INDEX IF NOT EXISTS idx_users_username ON Users(username);
         """
         cursor = conn.cursor()
         cursor.executescript(schema_sql)

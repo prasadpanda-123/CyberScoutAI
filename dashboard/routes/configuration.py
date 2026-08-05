@@ -6,12 +6,15 @@ from pathlib import Path
 from flask import Blueprint, render_template
 import yaml
 
+from src.auth.decorators import login_required, roles_required
 from src.core.constants import CONFIG_DIR
 
 configuration_bp = Blueprint("configuration_ui", __name__)
 
 
 @configuration_bp.route("/configuration")
+@login_required
+@roles_required("Super Admin")
 def index():
     """Renders YAML Configuration editor page."""
     configs = {}

@@ -74,10 +74,27 @@ class SeedManager:
         logger.info(f"Seeded {count} taxonomy keywords into database.")
         return count
 
+    def seed_users(self) -> int:
+        """Seeds default Super Admin user if Users table is empty."""
+        from src.database.user_repository import UserRepository
+        user_repo = UserRepository(self.db_manager)
+        existing = user_repo.list_users()
+        if not existing:
+            user_repo.create_user(
+                username="admin",
+                email="admin@cyberscout.ai",
+                password="Admin@CyberScout2026!",
+                role="Super Admin",
+            )
+            logger.info("Seeded default Super Admin user ('admin@cyberscout.ai').")
+            return 1
+        return 0
+
     def run_all_seeds(self) -> None:
         """Executes all database seed operations idempotently."""
         logger.info("Executing database seed data population...")
         self.seed_sources()
         self.seed_preferences()
         self.seed_keywords()
+        self.seed_users()
         logger.info("Database seeding complete.")

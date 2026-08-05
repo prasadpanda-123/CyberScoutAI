@@ -1,10 +1,18 @@
 <nav class="navbar navbar-dark sticky-top px-3">
   <a class="navbar-brand d-flex align-items-center text-light fw-bold" href="/">
-    <i class="bi bi-shield-lock-fill text-primary me-2 fs-4"></i> CyberScout AI <span class="badge bg-secondary ms-2 fs-6">v1.1.0</span>
+    <i class="bi bi-shield-lock-fill text-primary me-2 fs-4"></i> CyberScout AI <span class="badge bg-primary ms-2 fs-6">v2.0</span>
   </a>
   <div class="d-flex align-items-center">
-    <button id="runScanBtn" class="btn btn-outline-primary btn-sm me-2" onclick="triggerScan()"><i class="bi bi-play-circle me-1"></i> Run Scan Now</button>
-    <span class="badge bg-success me-3"><i class="bi bi-check-circle me-1"></i> System Healthy</span>
+    {% if current_user.is_authenticated %}
+      {% if current_user.role in ['Super Admin', 'Administrator'] %}
+        <button id="runScanBtn" class="btn btn-outline-primary btn-sm me-3" onclick="triggerScan()"><i class="bi bi-play-circle me-1"></i> Run Scan Now</button>
+      {% endif %}
+      <span class="text-light small me-3"><i class="bi bi-person-circle me-1 text-info"></i> {{ current_user.username }} <span class="badge bg-secondary font-monospace ms-1">{{ current_user.role }}</span></span>
+      <a href="/logout" class="btn btn-outline-danger btn-sm" title="Sign Out"><i class="bi bi-box-arrow-right"></i></a>
+    {% else %}
+      <a href="/login" class="btn btn-primary btn-sm me-2">Sign In</a>
+      <a href="/register" class="btn btn-outline-success btn-sm">Register</a>
+    {% endif %}
   </div>
 </nav>
 
@@ -44,8 +52,10 @@ function triggerScan() {
   const closeBtn = document.getElementById('scanModalCloseBtn');
   const footerBtn = document.getElementById('scanModalFooterBtn');
 
-  btn.disabled = true;
-  btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Scanning...';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Scanning...';
+  }
 
   spinner.style.display = 'inline-block';
   icon.style.display = 'none';
@@ -57,21 +67,6 @@ function triggerScan() {
 
   const modal = new bootstrap.Modal(modalEl);
   modal.show();
-
-  const stepTimer1 = setTimeout(() => {
-    title.innerText = 'Collecting...';
-    sub.innerText = 'Fetching cybersecurity opportunities across all sources...';
-  }, 1200);
-
-  const stepTimer2 = setTimeout(() => {
-    title.innerText = 'Filtering...';
-    sub.innerText = 'Running Quality Engine 100-point weighted evaluation...';
-  }, 3500);
-
-  const stepTimer3 = setTimeout(() => {
-    title.innerText = 'Saving...';
-    sub.innerText = 'Persisting accepted opportunities to SQLite database...';
-  }, 7000);
 
   fetch('/api/run', {
     method: 'POST',
@@ -87,10 +82,6 @@ function triggerScan() {
       }
     })
     .then(d => {
-      clearTimeout(stepTimer1);
-      clearTimeout(stepTimer2);
-      clearTimeout(stepTimer3);
-
       title.innerText = 'Completed';
       const count = d.saved !== undefined ? d.saved : (d.accepted || d.items_quality_accepted || 0);
       sub.innerText = '✔ Scan Complete: ' + count + ' new opportunities found.';
@@ -101,18 +92,16 @@ function triggerScan() {
       closeBtn.style.display = 'block';
       footerBtn.style.display = 'block';
 
-      btn.disabled = false;
-      btn.innerHTML = '<i class="bi bi-play-circle me-1"></i> Run Scan Now';
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-play-circle me-1"></i> Run Scan Now';
+      }
 
       setTimeout(() => {
         window.location.reload();
       }, 2000);
     })
     .catch(e => {
-      clearTimeout(stepTimer1);
-      clearTimeout(stepTimer2);
-      clearTimeout(stepTimer3);
-
       title.innerText = 'Scan Failed';
       sub.innerText = 'Error: ' + e;
       sub.className = 'text-danger mb-0';
@@ -121,8 +110,10 @@ function triggerScan() {
       closeBtn.style.display = 'block';
       footerBtn.style.display = 'block';
 
-      btn.disabled = false;
-      btn.innerHTML = '<i class="bi bi-play-circle me-1"></i> Run Scan Now';
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-play-circle me-1"></i> Run Scan Now';
+      }
     });
 }
 </script>

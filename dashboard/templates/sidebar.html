@@ -1,5 +1,5 @@
-<div class="sidebar p-3">
-  <ul class="nav nav-pills flex-column">
+<div class="sidebar p-3 d-flex flex-column justify-content-between h-100">
+  <ul class="nav nav-pills flex-column mb-auto">
     <li class="nav-item">
       <a href="/" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
         <i class="bi bi-speedometer2 me-2"></i> Dashboard
@@ -20,16 +20,8 @@
         <i class="bi bi-file-earmark-arrow-down me-2"></i> Reports Center
       </a>
     </li>
-    <li class="nav-item">
-      <a href="/quality" class="nav-link {% if active_page == 'quality' %}active{% endif %}">
-        <i class="bi bi-shield-check me-2"></i> Quality Intelligence
-      </a>
-    </li>
-    <li class="nav-item">
-      <a href="/production" class="nav-link {% if active_page == 'production' %}active{% endif %}">
-        <i class="bi bi-cpu-fill me-2"></i> Production Intelligence
-      </a>
-    </li>
+
+    {% if current_user.role in ['Super Admin', 'Administrator'] %}
     <li class="nav-item">
       <a href="/collectors" class="nav-link {% if active_page == 'collectors' %}active{% endif %}">
         <i class="bi bi-hdd-network me-2"></i> Collectors
@@ -45,11 +37,10 @@
         <i class="bi bi-envelope me-2"></i> Notifications
       </a>
     </li>
-    <li class="nav-item">
-      <a href="/knowledge" class="nav-link {% if active_page == 'knowledge' %}active{% endif %}">
-        <i class="bi bi-journal-text me-2"></i> Knowledge Base
-      </a>
-    </li>
+    {% endif %}
+
+    {% if current_user.role == 'Super Admin' %}
+    <li class="nav-item border-top border-secondary my-2 pt-2"></li>
     <li class="nav-item">
       <a href="/configuration" class="nav-link {% if active_page == 'configuration' %}active{% endif %}">
         <i class="bi bi-gear me-2"></i> Configuration
@@ -57,23 +48,20 @@
     </li>
     <li class="nav-item">
       <a href="/logs" class="nav-link {% if active_page == 'logs' %}active{% endif %}">
-        <i class="bi bi-terminal me-2"></i> Logs
+        <i class="bi bi-terminal me-2"></i> System Logs
       </a>
     </li>
-    <li class="nav-item">
-      <a href="/health" class="nav-link {% if active_page == 'health' %}active{% endif %}">
-        <i class="bi bi-heart-pulse me-2"></i> System Health
-      </a>
-    </li>
-    <li class="nav-item">
-      <a href="/system" class="nav-link {% if active_page == 'system' %}active{% endif %}">
-        <i class="bi bi-info-circle me-2"></i> System Info
-      </a>
-    </li>
-    <li class="nav-item">
-      <a href="/system-diagnostics" class="nav-link {% if active_page == 'diagnostics' %}active{% endif %}">
-        <i class="bi bi-cpu me-2"></i> System Diagnostics
-      </a>
-    </li>
+    {% endif %}
   </ul>
+
+  <!-- Active User Account Footer Card -->
+  <div class="card p-3 bg-dark border-secondary mt-4">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="truncate me-2">
+        <div class="fw-bold text-light small truncate">{{ current_user.username }}</div>
+        <span class="badge {% if current_user.role == 'Super Admin' %}bg-danger{% elif current_user.role == 'Administrator' %}bg-primary{% else %}bg-secondary{% endif %} font-monospace" style="font-size: 10px;">{{ current_user.role }}</span>
+      </div>
+      <a href="/logout" class="btn btn-sm btn-outline-danger" title="Sign Out"><i class="bi bi-box-arrow-right"></i></a>
+    </div>
+  </div>
 </div>

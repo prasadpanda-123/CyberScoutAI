@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, render_template, request, send_from_direct
 from dashboard.services.api_service import APIService
 from dashboard.services.dashboard_service import DashboardService
 from dashboard.services.statistics_service import StatisticsService
+from src.auth.decorators import login_required, roles_required
 from src.core.constants import REPORTS_DIR
 from src.core.version import get_version_info
 
@@ -17,6 +18,7 @@ api_service = APIService()
 
 @dashboard_bp.route("/")
 @dashboard_bp.route("/dashboard")
+@login_required
 def index():
     """Renders main Overview Dashboard page or returns JSON status info."""
     if (
@@ -48,6 +50,7 @@ def index():
 
 
 @dashboard_bp.route("/reports")
+@login_required
 def reports_page():
     """Renders Reports Download Center page."""
     reports = api_service.get_reports_list()
@@ -59,6 +62,8 @@ def reports_page():
 
 
 @dashboard_bp.route("/reports/download/<path:filename>")
+@login_required
+@roles_required("Super Admin", "Administrator", "Operator")
 def download_report(filename):
     """Safely serves generated DOCX or CSV report files for download."""
     reports_dir = REPORTS_DIR

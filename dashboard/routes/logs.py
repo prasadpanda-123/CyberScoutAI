@@ -3,6 +3,7 @@ Log Control Center Route (Page 9).
 """
 
 from flask import Blueprint, render_template, request
+from src.auth.decorators import login_required, roles_required
 from src.database.log_repository import LogRepository
 
 logs_bp = Blueprint("logs_ui", __name__)
@@ -10,6 +11,8 @@ log_repo = LogRepository()
 
 
 @logs_bp.route("/logs")
+@login_required
+@roles_required("Super Admin")
 def index():
     """Renders persistent structured log control center page."""
     level = request.args.get("level", "ALL")

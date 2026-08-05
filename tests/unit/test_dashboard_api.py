@@ -1,5 +1,5 @@
 """
-Unit tests for Flask Web Dashboard REST API endpoints.
+Unit tests for Flask Web Dashboard REST API endpoints with auth checks.
 """
 
 import json
@@ -16,6 +16,16 @@ class TestDashboardAPI(unittest.TestCase):
 
         self.app = create_app(config_class=TestConfig)
         self.client = self.app.test_client()
+        # Log in as Super Admin
+        self.client.post("/login", data={"identifier": "admin@cyberscout.ai", "password": "Admin@CyberScout2026!"})
+
+    def test_api_unauthenticated_returns_401(self):
+        """Verify unauthenticated API request returns 401 JSON error."""
+        unauth_client = self.app.test_client()
+        res = unauth_client.get("/api/stats", headers={"Accept": "application/json"})
+        self.assertEqual(res.status_code, 401)
+        data = json.loads(res.data)
+        self.assertEqual(data.get("status"), "failed")
 
     def test_api_health_endpoint(self):
         """GET /api/health"""

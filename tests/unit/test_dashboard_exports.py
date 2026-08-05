@@ -1,5 +1,5 @@
 """
-Unit tests for Dashboard opportunities CSV/JSON exports.
+Unit tests for Dashboard opportunities CSV/JSON exports with authentication.
 """
 
 import unittest
@@ -15,6 +15,8 @@ class TestDashboardExports(unittest.TestCase):
 
         self.app = create_app(config_class=TestConfig)
         self.client = self.app.test_client()
+        # Log in as Super Admin
+        self.client.post("/login", data={"identifier": "admin@cyberscout.ai", "password": "Admin@CyberScout2026!"})
 
     def test_export_csv_endpoint(self):
         """GET /opportunities/export/csv"""

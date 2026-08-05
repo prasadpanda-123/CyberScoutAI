@@ -1,5 +1,5 @@
 """
-Unit tests for Flask Web Dashboard UI page routes.
+Unit tests for Flask Web Dashboard UI page routes with RBAC authentication.
 """
 
 import unittest
@@ -15,6 +15,15 @@ class TestDashboardRoutes(unittest.TestCase):
 
         self.app = create_app(config_class=TestConfig)
         self.client = self.app.test_client()
+        # Log in as seeded Super Admin user
+        self.client.post("/login", data={"identifier": "admin@cyberscout.ai", "password": "Admin@CyberScout2026!"})
+
+    def test_unauthenticated_redirect(self):
+        """Verify unauthenticated user is redirected to /login."""
+        unauth_client = self.app.test_client()
+        res = unauth_client.get("/")
+        self.assertEqual(res.status_code, 302)
+        self.assertIn("/login", res.location)
 
     def test_dashboard_index_route(self):
         """GET / — Overview dashboard page."""
@@ -52,12 +61,6 @@ class TestDashboardRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Notification & Email Center", response.data)
 
-    def test_knowledge_route(self):
-        """GET /knowledge — Knowledge Base page."""
-        response = self.client.get("/knowledge")
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Knowledge Base & Historical Intelligence", response.data)
-
     def test_configuration_route(self):
         """GET /configuration — Configuration editor page."""
         response = self.client.get("/configuration")
@@ -69,18 +72,6 @@ class TestDashboardRoutes(unittest.TestCase):
         response = self.client.get("/logs")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Live Application Logs", response.data)
-
-    def test_health_route(self):
-        """GET /health — Visual system health page."""
-        response = self.client.get("/health")
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"System Health Status", response.data)
-
-    def test_system_route(self):
-        """GET /system — System info page."""
-        response = self.client.get("/system")
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"System & Platform Specifications", response.data)
 
 
 if __name__ == "__main__":

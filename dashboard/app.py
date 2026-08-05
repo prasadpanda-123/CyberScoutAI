@@ -3,12 +3,13 @@ Flask Application Factory for CyberScout AI Web Dashboard.
 """
 
 from pathlib import Path
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, session
 
 from dashboard.config import DashboardConfig
 from dashboard.routes import (
     analytics_bp,
     api_bp,
+    auth_bp,
     collectors_bp,
     configuration_bp,
     dashboard_bp,
@@ -25,11 +26,13 @@ from dashboard.routes import (
 
 BASE_DIR = Path(__file__).resolve().parent
 
+
 def create_app(config_class=DashboardConfig) -> Flask:
     """Application factory for Flask Web Dashboard."""
     # Ensure database is safely initialized and seeded on deployment
     from src.database.connection import DatabaseManager
     from src.database.seed import SeedManager
+
     db_mgr = DatabaseManager()
     db_mgr.initialize_database()
     seed_mgr = SeedManager(db_mgr)
@@ -42,7 +45,12 @@ def create_app(config_class=DashboardConfig) -> Flask:
     )
     app.config.from_object(config_class)
 
+    # Secure Session Cookies
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
     # Register Blueprints
+    app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(opportunities_bp)
     app.register_blueprint(analytics_bp)
@@ -58,6 +66,38 @@ def create_app(config_class=DashboardConfig) -> Flask:
     app.register_blueprint(quality_bp)
     app.register_blueprint(production_bp)
 
+    @app.context_processor
+    def inject_user():
+        """Injects active user session details into Jinja2 templates."""
+        return {
+            "current_user": {
+                "id": session.get("user_id"),
+                "username": session.get("username", "Guest"),
+                "role": session.get("role", "Viewer"),
+                "is_authenticated": bool(session.get("user_id")),
+            }
+        }
+
+    @app.after_request
+    def apply_security_headers(response):
+        """Applies OWASP Top 10 Security Headers and removes version disclosure."""
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
+            "img-src 'self' data:; "
+            "connect-src 'self';"
+        )
+        response.headers.pop("Server", None)
+        response.headers.pop("X-Powered-By", None)
+        return response
+
     @app.errorhandler(500)
     def handle_500_error(e):
         return jsonify({"status": "failed", "error": "Internal Server Error", "detail": str(e)}), 200
@@ -69,6 +109,7 @@ def create_app(config_class=DashboardConfig) -> Flask:
         return ("<h2>404 Not Found</h2>", 404)
 
     return app
+
 
 if __name__ == "__main__":
     app = create_app()

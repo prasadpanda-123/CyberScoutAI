@@ -8,6 +8,7 @@ from dashboard.services.analytics_service import AnalyticsService
 from dashboard.services.api_service import APIService
 from dashboard.services.dashboard_service import DashboardService
 from dashboard.services.statistics_service import StatisticsService
+from src.auth.decorators import login_required, roles_required
 from src.core.constants import REPORTS_DIR
 from src.core.version import get_version_info
 
@@ -28,6 +29,7 @@ def get_health():
 
 @api_bp.route("/stats", methods=["GET"])
 @api_bp.route("/dashboard/summary", methods=["GET"])
+@login_required
 def get_stats():
     """GET /api/dashboard/summary — KPI metrics summary."""
     summary = dash_service.get_summary_stats()
@@ -35,6 +37,7 @@ def get_stats():
 
 
 @api_bp.route("/dashboard/charts", methods=["GET"])
+@login_required
 def get_charts():
     """GET /api/dashboard/charts — Historical timeseries and category charts dataset."""
     data = api_service.get_charts_data()
@@ -42,6 +45,7 @@ def get_charts():
 
 
 @api_bp.route("/opportunities", methods=["GET"])
+@login_required
 def get_opportunities():
     """GET /api/opportunities — Query opportunities."""
     category = request.args.get("category")
@@ -51,6 +55,7 @@ def get_opportunities():
 
 
 @api_bp.route("/analytics", methods=["GET"])
+@login_required
 def get_analytics():
     """GET /api/analytics — Analytics charts data."""
     data = {
@@ -61,6 +66,7 @@ def get_analytics():
 
 
 @api_bp.route("/providers", methods=["GET"])
+@login_required
 def get_providers():
     """GET /api/providers — Provider comparison stats."""
     providers = analytics_service.get_provider_comparison()
@@ -68,6 +74,7 @@ def get_providers():
 
 
 @api_bp.route("/provider-health", methods=["GET"])
+@login_required
 def get_provider_health():
     """GET /api/provider-health — Source reliability rankings."""
     from src.intelligence.production.production_engine import ProductionEngine
@@ -76,6 +83,7 @@ def get_provider_health():
 
 
 @api_bp.route("/trends", methods=["GET"])
+@login_required
 def get_trends():
     """GET /api/trends — Trend analytics."""
     from src.intelligence.production.production_engine import ProductionEngine
@@ -85,6 +93,7 @@ def get_trends():
 
 
 @api_bp.route("/freshness", methods=["GET"])
+@login_required
 def get_freshness():
     """GET /api/freshness — Freshness distribution stats."""
     from src.intelligence.production.production_engine import ProductionEngine
@@ -92,27 +101,17 @@ def get_freshness():
     return jsonify(pe.metrics.to_dict())
 
 
-@api_bp.route("/link-validation", methods=["GET"])
-def get_link_validation():
-    """GET /api/link-validation — Link validation log."""
-    return jsonify({"status": "healthy", "dead_links": 0})
-
-
 @api_bp.route("/statistics", methods=["GET"])
+@login_required
 def get_statistics():
     """GET /api/statistics — General collection statistics."""
     summary = dash_service.get_summary_stats()
     return jsonify(summary)
 
 
-@api_bp.route("/history", methods=["GET"])
-def get_history():
-    """GET /api/history — Scan history summary."""
-    return jsonify({"history": []})
-
-
 @api_bp.route("/collectors", methods=["GET"])
 @api_bp.route("/dashboard/collectors", methods=["GET"])
+@login_required
 def get_collectors():
     """GET /api/dashboard/collectors — Collector status list."""
     collectors = dash_service.get_collectors_status()
@@ -121,6 +120,7 @@ def get_collectors():
 
 @api_bp.route("/dashboard/reports", methods=["GET"])
 @api_bp.route("/reports", methods=["GET"])
+@login_required
 def get_reports():
     """GET /api/dashboard/reports — List of generated DOCX & CSV reports."""
     reports = api_service.get_reports_list()
@@ -128,6 +128,7 @@ def get_reports():
 
 
 @api_bp.route("/system", methods=["GET"])
+@login_required
 def get_system():
     """GET /api/system — System metadata."""
     info = get_version_info()
@@ -136,6 +137,7 @@ def get_system():
 
 @api_bp.route("/system/smtp-health", methods=["GET"])
 @api_bp.route("/email/health", methods=["GET"])
+@login_required
 def get_smtp_health():
     """GET /api/system/smtp-health — Returns email provider pre-flight diagnostics."""
     res = api_service.check_smtp_health()
@@ -144,6 +146,8 @@ def get_smtp_health():
 
 @api_bp.route("/logs", methods=["GET"])
 @api_bp.route("/dashboard/logs", methods=["GET"])
+@login_required
+@roles_required("Super Admin")
 def get_logs():
     """GET /api/dashboard/logs — Structured AppLogs with level/module/search filters and pagination."""
     level = request.args.get("level")
@@ -163,6 +167,8 @@ def get_logs():
 
 
 @api_bp.route("/logs/export", methods=["GET"])
+@login_required
+@roles_required("Super Admin")
 def export_logs():
     """GET /api/logs/export — Export logs in JSON format."""
     data = api_service.get_logs(limit=1000)
@@ -175,14 +181,18 @@ def export_logs():
 
 
 @api_bp.route("/config", methods=["GET"])
+@login_required
+@roles_required("Super Admin")
 def get_config():
     """GET /api/config — Application settings config."""
     from src.core.config import config
     return jsonify(config.as_dict())
 
 
-# POST Action Commands with JSON error safety
+# POST Action Commands with JSON error safety and RBAC
 @api_bp.route("/run", methods=["POST"])
+@login_required
+@roles_required("Super Admin", "Administrator")
 def trigger_run():
     """POST /api/run — Trigger single scan iteration."""
     try:
@@ -196,6 +206,8 @@ def trigger_run():
 
 
 @api_bp.route("/email/test", methods=["POST"])
+@login_required
+@roles_required("Super Admin", "Administrator")
 def email_test():
     """POST /api/email/test — Dispatch test HTML email."""
     try:
@@ -205,16 +217,9 @@ def email_test():
         return jsonify({"status": "failed", "error": str(e)})
 
 
-@api_bp.route("/config/save", methods=["POST"])
-def save_config():
-    """POST /api/config/save — Save configuration parameters."""
-    try:
-        return jsonify({"status": "success", "message": "Configuration updated."})
-    except Exception as e:
-        return jsonify({"status": "failed", "error": str(e)})
-
-
 @api_bp.route("/scheduler/pause", methods=["POST"])
+@login_required
+@roles_required("Super Admin", "Administrator")
 def scheduler_pause():
     """POST /api/scheduler/pause — Pause scheduler."""
     try:
@@ -225,6 +230,8 @@ def scheduler_pause():
 
 
 @api_bp.route("/scheduler/resume", methods=["POST"])
+@login_required
+@roles_required("Super Admin", "Administrator")
 def scheduler_resume():
     """POST /api/scheduler/resume — Resume scheduler."""
     try:
@@ -235,6 +242,8 @@ def scheduler_resume():
 
 
 @api_bp.route("/scheduler/restart", methods=["POST"])
+@login_required
+@roles_required("Super Admin", "Administrator")
 def scheduler_restart():
     """POST /api/scheduler/restart — Restart scheduler."""
     try:

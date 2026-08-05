@@ -7,12 +7,14 @@ import io
 import json
 from flask import Blueprint, Response, jsonify, render_template, request
 from dashboard.services.dashboard_service import DashboardService
+from src.auth.decorators import login_required
 
 opportunities_bp = Blueprint("opportunities_ui", __name__)
 dash_service = DashboardService()
 
 
 @opportunities_bp.route("/opportunities")
+@login_required
 def index():
     """Renders Opportunities table view."""
     category = request.args.get("category", "all")
@@ -29,6 +31,7 @@ def index():
 
 
 @opportunities_bp.route("/opportunities/export/csv")
+@login_required
 def export_csv():
     """Exports opportunities dataset as CSV file."""
     opps = dash_service.get_opportunities(limit=500)
@@ -54,6 +57,7 @@ def export_csv():
 
 
 @opportunities_bp.route("/opportunities/export/json")
+@login_required
 def export_json():
     """Exports opportunities dataset as JSON file."""
     opps = dash_service.get_opportunities(limit=500)
