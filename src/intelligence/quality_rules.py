@@ -21,12 +21,26 @@ class QualityRules:
     def __init__(self, config_path: Optional[Path] = None):
         self.config_path = config_path or (CONFIG_DIR / "quality.yaml")
 
-        self.minimum_confidence: float = 60.0
-        self.minimum_keyword_score: float = 20.0
-        self.minimum_topic_score: float = 15.0
+        self.minimum_confidence: float = 40.0
+        self.accept_high_threshold: float = 80.0
+        self.accept_medium_threshold: float = 60.0
+        self.needs_review_threshold: float = 40.0
+
+        self.minimum_keyword_score: float = 10.0
+        self.minimum_topic_score: float = 10.0
         self.spam_threshold: float = 0.70
         self.duplicate_threshold: float = 0.85
         self.max_readme_urls: int = 200
+
+        self.scoring_weights: Dict[str, float] = {
+            "repo_name_weight": 20.0,
+            "description_weight": 20.0,
+            "topics_weight": 20.0,
+            "readme_weight": 15.0,
+            "popularity_weight": 10.0,
+            "freshness_weight": 10.0,
+            "language_weight": 5.0,
+        }
 
         self.weights: Dict[str, float] = {
             "keyword_weight": 0.35,
@@ -56,11 +70,18 @@ class QualityRules:
 
             thresh = data.get("thresholds", {})
             self.minimum_confidence = float(thresh.get("minimum_confidence", self.minimum_confidence))
+            self.accept_high_threshold = float(thresh.get("accept_high_threshold", self.accept_high_threshold))
+            self.accept_medium_threshold = float(thresh.get("accept_medium_threshold", self.accept_medium_threshold))
+            self.needs_review_threshold = float(thresh.get("needs_review_threshold", self.needs_review_threshold))
+
             self.minimum_keyword_score = float(thresh.get("minimum_keyword_score", self.minimum_keyword_score))
             self.minimum_topic_score = float(thresh.get("minimum_topic_score", self.minimum_topic_score))
             self.spam_threshold = float(thresh.get("spam_threshold", self.spam_threshold))
             self.duplicate_threshold = float(thresh.get("duplicate_threshold", self.duplicate_threshold))
             self.max_readme_urls = int(thresh.get("max_readme_urls", self.max_readme_urls))
+
+            if "scoring_weights" in data:
+                self.scoring_weights.update(data["scoring_weights"])
 
             if "quality_weights" in data:
                 self.weights.update(data["quality_weights"])

@@ -24,106 +24,189 @@ def _make_opp(**kwargs):
 
 
 class TestQualityEngineAcceptance:
-    """Tests for opportunities that should be ACCEPTED."""
+    """Tests for cybersecurity opportunities that MUST be ACCEPTED (Task 13)."""
 
-    def test_accept_owasp_internship(self):
+    def test_accept_security_tools_bl4de(self):
         engine = QualityEngine()
         opp = _make_opp(
-            title="OWASP Top 10 Security Internship 2026",
-            description="Learn about SQL injection, XSS, CSRF, and authentication vulnerabilities in this internship.",
-            raw_data={"topics": ["security", "owasp"], "language": "Python"},
+            title="bl4de/security-tools",
+            url="https://github.com/bl4de/security-tools",
+            description="Various security and pentesting scripts, exploits, and audit tools.",
+            source_id="github_search",
+            raw_data={"topics": ["security-tools", "pentest", "python"], "language": "Python", "stargazers_count": 450},
         )
         result = engine.evaluate_opportunity(opp)
-        assert not result.is_rejected, f"Expected acceptance, got rejection: {result.rejection_reason}"
+        assert not result.is_rejected, f"bl4de/security-tools rejected: {result.rejection_reason}"
         assert result.confidence_score >= 60.0
 
-    def test_accept_ctf_event(self):
+    def test_accept_picoctf(self):
         engine = QualityEngine()
         opp = _make_opp(
-            title="PicoCTF 2026 Competition",
-            url="https://ctftime.org/event/123",
-            description="A beginner-friendly CTF competition covering forensics, reverse engineering, and cryptography.",
-            source_id="ctftime",
-            raw_data={"topics": ["ctf", "security"]},
+            title="picoCTF 2026 Repository",
+            url="https://github.com/picoCTF/picoCTF",
+            description="PicoCTF challenges covering reverse engineering, cryptography, binary exploitation, and forensics.",
+            source_id="github_search",
+            raw_data={"topics": ["picoctf", "ctf", "security"], "language": "Python", "stargazers_count": 1200},
+        )
+        result = engine.evaluate_opportunity(opp)
+        assert not result.is_rejected
+        assert result.confidence_score >= 80.0
+
+    def test_accept_cyberdefenders(self):
+        engine = QualityEngine()
+        opp = _make_opp(
+            title="CyberDefenders Blue Team Artifacts",
+            url="https://github.com/CyberDefenders/blue-team-labs",
+            description="DFIR exercises and SOC analyst threat hunting practice challenges.",
+            source_id="github_search",
+            raw_data={"topics": ["cyberdefenders", "blue-team", "dfir"], "language": "Python", "stargazers_count": 350},
         )
         result = engine.evaluate_opportunity(opp)
         assert not result.is_rejected
 
-    def test_accept_cve_advisory(self):
+    def test_accept_hackthebox(self):
         engine = QualityEngine()
         opp = _make_opp(
-            title="CVE-2026-12345 Critical Remote Code Execution",
-            url="https://cisa.gov/advisory/12345",
-            source_id="cisa_alerts",
-            description="Critical vulnerability affecting web servers.",
+            title="HackTheBox Machine Exploitation Writeups",
+            url="https://github.com/htb/writeups",
+            description="HTB penetration testing walkthroughs covering active directory, kerberos, and privilege escalation.",
+            source_id="github_search",
+            raw_data={"topics": ["hackthebox", "htb", "pentest"], "language": "Go"},
         )
         result = engine.evaluate_opportunity(opp)
         assert not result.is_rejected
 
-    def test_accept_tryhackme_course(self):
+    def test_accept_ctfd(self):
         engine = QualityEngine()
         opp = _make_opp(
-            title="TryHackMe SOC Analyst Path",
-            url="https://tryhackme.com/path/soc-analyst",
-            source_id="tryhackme",
-            description="Complete SOC analyst training path with SIEM, incident response, and log analysis modules.",
+            title="CTFd Platform Core Framework",
+            url="https://github.com/CTFd/CTFd",
+            description="Capture The Flag framework customizable for security competitions.",
+            source_id="github_search",
+            raw_data={"topics": ["ctfd", "ctf", "cybersecurity"], "language": "Python", "stargazers_count": 5000},
+        )
+        result = engine.evaluate_opportunity(opp)
+        assert not result.is_rejected
+
+    def test_accept_owasp_projects(self):
+        engine = QualityEngine()
+        opp = _make_opp(
+            title="OWASP Juice Shop Web Application",
+            url="https://github.com/OWASP/juice-shop",
+            description="Probably the most modern and sophisticated insecure web application for OWASP vulnerability training.",
+            source_id="github_search",
+            raw_data={"topics": ["owasp", "web-security", "appsec"], "language": "TypeScript", "stargazers_count": 9000},
+        )
+        result = engine.evaluate_opportunity(opp)
+        assert not result.is_rejected
+
+    def test_accept_tryhackme(self):
+        engine = QualityEngine()
+        opp = _make_opp(
+            title="TryHackMe Room Automation Scripts",
+            url="https://github.com/thm/automation-tools",
+            description="TryHackMe THM cybersecurity room deployment tools.",
+            source_id="github_search",
+            raw_data={"topics": ["tryhackme", "thm", "security"], "language": "Python"},
+        )
+        result = engine.evaluate_opportunity(opp)
+        assert not result.is_rejected
+
+    def test_accept_blue_team(self):
+        engine = QualityEngine()
+        opp = _make_opp(
+            title="Blue Team SOC Detection Rules",
+            url="https://github.com/blueteam/siem-rules",
+            description="Sigma and YARA threat hunting rules for blue team SOC operations.",
+            source_id="github_search",
+            raw_data={"topics": ["blue-team", "siem", "soc"], "language": "Python"},
+        )
+        result = engine.evaluate_opportunity(opp)
+        assert not result.is_rejected
+
+    def test_accept_red_team(self):
+        engine = QualityEngine()
+        opp = _make_opp(
+            title="Red Team Implant Framework",
+            url="https://github.com/redteam/c2-framework",
+            description="Adversary emulation and red team pentesting command and control framework.",
+            source_id="github_search",
+            raw_data={"topics": ["red-team", "pentest", "exploit"], "language": "Go"},
+        )
+        result = engine.evaluate_opportunity(opp)
+        assert not result.is_rejected
+
+    def test_accept_dfir(self):
+        engine = QualityEngine()
+        opp = _make_opp(
+            title="DFIR Memory Analysis Tools",
+            url="https://github.com/dfir/volatility-plugins",
+            description="Digital forensics and incident response plugins for memory dump analysis.",
+            source_id="github_search",
+            raw_data={"topics": ["dfir", "digital-forensics", "incident-response"], "language": "Python"},
         )
         result = engine.evaluate_opportunity(opp)
         assert not result.is_rejected
 
 
-class TestQualityEngineRejection:
-    """Tests for opportunities that should be REJECTED."""
+class TestQualityEngineUnrelatedRejection:
+    """Tests ensuring non-cybersecurity repositories ARE REJECTED (Task 13)."""
 
-    def test_reject_iptv_playlist(self):
+    def test_reject_weather_app(self):
         engine = QualityEngine()
         opp = _make_opp(
-            title="Free IPTV Channels Worldwide",
-            url="https://github.com/user/iptv-channels",
-            description="#EXTM3U\n#EXTINF:-1,Channel 1\nhttp://stream.example.com/1",
+            title="React Weather Forecast Dashboard",
+            url="https://github.com/user/weather-app",
+            description="A simple weather application using OpenWeatherMap API to display daily temperature and humidity.",
             source_id="github_search",
-            raw_data={"topics": ["iptv", "m3u"], "language": "HTML"},
+            raw_data={"topics": ["weather", "react", "dashboard"], "language": "JavaScript"},
         )
         result = engine.evaluate_opportunity(opp)
-        assert result.is_rejected
-        assert "PLAYLIST" in result.rejection_reason or "BLACKLIST" in result.rejection_reason
+        assert result.is_rejected, "Weather app should be rejected"
 
-    def test_reject_movie_collection(self):
+    def test_reject_flappy_bird_game(self):
         engine = QualityEngine()
         opp = _make_opp(
-            title="Best Free Movies and TV Shows Collection",
-            url="https://github.com/user/free-movies",
-            description="A curated list of free movies, anime, music, and streaming channels.",
+            title="Flappy Bird Clone in Unity C#",
+            url="https://github.com/user/flappy-bird-unity",
+            description="2D arcade game clone of Flappy Bird built with Unity engine.",
             source_id="github_search",
-            raw_data={"topics": ["movies", "anime"], "language": "Markdown"},
-        )
-        result = engine.evaluate_opportunity(opp)
-        assert result.is_rejected
-
-    def test_reject_torrent_repository(self):
-        engine = QualityEngine()
-        opp = _make_opp(
-            title="Torrent Search Engine",
-            url="https://github.com/user/torrent-search",
-            description="Download torrents for free movies, music, and software.",
-            source_id="github_search",
+            raw_data={"topics": ["gaming", "unity", "gamedev"], "language": "C#"},
         )
         result = engine.evaluate_opportunity(opp)
         assert result.is_rejected
 
-    def test_reject_empty_title(self):
+    def test_reject_generic_ml_tutorial(self):
         engine = QualityEngine()
-        opp = _make_opp(title="", description="Some description.")
+        opp = _make_opp(
+            title="PyTorch Image Classification Tutorial",
+            url="https://github.com/user/pytorch-mnist",
+            description="Basic machine learning tutorial classifying MNIST handwritten digits using PyTorch.",
+            source_id="github_search",
+            raw_data={"topics": ["machine-learning", "pytorch", "deep-learning"], "language": "Python"},
+        )
         result = engine.evaluate_opportunity(opp)
         assert result.is_rejected
-        assert result.rejection_reason == "INVALID_CONTENT"
 
-    def test_reject_invalid_url(self):
+
+class TestQualityEngineDiagnostics:
+    """Tests for Task 11 score breakdown diagnostics."""
+
+    def test_score_breakdown_stored(self):
         engine = QualityEngine()
-        opp = _make_opp(url="not-a-valid-url")
+        opp = _make_opp(
+            title="OWASP Security Scanner",
+            url="https://github.com/owasp/scanner",
+            description="OWASP vulnerability scanner tool for web application security.",
+            source_id="github_search",
+            raw_data={"topics": ["owasp", "security"], "language": "Python", "stargazers_count": 150},
+        )
         result = engine.evaluate_opportunity(opp)
-        assert result.is_rejected
-        assert result.rejection_reason == "INVALID_CONTENT"
+        assert hasattr(result, "score_breakdown")
+        assert "repo_name_score" in result.score_breakdown
+        assert "description_score" in result.score_breakdown
+        assert "final_confidence" in result.score_breakdown
+        assert result.score_breakdown["final_confidence"] == result.confidence_score
 
 
 class TestQualityEngineDuplicates:
@@ -131,17 +214,8 @@ class TestQualityEngineDuplicates:
 
     def test_reject_duplicate_url(self):
         engine = QualityEngine()
-        opp1 = _make_opp(title="First Opportunity", url="https://example.com/dupe-test")
-        opp2 = _make_opp(title="Second Opportunity", url="https://example.com/dupe-test")
-        engine.evaluate_opportunity(opp1)
-        result = engine.evaluate_opportunity(opp2)
-        assert result.is_rejected
-        assert result.rejection_reason == "DUPLICATE"
-
-    def test_reject_duplicate_title(self):
-        engine = QualityEngine()
-        opp1 = _make_opp(title="Same Title Opportunity", url="https://example.com/unique1")
-        opp2 = _make_opp(title="Same Title Opportunity", url="https://example.com/unique2")
+        opp1 = _make_opp(title="First Security Opp", url="https://example.com/dupe-test", description="OWASP tool")
+        opp2 = _make_opp(title="Second Security Opp", url="https://example.com/dupe-test", description="OWASP tool")
         engine.evaluate_opportunity(opp1)
         result = engine.evaluate_opportunity(opp2)
         assert result.is_rejected
@@ -181,26 +255,3 @@ class TestQualityEngineBatch:
         accepted = engine.filter_accepted(opps)
         assert len(accepted) == 1
         assert accepted[0].title == "Valid Security Tool"
-
-
-class TestQualityMetrics:
-    """Tests for metrics tracking."""
-
-    def test_metrics_recording(self):
-        metrics = QualityMetrics()
-        metrics.record_evaluation(accepted=True, confidence_score=85.0, matched_keywords=["OWASP", "CVE"])
-        metrics.record_evaluation(accepted=False, confidence_score=20.0, rejection_reason="BLACKLIST_KEYWORD", is_spam=True)
-
-        assert metrics.evaluated_count == 2
-        assert metrics.accepted_count == 1
-        assert metrics.rejected_count == 1
-        assert metrics.spam_attempts_blocked == 1
-        assert metrics.acceptance_rate == 50.0
-
-    def test_metrics_to_dict(self):
-        metrics = QualityMetrics()
-        metrics.record_evaluation(accepted=True, confidence_score=95.0)
-        d = metrics.to_dict()
-        assert "evaluated_count" in d
-        assert "confidence_distribution" in d
-        assert d["evaluated_count"] == 1

@@ -1,7 +1,7 @@
 """
 Master Quality Intelligence Engine for CyberScout AI (Phase 11.5).
 
-Orchestrates the 10-stage evaluation pipeline for all ingested opportunities.
+Orchestrates the weighted 7-component evaluation pipeline for all ingested opportunities.
 """
 
 from typing import Dict, List, Optional, Set, Tuple
@@ -53,8 +53,8 @@ class QualityEngine:
 
     def evaluate_opportunity(self, opportunity: Opportunity) -> Opportunity:
         """
-        Runs an Opportunity model through the 10-stage quality pipeline.
-        Attaches quality fields and rejection metadata directly to the opportunity.
+        Runs an Opportunity model through the quality evaluation pipeline.
+        Attaches quality fields, score breakdown, and decision metadata.
 
         Args:
             opportunity: Target Opportunity model instance.
@@ -76,6 +76,12 @@ class QualityEngine:
         topics = raw_data.get("topics") or raw_data.get("repository_topics") or []
         homepage = raw_data.get("homepage") or ""
         language = raw_data.get("language")
+        license_name = raw_data.get("license")
+        if isinstance(license_name, dict):
+            license_name = license_name.get("name") or license_name.get("key") or ""
+        owner_type = raw_data.get("owner_type")
+        if not owner_type and isinstance(raw_data.get("owner"), dict):
+            owner_type = raw_data.get("owner", {}).get("type")
 
         quality_flags: List[str] = []
 
@@ -113,88 +119,125 @@ class QualityEngine:
         self._seen_titles.add(norm_title)
 
         # ---------------------------------------------------------------------
-        # STAGE 2: Repository Topic Analysis
+        # Metadata Analysis & 7-Component Weighted Scoring (Tasks 2, 4, 5, 6, 7)
         # ---------------------------------------------------------------------
-        topic_score, matched_topics, has_sec_topic = self.topic_analyzer.analyze_topics(topics)
-
-        # Hard rejection if GitHub repo exposes topics and NONE are cybersecurity topics
-        if topics and not has_sec_topic and "github" in source_id.lower():
-            return self._reject(opportunity, "INVALID_TOPIC", f"GitHub repository topics {topics} contain zero cybersecurity terms", flags=["NO_SECURITY_TOPICS"])
-
-        # ---------------------------------------------------------------------
-        # STAGE 3: Repository Language Analysis
-        # ---------------------------------------------------------------------
-        lang_score, lang_flag = self.language_filter.evaluate_language(language)
-        if lang_flag:
-            quality_flags.append(lang_flag)
-
-        # ---------------------------------------------------------------------
-        # STAGE 4: Keyword Intelligence
-        # ---------------------------------------------------------------------
-        keyword_score, matched_keywords = self.keyword_classifier.classify_keywords(
+        field_analysis = self.keyword_classifier.analyze_field_scores(
             title=title,
             description=description,
             readme=readme,
             topics=topics,
             homepage=homepage,
+            url=url,
+            license_name=str(license_name) if license_name else None,
+            owner_type=str(owner_type) if owner_type else None,
         )
 
-        # ---------------------------------------------------------------------
-        # STAGE 2/3/4 Repository Classification
-        # ---------------------------------------------------------------------
+        repo_name_score = field_analysis["repo_name_score"]
+        description_score = field_analysis["description_score"]
+        topics_score = field_analysis["topics_score"]
+        readme_score = field_analysis["readme_score"]
+        matched_keywords = field_analysis["matched_keywords"]
+
+        popularity_score = self.repo_classifier.calculate_popularity_score(raw_data)
+        freshness_score = self.repo_classifier.calculate_freshness_score(raw_data)
+        language_score = self.repo_classifier.calculate_language_score(language)
+
+        _, lang_flag = self.language_filter.evaluate_language(language)
+        if lang_flag:
+            quality_flags.append(lang_flag)
+
+        topic_score, matched_topics, has_sec_topic = self.topic_analyzer.analyze_topics(topics)
+        if not has_sec_topic and topics:
+            quality_flags.append("NO_SECURITY_TOPICS")
+
+        # Compute Task 4 & Task 8 Composite Confidence Score (0 - 100)
+        confidence_score, breakdown = self.confidence_calculator.compute_weighted_confidence(
+            repo_name_score=repo_name_score,
+            description_score=description_score,
+            topics_score=topics_score,
+            readme_score=readme_score,
+            popularity_score=popularity_score,
+            freshness_score=freshness_score,
+            language_score=language_score,
+            source_id=source_id,
+            quality_flags=quality_flags,
+        )
+
+        # Compute legacy relevance & quality scores for backward compatibility
         repo_score, _, repo_flags = self.repo_classifier.classify_repository(raw_data)
         quality_flags.extend(repo_flags)
-
-        # ---------------------------------------------------------------------
-        # Domain Relevance Calculation
-        # ---------------------------------------------------------------------
         relevance_score = self.relevance_calculator.calculate_relevance(
             category=category,
-            keyword_score=keyword_score,
+            keyword_score=repo_name_score + description_score,
             topic_score=topic_score,
             repo_score=repo_score,
             source_id=source_id,
         )
 
-        # Rejection check if keyword score and relevance are zero for generic repositories
-        if keyword_score == 0.0 and relevance_score < 20.0 and "github" in source_id.lower():
-            return self._reject(opportunity, "NO_SECURITY_KEYWORDS", "No cybersecurity keywords or topics detected", flags=["UNRELATED_REPOSITORY"])
+        # ---------------------------------------------------------------------
+        # Decision Matrix & Threshold Checking (Task 9)
+        # ---------------------------------------------------------------------
+        decision = "REJECTED"
+        reason = "LOW_CONFIDENCE"
+
+        if confidence_score >= self.rules.accept_medium_threshold:  # 60.0+
+            decision = "ACCEPTED"
+            reason = "Repository contains multiple cybersecurity indicators with strong community adoption."
+        elif confidence_score >= self.rules.needs_review_threshold:  # 40.0 - 59.0
+            decision = "ACCEPTED"
+            reason = "Moderate cybersecurity confidence score; flagged for optional review."
+            quality_flags.append("NEEDS_REVIEW")
+        else:
+            reason = f"Confidence score {confidence_score:.1f} is below minimum threshold {self.rules.needs_review_threshold:.1f}"
 
         # ---------------------------------------------------------------------
-        # STAGE 9: Composite Confidence Score (0-100)
+        # Task 10: Formatted Diagnostic Logging
         # ---------------------------------------------------------------------
-        confidence_score = self.confidence_calculator.compute_confidence(
-            keyword_score=keyword_score,
-            topic_score=topic_score,
-            language_score=lang_score,
-            relevance_score=relevance_score,
-            source_id=source_id,
-            quality_flags=quality_flags,
+        diag_log = (
+            "\n------------------------------------------------\n"
+            f"Repository:\n{title}\n\n"
+            f"Keyword Score:\n{int(repo_name_score)}\n\n"
+            f"Description Score:\n{int(description_score)}\n\n"
+            f"Topics Score:\n{int(topics_score)}\n\n"
+            f"README Score:\n{int(readme_score)}\n\n"
+            f"Popularity:\n{int(popularity_score)}\n\n"
+            f"Freshness:\n{int(freshness_score)}\n\n"
+            f"Language:\n{int(language_score)}\n\n"
+            f"Final Confidence:\n{int(confidence_score)}\n\n"
+            f"Decision:\n{decision}\n\n"
+            f"Reason:\n{reason}\n"
+            "------------------------------------------------"
         )
+        logger.info(diag_log)
 
-        # Check minimum confidence threshold
-        if confidence_score < self.rules.minimum_confidence:
+        # If decision is rejection, return rejected model
+        if decision == "REJECTED":
             return self._reject(
                 opportunity,
                 "LOW_CONFIDENCE",
-                f"Confidence score {confidence_score:.1f} is below minimum threshold {self.rules.minimum_confidence:.1f}",
+                reason,
                 flags=quality_flags,
                 confidence_score=confidence_score,
-                keyword_score=keyword_score,
-                topic_score=topic_score,
+                keyword_score=repo_name_score + description_score,
+                topic_score=topics_score,
+                breakdown=breakdown,
             )
 
         # ---------------------------------------------------------------------
-        # STAGE 10: Accept & Attach Metadata
+        # Task 11: Accept & Attach Score Breakdown Diagnostics
         # ---------------------------------------------------------------------
+        breakdown["decision"] = decision
+        breakdown["reason"] = reason
+
         opportunity.confidence_score = confidence_score
-        opportunity.quality_score = max(keyword_score, relevance_score)
+        opportunity.quality_score = max(confidence_score, relevance_score)
         opportunity.is_rejected = False
         opportunity.rejection_reason = ""
         opportunity.quality_flags = ",".join(sorted(list(set(quality_flags))))
-        opportunity.topic_score = topic_score
-        opportunity.keyword_score = keyword_score
+        opportunity.topic_score = topics_score
+        opportunity.keyword_score = repo_name_score + description_score
         opportunity.spam_score = 0.0
+        opportunity.score_breakdown = breakdown
 
         self.metrics.record_evaluation(
             accepted=True,
@@ -203,7 +246,6 @@ class QualityEngine:
             matched_topics=matched_topics,
         )
 
-        logger.info(f"QualityEngine ACCEPTED '{title}' (Confidence: {confidence_score:.1f}/100 | Flags: {opportunity.quality_flags})")
         return opportunity
 
     def evaluate_batch(self, opportunities: List[Opportunity]) -> List[Opportunity]:
@@ -224,7 +266,7 @@ class QualityEngine:
 
     def filter_accepted(self, opportunities: List[Opportunity]) -> List[Opportunity]:
         """
-        Filters a list of Opportunity instances, returning ONLY high-quality accepted ones.
+        Filters a list of Opportunity instances, returning ONLY accepted ones.
 
         Args:
             opportunities: List of Opportunity instances.
@@ -238,15 +280,6 @@ class QualityEngine:
     def calculate_quality_score(self, opportunity: Opportunity) -> float:
         """
         Backward-compatible quality score accessor used by RankingEngine & ConfidenceEngine.
-
-        Runs the keyword classifier against the opportunity's text fields and returns
-        the keyword intelligence score as a simple numeric quality indicator.
-
-        Args:
-            opportunity: Opportunity model instance.
-
-        Returns:
-            Float quality score between 0.0 and 100.0
         """
         title = opportunity.title or ""
         description = opportunity.description or ""
@@ -277,8 +310,9 @@ class QualityEngine:
         keyword_score: float = 0.0,
         topic_score: float = 0.0,
         spam_score: float = 0.0,
+        breakdown: Optional[Dict[str, float]] = None,
     ) -> Opportunity:
-        """Helper to mark an opportunity as rejected with metadata."""
+        """Helper to mark an opportunity as rejected with metadata and diagnostic breakdown."""
         flags = flags or []
         opportunity.confidence_score = confidence_score
         opportunity.quality_score = 0.0
@@ -288,6 +322,11 @@ class QualityEngine:
         opportunity.topic_score = topic_score
         opportunity.keyword_score = keyword_score
         opportunity.spam_score = spam_score
+
+        if breakdown:
+            breakdown["decision"] = "REJECTED"
+            breakdown["reason"] = message
+            opportunity.score_breakdown = breakdown
 
         is_dup = reason == "DUPLICATE"
         is_spm = reason in ["SPAM", "PLAYLIST_DETECTED", "BLACKLIST_KEYWORD"]

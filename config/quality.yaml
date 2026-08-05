@@ -1,14 +1,27 @@
 # Quality Intelligence Engine Configuration for CyberScout AI
 
 thresholds:
-  minimum_confidence: 60
-  minimum_keyword_score: 20
-  minimum_topic_score: 15
+  minimum_confidence: 40.0
+  accept_high_threshold: 80.0
+  accept_medium_threshold: 60.0
+  needs_review_threshold: 40.0
+  minimum_keyword_score: 10.0
+  minimum_topic_score: 10.0
   spam_threshold: 0.70
   duplicate_threshold: 0.85
   max_readme_urls: 200
 
-quality_weights:
+# Task 4 Component Weights (Total: 100 points)
+scoring_weights:
+  repo_name_weight: 20.0
+  description_weight: 20.0
+  topics_weight: 20.0
+  readme_weight: 15.0
+  popularity_weight: 10.0
+  freshness_weight: 10.0
+  language_weight: 5.0
+
+legacy_weights:
   keyword_weight: 0.35
   topic_weight: 0.25
   language_weight: 0.15
@@ -19,22 +32,38 @@ approved_topics:
   - security
   - cybersecurity
   - ctf
+  - picoctf
+  - cyberdefenders
+  - hackthebox
+  - htb
+  - tryhackme
+  - thm
+  - ctfd
   - owasp
   - pentesting
-  - osint
-  - forensics
-  - malware
-  - reverse-engineering
-  - bug-bounty
+  - pentest
+  - penetration-testing
   - red-team
   - blue-team
+  - purple-team
   - dfir
+  - digital-forensics
+  - incident-response
+  - threat-hunting
+  - malware
+  - malware-analysis
+  - ransomware
+  - reverse-engineering
+  - reversing
+  - bug-bounty
   - cloud-security
   - web-security
   - network-security
   - cryptography
   - exploit
   - vulnerability
+  - cve
+  - cwe
   - threat-intelligence
   - appsec
   - devsecops
@@ -44,6 +73,44 @@ approved_topics:
   - mitre
   - att&ck
   - mitre-attack
+  - security-tools
+  - active-directory
+  - privilege-escalation
+  - privesc
+  - yara
+  - sigma
+  - volatility
+  - autopsy
+  - ghidra
+  - ida
+  - radare2
+  - burp-suite
+  - metasploit
+  - nmap
+  - wireshark
+  - zeek
+  - suricata
+  - snort
+  - osint
+  - reconnaissance
+  - binary-exploitation
+  - pwn
+  - steganography
+  - firmware-security
+  - iot-security
+  - ics-security
+  - scada
+  - api-security
+  - mobile-security
+  - sast
+  - dast
+  - hackerone
+  - bugcrowd
+  - aws-security
+  - azure-security
+  - gcp-security
+  - kubernetes-security
+  - docker-security
 
 approved_languages:
   - Python
@@ -51,14 +118,14 @@ approved_languages:
   - Rust
   - C
   - C++
-  - Java
-  - JavaScript
-  - TypeScript
   - PowerShell
   - Bash
   - Shell
-  - Lua
+  - JavaScript
+  - TypeScript
+  - Java
   - C#
+  - Lua
   - Ruby
   - PHP
 
@@ -111,50 +178,99 @@ blacklist_keywords:
   - "pirated software"
   - piracy
 
+# Comprehensive Cybersecurity Vocabulary Dictionary (Task 3)
 preferred_keywords:
+  - Cybersecurity
+  - "Information Security"
+  - Infosec
+  - Cyber
+  - Security
+  - "Security Tools"
   - OWASP
-  - MITRE
-  - ATT&CK
-  - "MITRE ATT&CK Framework"
-  - TTPs
-  - CVE
-  - Exploit
-  - Vulnerability
-  - Authentication
-  - Authorization
-  - "SQL Injection"
-  - XSS
-  - CSRF
-  - Linux
-  - Windows
+  - "Penetration Testing"
+  - Pentest
+  - "Red Team"
+  - "Blue Team"
+  - "Purple Team"
   - SOC
   - SIEM
-  - IDS
-  - IPS
-  - "Threat Intelligence"
-  - Malware
-  - Forensics
-  - "Reverse Engineering"
+  - Elastic
+  - Splunk
+  - DFIR
+  - "Digital Forensics"
   - "Incident Response"
+  - "Threat Hunting"
+  - Malware
+  - Ransomware
+  - "Reverse Engineering"
+  - Exploit
+  - Vulnerability
+  - CVE
+  - CWE
+  - "Privilege Escalation"
+  - "Active Directory"
+  - Kerberos
+  - BloodHound
+  - Mimikatz
+  - "Windows Security"
+  - "Linux Security"
+  - "Network Security"
+  - "Cloud Security"
+  - "AWS Security"
+  - "Azure Security"
+  - "GCP Security"
+  - IAM
+  - "Kubernetes Security"
+  - "Docker Security"
+  - DevSecOps
+  - "Static Analysis"
+  - "Dynamic Analysis"
+  - SAST
+  - DAST
+  - "Bug Bounty"
+  - HackerOne
+  - Bugcrowd
   - CTF
+  - CTFd
   - HackTheBox
+  - HTB
   - TryHackMe
-  - PortSwigger
-  - "Burp Suite"
+  - THM
+  - CyberDefenders
+  - PicoCTF
+  - "Web Security"
+  - "API Security"
+  - "Mobile Security"
+  - Firmware
+  - "IoT Security"
+  - ICS
+  - SCADA
+  - "Binary Exploitation"
+  - Pwn
+  - Crypto
+  - Cryptography
+  - Steganography
+  - OSINT
+  - Reconnaissance
   - Nmap
+  - "Burp Suite"
   - Metasploit
+  - Nikto
+  - Gobuster
+  - FFUF
+  - SQLMap
+  - Hydra
+  - Hashcat
+  - "John the Ripper"
   - Wireshark
+  - Zeek
+  - Suricata
+  - Snort
   - YARA
   - Sigma
-  - IOC
-  - Detection
-  - "Blue Team"
-  - "Red Team"
-  - "Digital Forensics"
-  - Advisory
-  - Patch
-  - Zero-Day
-  - Internship
-  - Course
-  - Certification
-  - Hackathon
+  - Volatility
+  - Autopsy
+  - Maltego
+  - Ghidra
+  - IDA
+  - Radare2
