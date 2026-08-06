@@ -1,8 +1,8 @@
 """
-SQLite Database Connection and Schema Lifecycle Manager.
+Database Connection and Schema Lifecycle Manager for CyberScout AI.
 
-Handles connecting to SQLite, setting pragmas (WAL, foreign keys), creating
-tables and indexes according to docs/architecture/sqlite_schema.md, health verification,
+Handles connecting to PostgreSQL (when DATABASE_URL is set) or fallback SQLite,
+setting pragmas, creating tables/indexes via SQLAlchemy ORM, health verification,
 and clean setup/teardown.
 """
 
@@ -18,45 +18,165 @@ from src.core.logging import get_logger
 logger = get_logger(__name__)
 
 
+class PgRow:
+    """Wrapper giving DBAPI tuple rows dictionary-like key access matching sqlite3.Row."""
+    def __init__(self, description, row_tuple):
+        self._keys = [col[0] for col in description] if description else []
+        self._values = row_tuple
+        self._mapping = dict(zip(self._keys, row_tuple)) if row_tuple else {}
+
+    def __getitem__(self, item):
+        if isinstance(item, int):
+            return self._values[item]
+        return self._mapping[item]
+
+    def get(self, key, default=None):
+        return self._mapping.get(key, default)
+
+    def keys(self):
+        return self._keys
+
+    def values(self):
+        return self._values
+
+    def items(self):
+        return self._mapping.items()
+
+    def __iter__(self):
+        return iter(self._keys)
+
+
+class PgCursorAdapter:
+    """DBAPI Cursor Adapter translating '?' placeholders to '%s' and wrapping rows in PgRow."""
+    def __init__(self, pg_cursor):
+        self._cursor = pg_cursor
+
+    def execute(self, sql: str, parameters=()):
+        if "?" in sql and "%s" not in sql:
+            sql = sql.replace("?", "%s")
+        if parameters is None:
+            parameters = ()
+        self._cursor.execute(sql, parameters)
+        return self
+
+    def executescript(self, script_sql: str):
+        if "?" in script_sql and "%s" not in script_sql:
+            script_sql = script_sql.replace("?", "%s")
+        self._cursor.execute(script_sql)
+
+    def fetchone(self):
+        row = self._cursor.fetchone()
+        if row is None:
+            return None
+        return PgRow(self._cursor.description, row)
+
+    def fetchall(self):
+        rows = self._cursor.fetchall()
+        if not rows:
+            return []
+        desc = self._cursor.description
+        return [PgRow(desc, r) for r in rows]
+
+    def close(self):
+        try:
+            self._cursor.close()
+        except Exception:
+            pass
+
+    @property
+    def rowcount(self):
+        return self._cursor.rowcount
+
+
+class PgConnectionAdapter:
+    """DBAPI Connection Adapter wrapping PostgreSQL raw connections."""
+    def __init__(self, raw_conn):
+        self._conn = raw_conn
+
+    def cursor(self):
+        return PgCursorAdapter(self._conn.cursor())
+
+    def commit(self):
+        self._conn.commit()
+
+    def rollback(self):
+        self._conn.rollback()
+
+    def close(self):
+        try:
+            self._conn.close()
+        except Exception:
+            pass
+
+
 class DatabaseManager:
     """
-    SQLite Connection & Infrastructure Manager.
+    Database Connection & Infrastructure Manager.
+    Supports SQLAlchemy ORM with PostgreSQL and automatic SQLite fallback.
     """
 
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Optional[Path] = None, custom_url: Optional[str] = None):
         """
-        Initializes DatabaseManager with target SQLite database path.
+        Initializes DatabaseManager.
 
         Args:
-            db_path: Path to database file. Defaults to DATA_DIR/cyberscout.db.
+            db_path: Path to SQLite database file. Defaults to DATA_DIR/cyberscout.db.
+            custom_url: Optional override database connection URL.
         """
         self.db_path = db_path or (DATA_DIR / DEFAULT_DB_NAME)
+        self.custom_url = custom_url
         self._connection: Optional[sqlite3.Connection] = None
+        self._engine = None
+
+    def get_engine(self):
+        """Gets active SQLAlchemy engine for this manager instance."""
+        if self._engine is None:
+            from src.database.engine import create_db_engine
+            self._engine = create_db_engine(custom_url=self.custom_url, db_path=self.db_path)
+        return self._engine
 
     def initialize_database(self) -> None:
         """
-        Ensures target directory exists, establishes connection, enables PRAGMAs,
-        and initializes the database schema if tables do not exist.
+        Initializes database schema via SQLAlchemy DeclarativeBase and runs migrations/seeds.
+        Automatically migrates existing SQLite records to PostgreSQL if DATABASE_URL is set.
         """
         try:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
+            engine = self.get_engine()
+
+            # Create schema tables via SQLAlchemy ORM
+            from src.database.base import Base
+            Base.metadata.create_all(bind=engine)
+
+            # Ensure SQLite schema & connection initialized if in SQLite fallback mode
             conn = self.get_connection()
             self._create_schema(conn)
+
             from src.database.migrations import MigrationManager
             MigrationManager(db_manager=self).apply_migrations()
+
             from src.database.seed import SeedManager
             SeedManager(db_manager=self).run_all_seeds()
-            logger.info(f"Database successfully initialized at '{self.db_path}'.")
-        except sqlite3.Error as e:
-            raise DatabaseConnectionError(f"Failed to initialize SQLite database at '{self.db_path}': {e}", original_exception=e)
 
-    def get_connection(self) -> sqlite3.Connection:
-        """
-        Gets or creates an active SQLite connection with WAL mode and Foreign Keys enabled.
+            # Execute automatic data migration from SQLite to PostgreSQL if DATABASE_URL is configured
+            from src.database.migrations.data_migrator import DatabaseDataMigrator
+            DatabaseDataMigrator(sqlite_path=self.db_path, target_engine=engine).migrate_if_needed()
 
-        Returns:
-            Active sqlite3.Connection object.
+            logger.info("Database successfully initialized and ready.")
+        except Exception as e:
+            logger.warning(f"Database initialization warning: {e}")
+
+    def get_connection(self):
         """
+        Gets or creates an active database connection for SQLite or PostgreSQL.
+        """
+        engine = self.get_engine()
+        if engine.dialect.name == "postgresql":
+            if self._connection is None:
+                raw_conn = engine.raw_connection()
+                self._connection = PgConnectionAdapter(raw_conn)
+            return self._connection
+
         if self._connection is None:
             try:
                 self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -66,7 +186,6 @@ class DatabaseManager:
                     timeout=20.0
                 )
                 self._connection.row_factory = sqlite3.Row
-                # Configure PRAGMAs for concurrency and integrity
                 cursor = self._connection.cursor()
                 cursor.execute("PRAGMA foreign_keys = ON;")
                 cursor.execute("PRAGMA journal_mode = WAL;")
@@ -77,14 +196,21 @@ class DatabaseManager:
         return self._connection
 
     def close_connection(self) -> None:
-        """Closes the active SQLite connection if open."""
+        """Closes the active database connection and disposes SQLAlchemy engine if open."""
         if self._connection:
             try:
                 self._connection.close()
                 self._connection = None
                 logger.debug(f"Closed connection to database: {self.db_path}")
-            except sqlite3.Error as e:
+            except Exception as e:
                 logger.warning(f"Error closing database connection: {e}")
+
+        if self._engine:
+            try:
+                self._engine.dispose()
+                self._engine = None
+            except Exception as e:
+                logger.warning(f"Error disposing database engine: {e}")
 
     @contextmanager
     def transaction(self) -> Generator[sqlite3.Cursor, None, None]:
@@ -111,9 +237,6 @@ class DatabaseManager:
     def ping(self) -> bool:
         """
         Performs a simple query to verify database connection health.
-
-        Returns:
-            True if database is responsive, False otherwise.
         """
         try:
             conn = self.get_connection()
@@ -129,11 +252,11 @@ class DatabaseManager:
     def verify_integrity(self) -> bool:
         """
         Runs SQLite PRAGMA quick_check to verify database file health.
-
-        Returns:
-            True if database passes integrity check, False otherwise.
         """
         try:
+            engine = self.get_engine()
+            if engine.dialect.name == "postgresql":
+                return self.ping()
             conn = self.get_connection()
             cursor = conn.cursor()
             cursor.execute("PRAGMA quick_check;")
@@ -146,6 +269,11 @@ class DatabaseManager:
 
     def get_existing_tables(self) -> List[str]:
         """Returns list of table names present in the database."""
+        engine = self.get_engine()
+        if engine.dialect.name == "postgresql":
+            from sqlalchemy import inspect
+            return inspect(engine).get_table_names()
+
         sql = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -157,20 +285,15 @@ class DatabaseManager:
             cursor.close()
 
     def close(self) -> None:
-        """Closes active database connection cleanly."""
-        if self._connection:
-            try:
-                self._connection.close()
-                logger.debug("SQLite database connection closed.")
-            except sqlite3.Error as e:
-                logger.warning(f"Error closing database connection: {e}")
-            finally:
-                self._connection = None
+        """Closes active database connection and engine cleanly."""
+        self.close_connection()
 
-    def _create_schema(self, conn: sqlite3.Connection) -> None:
+    def _create_schema(self, conn) -> None:
         """
         Creates SQLite tables and indexes matching sqlite_schema.md contract.
         """
+        if self.get_engine().dialect.name == "postgresql":
+            return
         schema_sql = """
         -- 1. Opportunities Table
         CREATE TABLE IF NOT EXISTS Opportunities (

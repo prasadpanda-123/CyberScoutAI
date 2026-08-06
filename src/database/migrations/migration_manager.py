@@ -260,28 +260,24 @@ class MigrationManager:
         Returns:
             Number of newly applied migrations.
         """
-        # 1. Open connection
+        if self.db_manager.get_engine().dialect.name == "postgresql":
+            return 0
         conn = self.db_manager.get_connection()
-        # 2. Initialize migration metadata tables
         self.initialize_metadata_tables()
-        # 3. Read current version
         current_version = self.get_current_version()
         applied_count = 0
 
-        # 4. Run pending migrations
         for migration in MIGRATIONS:
             if migration.version > current_version:
                 logger.info(f"Applying migration v{migration.version}: {migration.description}...")
                 try:
                     now = datetime.now(timezone.utc).isoformat()
 
-                    # Custom migration logic for v3 and v4
                     if migration.version == 3:
                         self._apply_v3_quality_columns()
                     elif migration.version == 4:
                         self._apply_v4_production_columns()
 
-                    # 5 & 6. Record applied migration and commit
                     with self.db_manager.transaction() as cursor:
                         cursor.executescript(migration.sql)
                         cursor.execute(

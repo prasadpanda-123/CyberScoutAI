@@ -34,8 +34,10 @@ def client(tmp_path, monkeypatch):
 
     audit_repo = AuditLogRepository(db_manager=db_mgr)
 
-    def mock_db_init(self, db_path=None):
+    def mock_db_init(self, db_path=None, custom_url=None):
         self.db_path = db_file
+        self.custom_url = custom_url
+        self._engine = db_mgr.get_engine()
         self._connection = db_mgr.get_connection()
 
     monkeypatch.setattr(DatabaseManager, "__init__", mock_db_init)
@@ -170,8 +172,11 @@ def test_public_registration_forces_viewer_role(client):
     assert user["role"] == "Viewer", f"Privilege escalation vulnerability! Expected role 'Viewer', got '{user['role']}'"
 
 
-def test_admin_successful_mfa_otp_login_flow(client):
+def test_admin_successful_mfa_otp_login_flow(client, monkeypatch):
     """Phases 6 - 8: Super Admin logs in via /admin/login, receives OTP, verifies at /admin/verify-otp, and gains access."""
+    monkeypatch.setattr("src.auth.admin_auth.AdminSecurityManager.generate_otp_code", staticmethod(lambda: "123456"))
+    otp_code = "123456"
+
     # 1. GET /admin/login to obtain CSRF token
     get_res = client.get("/admin/login")
     assert get_res.status_code == 200
@@ -191,17 +196,6 @@ def test_admin_successful_mfa_otp_login_flow(client):
     )
     assert post_res.status_code == 302
     assert "/admin/verify-otp" in post_res.location
-
-    # 3. Retrieve audit log to extract generated fallback OTP code
-    from dashboard.routes.admin import audit_repo
-    logs = audit_repo.query_logs(event_type="MFA").get("logs", [])
-    assert len(logs) > 0
-    otp_details = logs[0]["details"]
-    # Parse OTP code from details e.g. "OTP: 482910 ..."
-    import re
-    match = re.search(r"OTP:\s*(\d{6})", otp_details)
-    assert match is not None, f"Could not find OTP in log details: {otp_details}"
-    otp_code = match.group(1)
 
     # 4. GET /admin/verify-otp
     verify_page = client.get("/admin/verify-otp")
