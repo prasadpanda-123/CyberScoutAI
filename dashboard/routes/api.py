@@ -200,7 +200,8 @@ def get_config():
 @api_bp.route("/run", methods=["POST"])
 @admin_required
 def trigger_run():
-    """POST /api/run — Trigger single scan iteration (Sensitive)."""
+    """POST /api/run — Trigger asynchronous background scan job (Sensitive)."""
+    from src.automation.job_manager import ScanInProgressError
     db_mgr = get_db_manager()
     if not db_mgr.ping():
         from src.core.logging import get_logger
@@ -211,9 +212,21 @@ def trigger_run():
         if request.is_json and request.json:
             dry_run = bool(request.json.get("dry_run", False))
         res = api_service.trigger_scan(dry_run=dry_run)
-        return jsonify(res)
+        return jsonify(res), 200
+    except ScanInProgressError as err:
+        return jsonify({"success": False, "error": str(err), "status": "running"}), 409
     except Exception as e:
         return jsonify({"success": False, "status": "failed", "error": str(e)}), 500
+
+
+@api_bp.route("/jobs/<job_id>", methods=["GET"])
+@admin_required
+def get_job_status(job_id: str):
+    """GET /api/jobs/<job_id> — Return scan job status and progress telemetry."""
+    job = api_service.get_job_status(job_id)
+    if not job:
+        return jsonify({"error": "Job not found", "job_id": job_id}), 404
+    return jsonify(job)
 
 
 @api_bp.route("/email/test", methods=["POST"])

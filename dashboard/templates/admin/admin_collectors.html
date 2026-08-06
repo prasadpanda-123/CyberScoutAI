@@ -55,7 +55,6 @@
   </div>
 </div>
 
-<script>
 function triggerAdminScan() {
   if (confirm("Execute scan iteration now?")) {
     fetch('/admin/api/run', {
@@ -64,7 +63,13 @@ function triggerAdminScan() {
       body: JSON.stringify({ dry_run: false })
     })
     .then(r => r.json())
-    .then(d => alert(d.message || JSON.stringify(d)))
+    .then(d => {
+      if (d.job_id) {
+        alert("Scan job initialized (ID: " + d.job_id + "). Running in background.");
+      } else {
+        alert(d.message || d.error || JSON.stringify(d));
+      }
+    })
     .catch(e => alert('Error: ' + e));
   }
 }

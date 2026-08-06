@@ -25,19 +25,20 @@ class APIService:
         self.log_repo = LogRepository(db_manager=self.db_manager)
 
     def trigger_scan(self, dry_run: bool = False) -> Dict[str, Any]:
-        """Triggers single scan pipeline execution using run_pipeline_once."""
-        from src.automation.pipeline import run_pipeline_once
-        res = run_pipeline_once(dry_run=dry_run, db_manager=self.db_manager)
-        items_collected = res.get("items_collected", 0)
-        items_saved = res.get("items_after_dedup", 0)
-        status = res.get("status", "completed")
+        """Triggers asynchronous background scan job returning immediately."""
+        from src.automation.job_manager import scan_job_manager
+        job = scan_job_manager.start_scan_job(dry_run=dry_run, db_manager=self.db_manager)
         return {
-            "success": status == "completed",
-            "status": status,
-            "items_collected": items_collected,
-            "new_items": items_saved,
-            "message": f"Scan completed successfully. Discovered {items_saved} new opportunities from {items_collected} items collected.",
+            "success": True,
+            "job_id": job.job_id,
+            "status": "started",
+            "message": "Scan job initialized and running in background.",
         }
+
+    def get_job_status(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """Queries background scan job status dictionary by job_id."""
+        from src.automation.job_manager import scan_job_manager
+        return scan_job_manager.get_job(job_id)
 
     def send_test_email(self) -> Dict[str, Any]:
         """Triggers test notification email digest safely."""

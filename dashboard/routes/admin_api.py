@@ -121,7 +121,8 @@ def get_db_manager():
 @admin_api_bp.route("/run", methods=["POST"])
 @admin_required
 def admin_trigger_run():
-    """POST /admin/api/run — Trigger single scan iteration."""
+    """POST /admin/api/run — Trigger background scan job."""
+    from src.automation.job_manager import ScanInProgressError
     db_mgr = get_db_manager()
     if not db_mgr.ping():
         from src.core.logging import get_logger
@@ -132,11 +133,23 @@ def admin_trigger_run():
         if request.is_json and request.json:
             dry_run = bool(request.json.get("dry_run", False))
         res = api_service.trigger_scan(dry_run=dry_run)
-        audit_repo.log_event("COLLECTORS", "TRIGGER_RUN", "SUCCESS", source_ip=request.remote_addr, details=f"Scan triggered (dry_run={dry_run})")
-        return jsonify(res)
+        audit_repo.log_event("COLLECTORS", "TRIGGER_RUN", "SUCCESS", source_ip=request.remote_addr, details=f"Scan job launched (job_id={res.get('job_id')})")
+        return jsonify(res), 200
+    except ScanInProgressError as err:
+        return jsonify({"success": False, "error": str(err), "status": "running"}), 409
     except Exception as e:
         audit_repo.log_event("COLLECTORS", "TRIGGER_RUN", "FAILED", source_ip=request.remote_addr, details=str(e))
         return jsonify({"success": False, "status": "failed", "error": str(e)}), 500
+
+
+@admin_api_bp.route("/jobs/<job_id>", methods=["GET"])
+@admin_required
+def admin_get_job_status(job_id: str):
+    """GET /admin/api/jobs/<job_id> — Return scan job status telemetry."""
+    job = api_service.get_job_status(job_id)
+    if not job:
+        return jsonify({"error": "Job not found", "job_id": job_id}), 404
+    return jsonify(job)
 
 
 @admin_api_bp.route("/email/test", methods=["POST"])

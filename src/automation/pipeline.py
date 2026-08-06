@@ -63,6 +63,7 @@ def run_pipeline_once(
     ranking_engine: Optional[RankingEngine] = None,
     knowledge_manager: Optional[KnowledgeManager] = None,
     email_client: Optional[EmailClient] = None,
+    progress_callback: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
     Single source of truth scanning pipeline function.
@@ -76,10 +77,19 @@ def run_pipeline_once(
         dry_run: If True, bypasses database persistence and email sending.
         send_email: If True, dispatches notification email digest after scan.
         db_manager: Optional DatabaseManager instance.
+        progress_callback: Optional progress update callback (stage, pct, collector, found_count, err).
 
     Returns:
         Structured API summary response dictionary.
     """
+    def _notify(stage: str, pct: float, current_col: str, count: int, err: Optional[str] = None):
+        if progress_callback:
+            try:
+                progress_callback(stage, pct, current_col, count, err)
+            except Exception:
+                pass
+
+    _notify("running", 5.0, "Initializing Database Connection", 0)
     start_time = time.time()
     started_iso = datetime.now(timezone.utc).isoformat()
     run_id = f"run-{uuid.uuid4()}"
@@ -87,6 +97,7 @@ def run_pipeline_once(
 
     if not dry_run and not db.ping():
         logger.error("Scan aborted: Database unavailable")
+        _notify("failed", 0.0, "Failed", 0, "Database unavailable")
         raise DatabaseConnectionError("Scan aborted: Database unavailable. PostgreSQL connection could not be established.")
 
     sp = search_planner or SearchPlanner()
@@ -101,11 +112,13 @@ def run_pipeline_once(
     metrics = RunMetrics(run_id=run_id)
 
     # 1. Search Planning Phase
+    _notify("running", 10.0, "Creating Search Plan", 0)
     plan_start = time.time()
     search_plan = sp.create_search_plan()
     metrics.planning_time = time.time() - plan_start
 
     # 2. Collection Phase with Per-Collector Resilience
+    _notify("collecting", 15.0, "Starting Source Collection", 0)
     collect_start = time.time()
     collector_results = cm.execute_plan(search_plan)
     metrics.collection_time = time.time() - collect_start
@@ -113,8 +126,9 @@ def run_pipeline_once(
     collectors_count: Dict[str, int] = {}
     collector_status: Dict[str, str] = {}
     raw_items: List[Opportunity] = []
+    total_results = len(collector_results) or 1
 
-    for res in collector_results:
+    for idx, res in enumerate(collector_results):
         sid = getattr(res, "source_id", "unknown") or "unknown"
         is_succ = getattr(res, "status", "") == "success" or getattr(res, "success", False) or not getattr(res, "errors", [])
         collector_status[sid] = "success" if is_succ else "failed"
@@ -143,13 +157,18 @@ def run_pipeline_once(
                 except Exception as conv_err:
                     logger.debug(f"Skipping unconvertible item from {sid}: {conv_err}")
 
+        pct = 15.0 + ((idx + 1) / total_results) * 45.0
+        _notify("collecting", pct, f"Collected from {sid}", len(raw_items))
+
     # 3. Processing Phase
+    _notify("processing", 65.0, "Deduplicating & Processing Raw Items", len(raw_items))
     process_start = time.time()
     processed_items = pp.process_batch(raw_items)
     metrics.processing_time = time.time() - process_start
     duplicates_removed = len(raw_items) - len(processed_items)
 
     # 4. Quality Intelligence Evaluation Phase
+    _notify("processing", 75.0, "Evaluating Quality Intelligence", len(processed_items))
     quality_start = time.time()
     quality_evaluated = qe.evaluate_batch(processed_items)
     accepted_quality = [opp for opp in quality_evaluated if not opp.is_rejected]
@@ -162,11 +181,13 @@ def run_pipeline_once(
     accepted_items = [opp for opp in prod_evaluated if not opp.is_rejected]
 
     # 6. Ranking Phase
+    _notify("processing", 85.0, "Ranking Opportunities", len(accepted_items))
     rank_start = time.time()
     ranked_items = re.rank_batch(accepted_items)
     metrics.ranking_time = time.time() - rank_start
 
     # 7. Knowledge Base Database Persistence
+    _notify("saving", 90.0, "Persisting Knowledge Base Records", len(ranked_items))
     db_start = time.time()
     saved_count = 0
     sources_str = ",".join(getattr(search_plan, "sources_targeted", []))

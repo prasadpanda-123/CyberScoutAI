@@ -76,37 +76,75 @@ function triggerScan() {
     body: JSON.stringify({ dry_run: false })
   })
     .then(async r => {
-      const rawText = await r.text();
-      try {
-        return JSON.parse(rawText);
-      } catch (parseErr) {
-        return { success: false, status: 'failed', error: 'Server error (HTTP ' + r.status + ')' };
+      const data = await r.json();
+      if (r.status === 409) {
+        throw new Error(data.error || 'A scan is already in progress.');
       }
+      if (!data.success && !data.job_id) {
+        throw new Error(data.error || 'Failed to initialize scan job');
+      }
+      return data;
     })
-    .then(d => {
-      title.innerText = 'Completed';
-      const count = d.saved !== undefined ? d.saved : (d.accepted || d.items_quality_accepted || 0);
-      sub.innerText = '✔ Scan Complete: ' + count + ' new opportunities found.';
-      sub.className = 'text-success fw-bold fs-6 mb-0';
+    .then(data => {
+      const jobId = data.job_id;
+      title.innerText = 'Scan Queued...';
+      sub.innerText = 'Job ID: ' + jobId;
 
-      spinner.style.display = 'none';
-      icon.style.display = 'block';
-      closeBtn.style.display = 'block';
-      footerBtn.style.display = 'block';
+      const pollInterval = setInterval(() => {
+        fetch('/api/jobs/' + jobId)
+          .then(res => res.json())
+          .then(job => {
+            if (!job || job.error) return;
+            
+            const pct = Math.round(job.progress || 0);
+            title.innerText = `Scanning... ${pct}%`;
+            sub.innerText = `Phase: ${job.status.toUpperCase()} | ${job.current_collector} (${job.opportunities_found} found, ${job.elapsed_time}s)`;
 
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-play-circle me-1"></i> Run Scan Now';
-      }
+            if (job.status === 'completed') {
+              clearInterval(pollInterval);
+              title.innerText = 'Completed';
+              sub.innerText = `✔ Scan Complete! Found ${job.opportunities_found} opportunities in ${job.elapsed_time}s.`;
+              sub.className = 'text-success fw-bold fs-6 mb-0';
 
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+              spinner.style.display = 'none';
+              icon.style.display = 'block';
+              closeBtn.style.display = 'block';
+              footerBtn.style.display = 'block';
+
+              if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-play-circle me-1"></i> Run Scan Now';
+              }
+
+              setTimeout(() => {
+                window.location.reload();
+              }, 1500);
+            } else if (job.status === 'failed') {
+              clearInterval(pollInterval);
+              title.innerText = 'Scan Failed';
+              const errText = (job.errors && job.errors.length) ? job.errors.join('; ') : 'Pipeline execution failed';
+              sub.innerText = 'Error: ' + errText;
+              sub.className = 'text-danger mb-0';
+
+              spinner.style.display = 'none';
+              closeBtn.style.display = 'block';
+              footerBtn.style.display = 'block';
+
+              if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-play-circle me-1"></i> Run Scan Now';
+              }
+            }
+          })
+          .catch(pollErr => {
+            console.error('Job polling error:', pollErr);
+          });
+      }, 2500);
     })
     .catch(e => {
-      title.innerText = 'Scan Failed';
-      sub.innerText = 'Error: ' + e;
-      sub.className = 'text-danger mb-0';
+      title.innerText = 'Scan Notice';
+      sub.innerText = String(e.message || e);
+      sub.className = 'text-warning fw-bold mb-0';
 
       spinner.style.display = 'none';
       closeBtn.style.display = 'block';

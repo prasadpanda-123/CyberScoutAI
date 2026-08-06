@@ -25,40 +25,36 @@ class TestGitHubTokenIntegration(unittest.TestCase):
     def test_github_token_header_injection(self):
         """Verify Authorization header is injected when GITHUB_TOKEN is present."""
         client = HTTPClient()
-        with patch("urllib.request.urlopen") as mock_urlopen:
+        with patch.object(client.session, "get") as mock_get:
             mock_response = MagicMock()
-            mock_response.getcode.return_value = 200
-            mock_response.read.return_value = b'{"status": "ok"}'
-            mock_response.headers = {}
-            mock_urlopen.return_value.__enter__.return_value = mock_response
+            mock_response.status_code = 200
+            mock_response.text = '{"status": "ok"}'
+            mock_get.return_value = mock_response
 
             client.get("https://api.github.com/search/repositories?q=cybersecurity_test_query", use_cache=False)
 
-            # Check request headers passed to urlopen
-            args, kwargs = mock_urlopen.call_args
-            req = args[0]
-            self.assertEqual(req.headers.get("Authorization"), "Bearer ghp_mock_secret_token_12345")
-            self.assertEqual(req.headers.get("Accept"), "application/vnd.github+json")
-            self.assertEqual(req.headers.get("X-github-api-version"), "2022-11-28")
+            args, kwargs = mock_get.call_args
+            req_headers = kwargs.get("headers", {})
+            self.assertEqual(req_headers.get("Authorization"), "Bearer ghp_mock_secret_token_12345")
+            self.assertEqual(req_headers.get("Accept"), "application/vnd.github+json")
+            self.assertEqual(req_headers.get("X-GitHub-Api-Version"), "2022-11-28")
 
     @patch.dict(os.environ, {"GITHUB_TOKEN": ""}, clear=True)
     def test_github_anonymous_mode(self):
         """Verify requests fall back to anonymous mode when token is absent."""
         client = HTTPClient()
-        with patch("urllib.request.urlopen") as mock_urlopen:
+        with patch.object(client.session, "get") as mock_get:
             mock_response = MagicMock()
-            mock_response.getcode.return_value = 200
-            mock_response.read.return_value = b'{"status": "ok"}'
-            mock_response.headers = {}
-            mock_urlopen.return_value.__enter__.return_value = mock_response
+            mock_response.status_code = 200
+            mock_response.text = '{"status": "ok"}'
+            mock_get.return_value = mock_response
 
             client.get("https://api.github.com/search/repositories?q=cybersecurity_test_query", use_cache=False)
 
-            # Verify no Authorization header is sent
-            args, kwargs = mock_urlopen.call_args
-            req = args[0]
-            self.assertNotIn("Authorization", req.headers)
-            self.assertEqual(req.headers.get("Accept"), "application/vnd.github+json")
+            args, kwargs = mock_get.call_args
+            req_headers = kwargs.get("headers", {})
+            self.assertNotIn("Authorization", req_headers)
+            self.assertEqual(req_headers.get("Accept"), "application/vnd.github+json")
 
     @patch.dict(os.environ, {"GITHUB_TOKEN": "ghp_test_token_999"})
     def test_github_status_cli_authenticated(self):

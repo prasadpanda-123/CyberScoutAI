@@ -26,6 +26,9 @@ from src.collectors.retry import CollectorRetry
 from src.core.constants import CONFIG_DIR
 from src.core.logging import get_logger
 
+import requests
+from requests.adapters import HTTPAdapter
+
 logger = get_logger(__name__)
 
 
@@ -58,7 +61,7 @@ def sanitize_secret_text(text: str) -> str:
 
 class HTTPClient:
     """
-    Centralized HTTP Client for all CyberScout AI collectors.
+    Centralized HTTP Client for all CyberScout AI collectors with requests.Session pooling.
     """
 
     def __init__(
@@ -71,7 +74,9 @@ class HTTPClient:
         self.config_file = config_file or (CONFIG_DIR / "http.yaml")
         self.user_agents_file = CONFIG_DIR / "user_agents.yaml"
 
-        self.timeout_seconds = 15.0
+        self.connect_timeout = 10.0
+        self.read_timeout = 20.0
+        self.timeout = (self.connect_timeout, self.read_timeout)
         self.verify_ssl = True
         self.follow_redirects = True
         self.user_agents = [
@@ -82,6 +87,12 @@ class HTTPClient:
         self.rate_limiter = rate_limiter or RateLimiter()
         self.retry_policy = retry_policy or CollectorRetry()
 
+        # Connection Pooling setup via requests.Session
+        self.session = requests.Session()
+        adapter = HTTPAdapter(pool_connections=10, pool_maxsize=20)
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
+
         self.load_configuration()
 
     def load_configuration(self) -> None:
@@ -90,7 +101,9 @@ class HTTPClient:
             try:
                 with open(self.config_file, "r", encoding="utf-8") as f:
                     cfg = yaml.safe_load(f) or {}
-                self.timeout_seconds = float(cfg.get("timeout_seconds", 15.0))
+                self.connect_timeout = float(cfg.get("connect_timeout", 10.0))
+                self.read_timeout = float(cfg.get("read_timeout", 20.0))
+                self.timeout = (self.connect_timeout, self.read_timeout)
                 self.verify_ssl = bool(cfg.get("verify_ssl", True))
                 self.follow_redirects = bool(cfg.get("follow_redirects", True))
             except Exception as e:
@@ -120,7 +133,7 @@ class HTTPClient:
         metrics: Optional[CollectorMetrics] = None,
     ) -> Tuple[int, str]:
         """
-        Executes HTTP GET request with caching, rate limiting, retries, and token injection.
+        Executes HTTP GET request with requests connection pooling, timeouts, and logging.
 
         Args:
             url: Target URL string.
@@ -133,7 +146,6 @@ class HTTPClient:
         Returns:
             Tuple of (status_code, content_text).
         """
-        # Append query params to URL if provided
         target_url = url
         if params:
             encoded_params = urllib.parse.urlencode(params)
@@ -171,43 +183,43 @@ class HTTPClient:
             req_headers.update(headers)
 
         start_time = time.time()
+        safe_target_url = sanitize_secret_text(target_url)
 
         def _do_get():
-            req = urllib.request.Request(target_url, headers=req_headers, method="GET")
             try:
-                with urllib.request.urlopen(req, timeout=self.timeout_seconds) as response:
-                    status_code = response.getcode()
-                    raw_bytes = response.read()
-
-                    # Check gzip encoding
-                    if response.headers.get("Content-Encoding") == "gzip":
-                        buf = BytesIO(raw_bytes)
-                        with gzip.GzipFile(fileobj=buf) as f:
-                            raw_bytes = f.read()
-
-                    content_text = raw_bytes.decode("utf-8", errors="replace")
-                    return status_code, content_text
-            except urllib.error.HTTPError as http_err:
-                status_code = http_err.code
-                error_body = ""
-                try:
-                    error_body = http_err.read().decode("utf-8", errors="replace")
-                except Exception:
-                    pass
-                
-                # Sanitize secret token from output
-                safe_err_msg = sanitize_secret_text(f"HTTP {status_code} - {http_err.reason}")
+                resp = self.session.get(
+                    target_url,
+                    headers=req_headers,
+                    timeout=self.timeout,
+                    verify=self.verify_ssl,
+                    allow_redirects=self.follow_redirects,
+                )
+                status_code = resp.status_code
+                content_text = resp.text
                 if status_code == 401:
-                    raise HTTPClientError(f"GitHub API 401 Unauthorized: {safe_err_msg}", original_exception=http_err)
+                    safe_err = sanitize_secret_text(f"HTTP 401 - {resp.reason}")
+                    raise HTTPClientError(f"GitHub API 401 Unauthorized: {safe_err}")
                 elif status_code == 403:
-                    raise HTTPClientError(f"GitHub API 403 Rate Limit Exceeded or Forbidden: {safe_err_msg}", original_exception=http_err)
+                    safe_err = sanitize_secret_text(f"HTTP 403 - {resp.reason}")
+                    raise HTTPClientError(f"GitHub API 403 Rate Limit Exceeded: {safe_err}")
                 elif status_code >= 500:
-                    raise HTTPClientError(f"Server Error {status_code}: {safe_err_msg}", original_exception=http_err)
-                else:
-                    return status_code, error_body
-            except Exception as ex:
-                safe_msg = sanitize_secret_text(str(ex))
-                raise HTTPClientError(f"Connection failed: {safe_msg}", original_exception=ex)
+                    safe_err = sanitize_secret_text(f"HTTP {status_code} Server Error - {resp.reason}")
+                    raise HTTPClientError(f"Server Error {status_code}: {safe_err}")
+                return status_code, content_text
+
+            except requests.exceptions.ConnectTimeout as conn_err:
+                logger.error(f"HTTP GET '{safe_target_url}' failed: ConnectTimeout (host took >{self.connect_timeout}s to connect)")
+                raise HTTPClientError(f"ConnectTimeout to '{safe_target_url}' (exceeded {self.connect_timeout}s limit)", original_exception=conn_err)
+            except requests.exceptions.ReadTimeout as read_err:
+                logger.error(f"HTTP GET '{safe_target_url}' failed: ReadTimeout (server took >{self.read_timeout}s to send data)")
+                raise HTTPClientError(f"ReadTimeout from '{safe_target_url}' (exceeded {self.read_timeout}s limit)", original_exception=read_err)
+            except requests.exceptions.Timeout as timeout_err:
+                logger.error(f"HTTP GET '{safe_target_url}' failed: Timeout")
+                raise HTTPClientError(f"Request timeout for '{safe_target_url}'", original_exception=timeout_err)
+            except requests.exceptions.RequestException as req_err:
+                safe_msg = sanitize_secret_text(str(req_err))
+                logger.error(f"HTTP GET '{safe_target_url}' failed: {safe_msg}")
+                raise HTTPClientError(f"Connection failed to '{safe_target_url}': {safe_msg}", original_exception=req_err)
 
         try:
             status_code, text = self.retry_policy.execute(_do_get)

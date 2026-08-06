@@ -37,19 +37,36 @@
 function runCollectors() {
   const alertBox = document.getElementById('statusAlert');
   alertBox.className = 'alert alert-info mb-4';
-  alertBox.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Executing collector pipeline scan... Please wait.';
+  alertBox.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Initializing scan job...';
   alertBox.classList.remove('d-none');
 
   fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dry_run: false }) })
     .then(res => res.json())
     .then(data => {
-      if (data.status === 'success' || data.success) {
-        alertBox.className = 'alert alert-success mb-4';
-        alertBox.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i> Collector scan completed! Collected ${data.collected_count || 0} opportunities.`;
-        setTimeout(() => location.reload(), 2000);
+      if (data.job_id) {
+        const jobId = data.job_id;
+        const poll = setInterval(() => {
+          fetch('/api/jobs/' + jobId)
+            .then(r => r.json())
+            .then(job => {
+              if (!job) return;
+              alertBox.className = 'alert alert-info mb-4';
+              alertBox.innerHTML = `<i class="bi bi-hourglass-split me-2"></i> Collector Scan: <strong>${Math.round(job.progress)}%</strong> [${job.status.toUpperCase()}] - ${job.current_collector} (${job.opportunities_found} found)`;
+              if (job.status === 'completed') {
+                clearInterval(poll);
+                alertBox.className = 'alert alert-success mb-4';
+                alertBox.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i> Scan Complete! Collected ${job.opportunities_found} opportunities in ${job.elapsed_time}s.`;
+                setTimeout(() => location.reload(), 1500);
+              } else if (job.status === 'failed') {
+                clearInterval(poll);
+                alertBox.className = 'alert alert-danger mb-4';
+                alertBox.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> Scan Error: ${(job.errors || []).join('; ') || 'Failed'}`;
+              }
+            });
+        }, 2500);
       } else {
-        alertBox.className = 'alert alert-danger mb-4';
-        alertBox.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> Collector scan error: ${data.error || 'Pipeline execution failed'}`;
+        alertBox.className = 'alert alert-warning mb-4';
+        alertBox.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${data.error || 'Scan could not be started.'}`;
       }
     })
     .catch(err => {
