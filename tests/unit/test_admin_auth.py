@@ -79,6 +79,27 @@ def test_csrf_token_generation_and_verification():
     assert not AdminSecurityManager.verify_csrf_token(token1, None)
 
 
+def test_otp_generation_and_verification():
+    """Test 6-digit numeric OTP generation, hashing, and verification (Phases 6 & 7)."""
+    otp = AdminSecurityManager.generate_otp_code()
+    assert len(otp) == 6
+    assert otp.isdigit()
+
+    otp_hash = AdminSecurityManager.hash_otp_code(otp)
+    assert len(otp_hash) == 64
+
+    # Verify matching code
+    assert AdminSecurityManager.verify_otp_code(otp, otp_hash)
+
+    # Verify non-matching code
+    assert not AdminSecurityManager.verify_otp_code("000000" if otp != "000000" else "999999", otp_hash)
+
+    # Verify invalid format code (non-digit, short, long)
+    assert not AdminSecurityManager.verify_otp_code("abc", otp_hash)
+    assert not AdminSecurityManager.verify_otp_code("12345", otp_hash)
+    assert not AdminSecurityManager.verify_otp_code("1234567", otp_hash)
+
+
 def test_audit_log_repository(temp_db):
     """Test AuditLogRepository event creation and querying."""
     audit_repo = AuditLogRepository(db_manager=temp_db)

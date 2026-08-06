@@ -1,0 +1,39 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Administrator OTP Verification{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center my-5">
+  <div class="col-12 col-md-6 col-lg-4">
+    <div class="admin-card p-4 border-danger">
+      <div class="text-center mb-4">
+        <div class="d-inline-flex align-items-center justify-content-center bg-danger bg-opacity-25 text-danger rounded-circle p-3 mb-3">
+          <i class="bi bi-shield-check fs-1"></i>
+        </div>
+        <h3 class="fw-bold text-light mb-1">Two-Step Verification</h3>
+        <p class="text-muted small">Enter 6-digit OTP code sent to administrator email</p>
+      </div>
+
+      <form method="POST" action="{{ url_for('admin_ui.admin_verify_otp') }}">
+        <input type="hidden" name="csrf_token" value="{{ current_admin.csrf_token }}">
+
+        <div class="mb-4 text-center">
+          <label for="otp_code" class="form-label text-light fw-semibold small text-uppercase">VERIFICATION CODE (6-DIGIT NUMERIC)</label>
+          <input type="text" class="form-control form-control-lg bg-dark text-light border-danger text-center fw-bold font-monospace fs-2" id="otp_code" name="otp_code" required maxlength="6" pattern="[0-9]{6}" autocomplete="off" placeholder="••••••" autofocus style="letter-spacing: 10px;">
+          <div class="form-text text-muted small mt-2">Code expires in 5 minutes &bull; Single use only</div>
+        </div>
+
+        <div class="d-grid mb-3">
+          <button type="submit" class="btn btn-danger btn-lg fw-bold d-flex align-items-center justify-content-center gap-2">
+            <i class="bi bi-shield-lock-fill"></i> Verify & Authenticate
+          </button>
+        </div>
+
+        <div class="text-center mt-3 pt-3 border-top border-secondary">
+          <a href="{{ url_for('admin_ui.admin_login') }}" class="text-muted small text-decoration-none"><i class="bi bi-arrow-left me-1"></i> Back to Admin Login</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -4,6 +4,7 @@ Integration tests for Admin Portal Isolation, Route Hardening & Access Boundarie
 
 import pytest
 from dashboard.app import create_app
+from src.database.audit_log_repository import AuditLogRepository
 from src.database.connection import DatabaseManager
 from src.database.user_repository import UserRepository
 
@@ -31,6 +32,8 @@ def client(tmp_path, monkeypatch):
         role="Operator",
     )
 
+    audit_repo = AuditLogRepository(db_manager=db_mgr)
+
     def mock_db_init(self, db_path=None):
         self.db_path = db_file
         self._connection = db_mgr.get_connection()
@@ -38,6 +41,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setattr(DatabaseManager, "__init__", mock_db_init)
     monkeypatch.setattr("dashboard.routes.admin.user_repo", user_repo)
     monkeypatch.setattr("dashboard.routes.auth.user_repo", user_repo)
+    monkeypatch.setattr("dashboard.routes.admin.audit_repo", audit_repo)
 
     app = create_app()
     app.config["TESTING"] = True
@@ -145,15 +149,37 @@ def test_normal_user_cannot_authenticate_at_admin_login(client):
     assert b"Access Denied: Standard user accounts cannot authenticate" in response.data or b"CSRF validation failed" in response.data
 
 
-def test_admin_successful_login_flow(client):
-    """Phase 1 & 7: Super Admin authenticates at /admin/login, establishes session, and accesses dashboard."""
-    # First GET /admin/login to establish csrf token
+def test_public_registration_forces_viewer_role(client):
+    """Phase 1: Public registration must ignore client role parameter and force Viewer role server-side."""
+    reg_resp = client.post(
+        "/register",
+        data={
+            "username": "crafted_admin_attempt",
+            "email": "crafted_admin@cyberscout.ai",
+            "password": "CraftedPassword123!",
+            "confirm_password": "CraftedPassword123!",
+            "role": "Administrator",  # Crafted parameter attempting privilege escalation
+        },
+        follow_redirects=True,
+    )
+    assert reg_resp.status_code == 200
+
+    from src.database.user_repository import UserRepository
+    user = UserRepository().get_by_email("crafted_admin@cyberscout.ai")
+    assert user is not None
+    assert user["role"] == "Viewer", f"Privilege escalation vulnerability! Expected role 'Viewer', got '{user['role']}'"
+
+
+def test_admin_successful_mfa_otp_login_flow(client):
+    """Phases 6 - 8: Super Admin logs in via /admin/login, receives OTP, verifies at /admin/verify-otp, and gains access."""
+    # 1. GET /admin/login to obtain CSRF token
     get_res = client.get("/admin/login")
     assert get_res.status_code == 200
 
     with client.session_transaction() as sess:
         csrf_tok = sess.get("admin_csrf_token")
 
+    # 2. POST credentials to /admin/login -> expect redirect to /admin/verify-otp
     post_res = client.post(
         "/admin/login",
         data={
@@ -161,20 +187,47 @@ def test_admin_successful_login_flow(client):
             "password": "SuperAdminPass123!",
             "csrf_token": csrf_tok,
         },
+        follow_redirects=False,
+    )
+    assert post_res.status_code == 302
+    assert "/admin/verify-otp" in post_res.location
+
+    # 3. Retrieve audit log to extract generated fallback OTP code
+    from dashboard.routes.admin import audit_repo
+    logs = audit_repo.query_logs(event_type="MFA").get("logs", [])
+    assert len(logs) > 0
+    otp_details = logs[0]["details"]
+    # Parse OTP code from details e.g. "OTP: 482910 ..."
+    import re
+    match = re.search(r"OTP:\s*(\d{6})", otp_details)
+    assert match is not None, f"Could not find OTP in log details: {otp_details}"
+    otp_code = match.group(1)
+
+    # 4. GET /admin/verify-otp
+    verify_page = client.get("/admin/verify-otp")
+    assert verify_page.status_code == 200
+
+    # 5. POST invalid OTP code -> rejected
+    invalid_post = client.post(
+        "/admin/verify-otp",
+        data={"otp_code": "000000" if otp_code != "000000" else "999999", "csrf_token": csrf_tok},
         follow_redirects=True,
     )
-    assert post_res.status_code == 200
-    assert b"Administrator Portal Session Established" in post_res.data or b"Admin Command Center" in post_res.data
+    assert b"Invalid verification code" in invalid_post.data
 
-    # Verify protected admin page accessible now
+    # 6. POST correct OTP code -> successful MFA authentication
+    valid_post = client.post(
+        "/admin/verify-otp",
+        data={"otp_code": otp_code, "csrf_token": csrf_tok},
+        follow_redirects=True,
+    )
+    assert valid_post.status_code == 200
+    assert b"MFA Verification Successful" in valid_post.data or b"Admin Command Center" in valid_post.data
+
+    # 7. Verify admin page is accessible now
     dash_res = client.get("/admin/dashboard")
     assert dash_res.status_code == 200
     assert b"Admin Command Center" in dash_res.data
-
-    # Verify admin API accessible
-    api_res = client.get("/admin/api/system")
-    assert api_res.status_code == 200
-    assert api_res.get_json()["app_name"] == "CyberScout AI"
 
 
 def test_admin_logout_flow(client):

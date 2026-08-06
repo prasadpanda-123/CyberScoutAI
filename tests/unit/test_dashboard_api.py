@@ -27,10 +27,12 @@ class TestDashboardAPI(unittest.TestCase):
 
         # Log in normal user and admin session
         self.client.post("/login", data={"identifier": "admin@cyberscout.ai", "password": "Admin@CyberScout2026!"})
-        self.client.get("/admin/login")
         with self.client.session_transaction() as sess:
-            tok = sess.get("admin_csrf_token")
-        self.client.post("/admin/login", data={"identifier": "admin@cyberscout.ai", "password": "Admin@CyberScout2026!", "csrf_token": tok})
+            sess["admin_authenticated"] = True
+            sess["admin_user_id"] = 1
+            sess["admin_username"] = "admin"
+            sess["admin_role"] = "Super Admin"
+            sess["admin_csrf_token"] = "test_admin_csrf_token"
 
     def test_api_unauthenticated_returns_401(self):
         """Verify unauthenticated API request returns 401 JSON error."""

@@ -20,38 +20,6 @@
         <i class="bi bi-file-earmark-arrow-down me-2"></i> Reports Center
       </a>
     </li>
-
-    {% if current_user.role in ['Super Admin', 'Administrator'] %}
-    <li class="nav-item">
-      <a href="/collectors" class="nav-link {% if active_page == 'collectors' %}active{% endif %}">
-        <i class="bi bi-hdd-network me-2"></i> Collectors
-      </a>
-    </li>
-    <li class="nav-item">
-      <a href="/scheduler" class="nav-link {% if active_page == 'scheduler' %}active{% endif %}">
-        <i class="bi bi-clock-history me-2"></i> Scheduler
-      </a>
-    </li>
-    <li class="nav-item">
-      <a href="/notifications" class="nav-link {% if active_page == 'notifications' %}active{% endif %}">
-        <i class="bi bi-envelope me-2"></i> Notifications
-      </a>
-    </li>
-    {% endif %}
-
-    {% if current_user.role == 'Super Admin' %}
-    <li class="nav-item border-top my-2 pt-2" style="border-color: var(--border-subtle) !important;"></li>
-    <li class="nav-item">
-      <a href="/configuration" class="nav-link {% if active_page == 'configuration' %}active{% endif %}">
-        <i class="bi bi-gear me-2"></i> Configuration
-      </a>
-    </li>
-    <li class="nav-item">
-      <a href="/logs" class="nav-link {% if active_page == 'logs' %}active{% endif %}">
-        <i class="bi bi-terminal me-2"></i> System Logs
-      </a>
-    </li>
-    {% endif %}
   </ul>
 
   <!-- Active User Account Footer Card -->

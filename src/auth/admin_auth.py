@@ -105,3 +105,32 @@ class AdminSecurityManager:
         if not session_token or not form_token:
             return False
         return secrets.compare_digest(session_token, form_token)
+
+    @staticmethod
+    def generate_otp_code() -> str:
+        """
+        Generates a cryptographically secure 6-digit numeric OTP code.
+        """
+        return f"{secrets.randbelow(900000) + 100000:06d}"
+
+    @staticmethod
+    def hash_otp_code(otp_code: str) -> str:
+        """
+        Computes SHA-256 hash of target OTP code for secure storage.
+        """
+        import hashlib
+        return hashlib.sha256(otp_code.encode("utf-8")).hexdigest()
+
+    @classmethod
+    def verify_otp_code(cls, submitted_code: str, target_hash: str) -> bool:
+        """
+        Validates submitted 6-digit OTP code against target stored hash.
+        """
+        if not submitted_code or not target_hash:
+            return False
+        clean_code = submitted_code.strip()
+        if len(clean_code) != 6 or not clean_code.isdigit():
+            return False
+        computed_hash = cls.hash_otp_code(clean_code)
+        return secrets.compare_digest(computed_hash, target_hash)
+

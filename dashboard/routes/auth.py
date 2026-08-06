@@ -85,7 +85,9 @@ def register():
         email = request.form.get("email", "").strip()
         password = request.form.get("password", "").strip()
         confirm_password = request.form.get("confirm_password", "").strip()
-        role = request.form.get("role", "Operator").strip()
+        # Security Hardening (Phase 1): Always enforce default Viewer role server-side.
+        # Ignore any client-submitted 'role' parameters to prevent privilege escalation.
+        role = "Viewer"
 
         if not username or not email or not password:
             flash("All fields are required.", "warning")
