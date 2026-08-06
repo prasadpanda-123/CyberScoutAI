@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 import time
 import traceback
 from typing import Any, Dict, Generator, List, Optional
-from sqlalchemy import inspect, text
+from sqlalchemy import Engine, inspect, text
 from sqlalchemy.orm import Session
 
 from src.core.exceptions import DatabaseConnectionError, DatabaseError, IntegrityError, QueryError
@@ -189,7 +189,7 @@ class DatabaseManager:
         self._last_failure_reason: Optional[str] = None
         self._retry_attempts: int = 0
 
-    def get_engine(self):
+    def get_engine(self) -> Engine:
         """Gets active SQLAlchemy engine for this manager instance."""
         if self._engine is None:
             self._engine = create_db_engine(custom_url=self.custom_url)
@@ -220,7 +220,7 @@ class DatabaseManager:
         except Exception as e:
             logger.warning(f"Database initialization encountered an exception: {e}")
 
-    def get_connection(self):
+    def get_connection(self) -> PgConnectionAdapter:
         """
         Gets active DBAPI raw connection wrapped with compatibility adapter.
         Fails honestly if PostgreSQL is unreachable without resorting to mock fallbacks.
@@ -243,6 +243,9 @@ class DatabaseManager:
                 self._last_failure_timestamp_iso = datetime.now(timezone.utc).isoformat()
                 logger.error(f"PostgreSQL connection failed: {e}")
                 raise DatabaseConnectionError(f"PostgreSQL connection failed: {e}", original_exception=e)
+
+        if self._connection is None:
+            raise DatabaseConnectionError("PostgreSQL connection could not be established.")
         return self._connection
 
     def get_session(self) -> Session:
@@ -418,7 +421,10 @@ class DatabaseManager:
         """Returns list of table names present in database."""
         try:
             engine = self.get_engine()
-            return inspect(engine).get_table_names()
+            insp = inspect(engine)
+            if insp is not None:
+                return list(insp.get_table_names())
+            return []
         except Exception:
             return []
 
