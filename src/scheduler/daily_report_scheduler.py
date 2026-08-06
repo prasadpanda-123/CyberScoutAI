@@ -161,9 +161,10 @@ class DailyReportScheduler:
             logger.info(f"[Scheduler] Decision       : Report already sent today ({today_str}). Skipping.")
             return {"status": "skipped", "reason": "Already sent today", "last_email_sent": last_sent}
 
-        if not force and not self.email_enabled:
-            logger.info("[Scheduler] Decision       : EMAIL_ENABLED is False. Skipping email dispatch.")
-            return {"status": "disabled", "reason": "EMAIL_ENABLED is False"}
+        if not dry_run and not self.db_manager.ping():
+            logger.error("[Scheduler] Scan aborted: Database unavailable")
+            logger.error("[Scheduler] Email cancelled because database transaction failed.")
+            return {"status": "failed", "reason": "Scan aborted: Database unavailable", "email_status": "cancelled"}
 
         logger.info("[Scheduler] Decision       : Proceeding with Pipeline Scan & Email Delivery.")
 

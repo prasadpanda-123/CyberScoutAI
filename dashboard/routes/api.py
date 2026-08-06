@@ -20,13 +20,20 @@ analytics_service = AnalyticsService()
 api_service = APIService()
 
 
+def get_db_manager():
+    from flask import current_app
+    if current_app and hasattr(current_app, "db_manager") and current_app.db_manager:
+        return current_app.db_manager
+    from src.database.connection import DatabaseManager
+    return DatabaseManager()
+
+
 @api_bp.route("/health", methods=["GET"])
 def get_health():
     """GET /api/health — Full system & PostgreSQL database health status (Part 12)."""
-    from src.database.connection import DatabaseManager
-    db_mgr = DatabaseManager()
+    db_mgr = get_db_manager()
     metrics = db_mgr.get_health_metrics()
-    status_code = 200 if metrics["status"] == "ok" else 503
+    status_code = 200 if metrics.get("connected") else 503
     return jsonify(metrics), status_code
 
 
@@ -194,6 +201,11 @@ def get_config():
 @admin_required
 def trigger_run():
     """POST /api/run — Trigger single scan iteration (Sensitive)."""
+    db_mgr = get_db_manager()
+    if not db_mgr.ping():
+        from src.core.logging import get_logger
+        get_logger(__name__).error("Scan aborted: Database unavailable")
+        return jsonify({"success": False, "error": "Database unavailable"}), 503
     try:
         dry_run = False
         if request.is_json and request.json:
@@ -201,7 +213,7 @@ def trigger_run():
         res = api_service.trigger_scan(dry_run=dry_run)
         return jsonify(res)
     except Exception as e:
-        return jsonify({"success": False, "status": "failed", "error": str(e)})
+        return jsonify({"success": False, "status": "failed", "error": str(e)}), 500
 
 
 @api_bp.route("/email/test", methods=["POST"])

@@ -29,7 +29,7 @@ from dashboard.routes import (
 BASE_DIR = Path(__file__).resolve().parent
 
 
-def create_app(config_class=DashboardConfig) -> Flask:
+def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
     """Application factory for Flask Web Dashboard."""
     # Run exponential backoff startup health check
     from src.database.connection import DatabaseManager
@@ -37,7 +37,10 @@ def create_app(config_class=DashboardConfig) -> Flask:
     from src.core.logging import get_logger
 
     logger = get_logger(__name__)
-    db_mgr = DatabaseManager()
+    db_mgr = db_manager or DatabaseManager()
+    app = Flask(__name__, template_folder=str(BASE_DIR / "templates"), static_folder=str(BASE_DIR / "static"))
+    app.config.from_object(config_class)
+    app.db_manager = db_mgr
 
     db_connected = db_mgr.check_connection_with_backoff(max_retries=5)
     if db_connected:
@@ -49,12 +52,6 @@ def create_app(config_class=DashboardConfig) -> Flask:
             logger.error(f"Error during schema initialization: {e}. Dashboard continuing in Degraded Mode.")
     else:
         logger.warning("Database unreachable on boot. CyberScout AI starting in Degraded Mode.")
-
-    app = Flask(
-        __name__,
-        template_folder=str(BASE_DIR / "templates"),
-        static_folder=str(BASE_DIR / "static"),
-    )
     app.config.from_object(config_class)
 
     # Secure Session Cookies

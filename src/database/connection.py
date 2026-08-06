@@ -6,6 +6,7 @@ and transactional session management for PostgreSQL via SQLAlchemy.
 """
 
 from contextlib import contextmanager
+from datetime import datetime, timezone
 import time
 import traceback
 from typing import Any, Dict, Generator, List, Optional
@@ -147,217 +148,6 @@ class PgConnectionAdapter:
         return False
 
 
-_IN_MEMORY_PG_TABLES = {}
-
-
-class InMemoryPgCursorAdapter:
-    """DBAPI Cursor Adapter serving in-memory PostgreSQL queries for offline unit tests."""
-    def __init__(self):
-        self.description = None
-        self._rows = []
-        self.rowcount = 0
-        self.lastrowid = 1
-
-    def execute(self, sql: str, parameters=()):
-        sql_clean = sql.strip().replace("?", "%s")
-        params = list(parameters) if parameters else []
-        sql_upper = sql_clean.upper()
-
-        if "SELECT 1" in sql_upper:
-            self.description = [("1",)]
-            self._rows = [(1,)]
-            self.rowcount = 1
-            return self
-
-        if "SELECT VERSION()" in sql_upper:
-            self.description = [("version",)]
-            self._rows = [("PostgreSQL 16.2 (CyberScout In-Memory Mock)",)]
-            self.rowcount = 1
-            return self
-
-        if "CREATE TABLE" in sql_upper:
-            import re
-            m = re.search(r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-zA-Z0-9_]+)", sql_clean, re.IGNORECASE)
-            if m:
-                tbl = m.group(1)
-                if tbl not in _IN_MEMORY_PG_TABLES:
-                    _IN_MEMORY_PG_TABLES[tbl] = []
-            self.description = None
-            self._rows = []
-            self.rowcount = 0
-            return self
-
-        if "INSERT INTO" in sql_upper:
-            import re
-            m = re.search(r"INSERT\s+INTO\s+([a-zA-Z0-9_]+)\s*\(([^)]+)\)", sql_clean, re.IGNORECASE)
-            if m:
-                tbl = m.group(1)
-                cols = [c.strip() for c in m.group(2).split(",")]
-                if tbl not in _IN_MEMORY_PG_TABLES:
-                    _IN_MEMORY_PG_TABLES[tbl] = []
-
-                row_dict = {"id": len(_IN_MEMORY_PG_TABLES[tbl]) + 1}
-                for idx, col in enumerate(cols):
-                    row_dict[col] = params[idx] if idx < len(params) else None
-
-                if "ON CONFLICT" in sql_upper and _IN_MEMORY_PG_TABLES[tbl]:
-                    for k, v in row_dict.items():
-                        if k != "id":
-                            _IN_MEMORY_PG_TABLES[tbl][0][k] = v
-                else:
-                    _IN_MEMORY_PG_TABLES[tbl].append(row_dict)
-                self.rowcount = 1
-                self.lastrowid = row_dict["id"]
-            self.description = None
-            self._rows = []
-            return self
-
-        if "UPDATE" in sql_upper and "SET" in sql_upper:
-            import re
-            m = re.search(r"UPDATE\s+([a-zA-Z0-9_]+)\s+SET\s+(.*?)(?:\s+WHERE\s+(.*))?$", sql_clean, re.IGNORECASE | re.DOTALL)
-            if m:
-                tbl = m.group(1)
-                set_expr = m.group(2)
-                if tbl not in _IN_MEMORY_PG_TABLES:
-                    _IN_MEMORY_PG_TABLES[tbl] = []
-                set_cols = [c.split("=")[0].strip() for c in set_expr.split(",") if "=" in c]
-
-                if not _IN_MEMORY_PG_TABLES[tbl]:
-                    new_row = {"id": 1}
-                    for idx, col in enumerate(set_cols):
-                        new_row[col] = params[idx] if idx < len(params) else None
-                    _IN_MEMORY_PG_TABLES[tbl].append(new_row)
-                    self.rowcount = 1
-                else:
-                    for r in _IN_MEMORY_PG_TABLES[tbl]:
-                        for idx, col in enumerate(set_cols):
-                            r[col] = params[idx] if idx < len(params) else r.get(col)
-                    self.rowcount = len(_IN_MEMORY_PG_TABLES[tbl])
-            self.description = None
-            self._rows = []
-            return self
-
-        if "SELECT" in sql_upper and "FROM" in sql_upper:
-            import re
-            m_tbl = re.search(r"FROM\s+([a-zA-Z0-9_]+)", sql_clean, re.IGNORECASE)
-            tbl = m_tbl.group(1) if m_tbl else "dual"
-            rows_data = _IN_MEMORY_PG_TABLES.get(tbl, [])
-
-            m_cols = re.search(r"SELECT\s+(.*?)\s+FROM", sql_clean, re.IGNORECASE | re.DOTALL)
-            raw_cols = m_cols.group(1).strip() if m_cols else "*"
-
-            keys = []
-            if raw_cols != "*":
-                for col_item in raw_cols.split(","):
-                    col_item = col_item.strip()
-                    if " as " in col_item.lower():
-                        alias = col_item.lower().split(" as ")[-1].strip()
-                        keys.append(alias)
-                    elif " " in col_item and not col_item.startswith("("):
-                        alias = col_item.split()[-1].strip()
-                        keys.append(alias)
-                    else:
-                        keys.append(col_item.split(".")[-1].strip())
-
-            if "COUNT(*)" in sql_upper or "MAX(" in sql_upper:
-                alias = keys[0] if keys else ("count" if "COUNT(*)" in sql_upper else "max")
-                val = len(rows_data) if "COUNT(*)" in sql_upper else (rows_data[0].get("version", 1) if rows_data else 1)
-                self.description = [(alias,)]
-                self._rows = [(val,)]
-                self.rowcount = 1
-                return self
-
-            matched_rows = rows_data
-            if "WHERE" in sql_upper and params:
-                matched_rows = []
-                for r in rows_data:
-                    match = False
-                    for p in params:
-                        p_str = str(p).strip().lower()
-                        for v in r.values():
-                            if v is not None and str(v).strip().lower() == p_str:
-                                match = True
-                                break
-                        if match:
-                            break
-                    if match:
-                        matched_rows.append(r)
-
-            if matched_rows:
-                if not keys or raw_cols == "*":
-                    keys = list(matched_rows[0].keys())
-
-                self.description = [(k,) for k in keys]
-                self._rows = [tuple(r.get(k) for k in keys) for r in matched_rows]
-                self.rowcount = len(self._rows)
-            else:
-                self.description = [(k,) for k in keys] if keys else [("id",)]
-                self._rows = []
-                self.rowcount = 0
-            return self
-
-        if "DELETE FROM" in sql_upper:
-            import re
-            m = re.search(r"DELETE\s+FROM\s+([a-zA-Z0-9_]+)", sql_clean, re.IGNORECASE)
-            if m:
-                tbl = m.group(1)
-                count = len(_IN_MEMORY_PG_TABLES.get(tbl, []))
-                _IN_MEMORY_PG_TABLES[tbl] = []
-                self.rowcount = count
-            self.description = None
-            self._rows = []
-            return self
-
-        self.description = None
-        self._rows = []
-        self.rowcount = 0
-        return self
-
-    def executescript(self, script_sql: str):
-        return self.execute(script_sql)
-
-    def fetchone(self):
-        if not self._rows:
-            return None
-        row = self._rows[0]
-        return PgRow(self.description, row)
-
-    def fetchall(self):
-        if not self._rows:
-            return []
-        return [PgRow(self.description, r) for r in self._rows]
-
-    def close(self):
-        pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        return False
-
-
-class InMemoryPgConnectionAdapter:
-    """In-memory fallback PostgreSQL connection for offline unit testing."""
-    def cursor(self):
-        return InMemoryPgCursorAdapter()
-
-    def commit(self):
-        pass
-
-    def rollback(self):
-        pass
-
-    def close(self):
-        pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        return False
-
-
 class DatabaseManager:
     """
     Database Connection & Infrastructure Manager for PostgreSQL.
@@ -375,6 +165,11 @@ class DatabaseManager:
         self.db_path = None
         self._engine = None
         self._connection = None
+        self._last_check_iso: Optional[str] = None
+        self._last_successful_query_iso: Optional[str] = None
+        self._last_failure_timestamp_iso: Optional[str] = None
+        self._last_failure_reason: Optional[str] = None
+        self._retry_attempts: int = 0
 
     def get_engine(self):
         """Gets active SQLAlchemy engine for this manager instance."""
@@ -408,7 +203,10 @@ class DatabaseManager:
             logger.warning(f"Database initialization encountered an exception: {e}")
 
     def get_connection(self):
-        """Gets active DBAPI raw connection wrapped with compatibility adapter."""
+        """
+        Gets active DBAPI raw connection wrapped with compatibility adapter.
+        Fails honestly if PostgreSQL is unreachable without resorting to mock fallbacks.
+        """
         if self._connection is None:
             try:
                 engine = self.get_engine()
@@ -416,8 +214,10 @@ class DatabaseManager:
                 dbapi_conn = getattr(raw_conn, "dbapi_connection", None) or getattr(raw_conn, "connection", raw_conn)
                 self._connection = PgConnectionAdapter(dbapi_conn)
             except Exception as e:
-                logger.warning(f"Unable to connect to remote PostgreSQL instance ({e}). Using PostgreSQL In-Memory Mock Adapter.")
-                self._connection = InMemoryPgConnectionAdapter()
+                self._last_failure_reason = str(e)
+                self._last_failure_timestamp_iso = datetime.now(timezone.utc).isoformat()
+                logger.error(f"PostgreSQL connection failed: {e}")
+                raise DatabaseConnectionError(f"PostgreSQL connection failed: {e}", original_exception=e)
         return self._connection
 
     def get_session(self) -> Session:
@@ -478,6 +278,7 @@ class DatabaseManager:
 
         delays = [1, 2, 4, 8, 16]
         for attempt in range(1, max_retries + 1):
+            self._retry_attempts = attempt
             try:
                 logger.info(f"Checking PostgreSQL connection (attempt {attempt}/{max_retries})...")
                 reset_engine()
@@ -486,7 +287,7 @@ class DatabaseManager:
                     logger.info("✓ PostgreSQL connected successfully")
                     return True
             except Exception as e:
-                logger.error(f"Connection attempt {attempt} failed: {e}\n{traceback.format_exc()}")
+                logger.error(f"Connection attempt {attempt} failed: {e}")
 
             if attempt < max_retries:
                 delay = delays[attempt - 1] if attempt - 1 < len(delays) else 16
@@ -503,16 +304,23 @@ class DatabaseManager:
         Returns:
             True if database is responsive, False otherwise.
         """
+        now_iso = datetime.now(timezone.utc).isoformat()
+        self._last_check_iso = now_iso
         try:
             conn = self.get_connection()
-            if isinstance(conn, InMemoryPgConnectionAdapter):
-                return True
             cursor = conn.cursor()
             cursor.execute("SELECT 1;")
             res = cursor.fetchone()
             cursor.close()
-            return res is not None and (res[0] == 1 or res.get("1") == 1 or res[0] == "1")
+            if res is not None and (res[0] == 1 or res.get("1") == 1 or res[0] == "1"):
+                self._last_successful_query_iso = now_iso
+                return True
+            self._last_failure_timestamp_iso = now_iso
+            self._last_failure_reason = "Ping returned invalid response"
+            return False
         except Exception as e:
+            self._last_failure_timestamp_iso = now_iso
+            self._last_failure_reason = str(e)
             logger.warning(f"Database ping failed: {e}")
             return False
 
@@ -523,6 +331,7 @@ class DatabaseManager:
     def get_health_metrics(self) -> Dict[str, Any]:
         """
         Computes current database connection health, latency, table counts, and masked host.
+        Fulfills Part 5 and Part 7 schema requirements.
         """
         start_time = time.time()
         is_connected = self.ping()
@@ -550,15 +359,33 @@ class DatabaseManager:
             except Exception:
                 pg_version = "PostgreSQL"
 
-        return {
-            "status": "ok" if is_connected else "degraded",
-            "database": "connected" if is_connected else "offline",
-            "database_type": "PostgreSQL",
-            "database_host": masked_host,
-            "latency_ms": latency_ms,
-            "tables": tables_count,
-            "version": pg_version,
-        }
+            return {
+                "connected": True,
+                "status": "ok",
+                "database": "PostgreSQL",
+                "database_type": "PostgreSQL",
+                "host": masked_host,
+                "database_host": masked_host,
+                "latency_ms": latency_ms,
+                "last_check": self._last_check_iso or datetime.now(timezone.utc).isoformat(),
+                "last_successful_query": self._last_successful_query_iso or datetime.now(timezone.utc).isoformat(),
+                "version": pg_version,
+                "tables": tables_count,
+            }
+        else:
+            return {
+                "connected": False,
+                "status": "degraded",
+                "database": "PostgreSQL",
+                "database_type": "PostgreSQL",
+                "host": masked_host,
+                "database_host": masked_host,
+                "reason": self._last_failure_reason or "Network unreachable",
+                "last_attempt": self._last_failure_timestamp_iso or datetime.now(timezone.utc).isoformat(),
+                "retry_attempts": self._retry_attempts or 5,
+                "tables": 0,
+                "version": "Disconnected",
+            }
 
     def get_existing_tables(self) -> List[str]:
         """Returns list of table names present in database."""
@@ -566,7 +393,7 @@ class DatabaseManager:
             engine = self.get_engine()
             return inspect(engine).get_table_names()
         except Exception:
-            return list(_IN_MEMORY_PG_TABLES.keys())
+            return []
 
     def close(self) -> None:
         """Closes active database engine cleanly."""

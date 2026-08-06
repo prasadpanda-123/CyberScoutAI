@@ -110,10 +110,23 @@ def admin_get_collectors():
     return jsonify(collectors)
 
 
+def get_db_manager():
+    from flask import current_app
+    if current_app and hasattr(current_app, "db_manager") and current_app.db_manager:
+        return current_app.db_manager
+    from src.database.connection import DatabaseManager
+    return DatabaseManager()
+
+
 @admin_api_bp.route("/run", methods=["POST"])
 @admin_required
 def admin_trigger_run():
     """POST /admin/api/run — Trigger single scan iteration."""
+    db_mgr = get_db_manager()
+    if not db_mgr.ping():
+        from src.core.logging import get_logger
+        get_logger(__name__).error("Scan aborted: Database unavailable")
+        return jsonify({"success": False, "error": "Database unavailable"}), 503
     try:
         dry_run = False
         if request.is_json and request.json:
@@ -123,7 +136,7 @@ def admin_trigger_run():
         return jsonify(res)
     except Exception as e:
         audit_repo.log_event("COLLECTORS", "TRIGGER_RUN", "FAILED", source_ip=request.remote_addr, details=str(e))
-        return jsonify({"success": False, "status": "failed", "error": str(e)})
+        return jsonify({"success": False, "status": "failed", "error": str(e)}), 500
 
 
 @admin_api_bp.route("/email/test", methods=["POST"])

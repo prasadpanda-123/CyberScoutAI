@@ -85,6 +85,10 @@ def run_pipeline_once(
     run_id = f"run-{uuid.uuid4()}"
     db = db_manager or DatabaseManager()
 
+    if not dry_run and not db.ping():
+        logger.error("Scan aborted: Database unavailable")
+        raise DatabaseConnectionError("Scan aborted: Database unavailable. PostgreSQL connection could not be established.")
+
     sp = search_planner or SearchPlanner()
     cm = collector_manager or CollectorManager()
     pp = processing_pipeline or ProcessingPipeline()
@@ -195,8 +199,12 @@ def run_pipeline_once(
     notify_start = time.time()
     email_sent = False
     if not dry_run and send_email:
-        email_res = ec.send_daily_digest()
-        email_sent = email_res.get("status") == "success"
+        if not db.ping():
+            logger.error("Email cancelled because database transaction failed.")
+            email_sent = False
+        else:
+            email_res = ec.send_daily_digest()
+            email_sent = email_res.get("status") == "success"
     metrics.notification_time = time.time() - notify_start
 
     finished_time = time.time()

@@ -100,6 +100,21 @@ def create_db_engine(custom_url: Optional[str] = None) -> Engine:
             future=True,
         )
 
+    if not connection_url.startswith("sqlite"):
+        try:
+            parsed = urllib.parse.urlparse(connection_url)
+            host = parsed.hostname or "unknown"
+            port = parsed.port or 5432
+            dbname = parsed.path.lstrip("/") or "postgres"
+            query_params = urllib.parse.parse_qs(parsed.query)
+            sslmode = query_params.get("sslmode", ["require"])[0]
+            masked_h = f"{host[:2]}***{host[-4:]}" if len(host) > 6 else host
+            logger.info(
+                f"PostgreSQL Configured — Host: {masked_h}, Port: {port}, Database: {dbname}, SSLMode: {sslmode}"
+            )
+        except Exception:
+            pass
+
     logger.info("Initializing PostgreSQL SQLAlchemy Database Engine.")
     return create_engine(
         connection_url,
