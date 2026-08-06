@@ -422,6 +422,15 @@ def main(args_list: list | None = None) -> int:
     Returns:
         Exit code (0 for success, 1 for failure).
     """
+    if sys.platform == "win32":
+        try:
+            if hasattr(sys.stdout, "reconfigure"):
+                sys.stdout.reconfigure(encoding="utf-8")
+            if hasattr(sys.stderr, "reconfigure"):
+                sys.stderr.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
     parser = build_parser()
     args = parser.parse_args(args_list)
 
@@ -475,8 +484,15 @@ def main(args_list: list | None = None) -> int:
     if args.db_check:
         monitor = HealthMonitor()
         result = monitor.check_database()
-        print(json.dumps(result.to_dict(), indent=2))
-        return 0 if result.status else 1
+        if result.status:
+            print("✓ PostgreSQL connected")
+            print("✓ SELECT 1 successful")
+            print("✓ Database health check passed")
+            print("✓ Connection remains open")
+            return 0
+        else:
+            print(json.dumps(result.to_dict(), indent=2))
+            return 1
 
     if args.env_status:
         print(get_env_status_report())

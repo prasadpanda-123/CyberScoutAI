@@ -64,6 +64,9 @@ class PgCursorAdapter:
         else:
             if "?" in sql and "%s" not in sql:
                 sql = sql.replace("?", "%s")
+            import re
+            for tbl in ["Sources", "Opportunities", "Users", "SearchHistory", "EmailHistory", "AppLogs", "Preferences", "Statistics", "Keywords", "AuditLogs"]:
+                sql = re.sub(rf'\b(?<!"){tbl}(?!")\b', f'"{tbl}"', sql)
         return sql
 
     def execute(self, sql: str, parameters=()):
@@ -141,6 +144,21 @@ class PgConnectionAdapter:
         except Exception:
             pass
 
+    def set_session(self, **kwargs):
+        """
+        Executes set_session on raw connection ONLY before any transaction begins.
+        If a transaction is active, rolls back first to avoid set_session inside transaction errors.
+        """
+        if hasattr(self._conn, "status") and hasattr(self._conn, "set_session"):
+            if getattr(self._conn, "status", 0) != 0:
+                try:
+                    self._conn.rollback()
+                except Exception:
+                    pass
+            self._conn.set_session(**kwargs)
+        elif hasattr(self._conn, "set_session"):
+            self._conn.set_session(**kwargs)
+
     def __enter__(self):
         return self
 
@@ -206,8 +224,15 @@ class DatabaseManager:
         """
         Gets active DBAPI raw connection wrapped with compatibility adapter.
         Fails honestly if PostgreSQL is unreachable without resorting to mock fallbacks.
+        Automatically reconnects if the connection was closed.
         """
-        if self._connection is None:
+        is_closed = True
+        if self._connection is not None:
+            raw = getattr(self._connection, "_conn", None)
+            if raw is not None:
+                is_closed = getattr(raw, "closed", 0) != 0
+
+        if self._connection is None or is_closed:
             try:
                 engine = self.get_engine()
                 raw_conn = engine.raw_connection()
@@ -312,6 +337,7 @@ class DatabaseManager:
             cursor.execute("SELECT 1;")
             res = cursor.fetchone()
             cursor.close()
+            conn.rollback()
             if res is not None and (res[0] == 1 or res.get("1") == 1 or res[0] == "1"):
                 self._last_successful_query_iso = now_iso
                 return True
@@ -354,6 +380,7 @@ class DatabaseManager:
                 cursor.execute("SELECT version();")
                 v_row = cursor.fetchone()
                 cursor.close()
+                conn.rollback()
                 if v_row:
                     pg_version = str(v_row[0]).split(",")[0]
             except Exception:

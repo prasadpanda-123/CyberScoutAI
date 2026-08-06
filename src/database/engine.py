@@ -118,6 +118,7 @@ def create_db_engine(custom_url: Optional[str] = None) -> Engine:
     logger.info("Initializing PostgreSQL SQLAlchemy Database Engine.")
     return create_engine(
         connection_url,
+        isolation_level="READ COMMITTED",
         pool_size=10,
         max_overflow=20,
         pool_pre_ping=True,

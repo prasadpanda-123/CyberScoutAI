@@ -95,10 +95,10 @@ class PreferencesRepository(BaseRepository[Preferences], IPreferencesRepository)
         """Sets or updates a user preference key-value pair."""
         sql = """
         INSERT INTO Preferences (id, key, value, updated_at)
-        VALUES (?, ?, ?, datetime('now'))
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
         ON CONFLICT(key) DO UPDATE SET
             value = excluded.value,
-            updated_at = datetime('now');
+            updated_at = CURRENT_TIMESTAMP;
         """
         import uuid
         pref_id = str(uuid.uuid4())
