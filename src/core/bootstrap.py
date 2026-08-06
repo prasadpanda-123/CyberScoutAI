@@ -1,7 +1,7 @@
 """
 Central Application Bootstrapper and Lifecycle Manager for CyberScout AI.
 
-Wires together Configuration, Environment Variables (.env), Logging, SQLite Database,
+Wires together Configuration, Environment Variables (.env), Logging, PostgreSQL Database,
 Repositories, Migration Engine, Seed Data, and Scheduler into a single CyberScoutApp.
 """
 

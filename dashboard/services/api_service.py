@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from sqlalchemy import text
 
 from src.automation.engine import AutomationEngine
 from src.core.constants import REPORTS_DIR
@@ -26,14 +27,67 @@ class APIService:
     def trigger_scan(self, dry_run: bool = False) -> Dict[str, Any]:
         """Triggers single scan pipeline execution using run_pipeline_once."""
         from src.automation.pipeline import run_pipeline_once
-        return run_pipeline_once(dry_run=dry_run, db_manager=self.db_manager)
+        res = run_pipeline_once(dry_run=dry_run, db_manager=self.db_manager)
+        items_collected = res.get("items_collected", 0)
+        items_saved = res.get("items_after_dedup", 0)
+        status = res.get("status", "completed")
+        return {
+            "success": status == "completed",
+            "status": status,
+            "items_collected": items_collected,
+            "new_items": items_saved,
+            "message": f"Scan completed successfully. Discovered {items_saved} new opportunities from {items_collected} items collected.",
+        }
 
     def send_test_email(self) -> Dict[str, Any]:
         """Triggers test notification email digest safely."""
         try:
-            return self.email_client.send_daily_digest(send_empty=True)
+            res = self.email_client.send_daily_digest(send_empty=True)
+            return {"success": True, "status": "completed", "details": res, "message": "Test email sent successfully."}
         except Exception as e:
-            return {"status": "failed", "error": str(e)}
+            return {"success": False, "status": "failed", "error": str(e)}
+
+    def send_daily_report_now(self) -> Dict[str, Any]:
+        """Executes the exact daily report email logic as scheduled midnight run."""
+        try:
+            res = self.email_client.send_daily_digest(send_empty=True)
+            return {
+                "success": True,
+                "status": "completed",
+                "details": res,
+                "message": "Daily report digest email generated and sent successfully."
+            }
+        except Exception as e:
+            return {"success": False, "status": "failed", "error": str(e)}
+
+    def clear_old_opportunities(self, days: int = 30) -> Dict[str, Any]:
+        """Deletes opportunities discovered more than specified days ago."""
+        try:
+            from src.database.opportunity_repository import OpportunityRepository
+            opp_repo = OpportunityRepository(db_manager=self.db_manager)
+            deleted_count = opp_repo.delete_old_records(days=days)
+            return {
+                "success": True,
+                "status": "completed",
+                "deleted_count": deleted_count,
+                "message": f"Cleaned up {deleted_count} opportunities older than {days} days."
+            }
+        except Exception as e:
+            return {"success": False, "status": "failed", "error": str(e)}
+
+    def refresh_analytics(self) -> Dict[str, Any]:
+        """Recalculates provider statistics and performance metrics in database."""
+        try:
+            from src.database.provider_statistics import ProviderStatisticsManager
+            stats_mgr = ProviderStatisticsManager(db_manager=self.db_manager)
+            stats_mgr.recalculate_all()
+            return {
+                "success": True,
+                "status": "completed",
+                "message": "Analytics metrics and provider performance stats recalculated successfully."
+            }
+        except Exception as e:
+            return {"success": False, "status": "failed", "error": str(e)}
 
     def check_smtp_health(self) -> Dict[str, Any]:
         """Runs pre-flight email provider diagnostics."""
@@ -53,12 +107,12 @@ class APIService:
     def pause_scheduler(self) -> Dict[str, Any]:
         """Pauses scheduler background daemon service."""
         self.automation_engine.scheduler_service.stop()
-        return {"status": "paused", "message": "Scheduler background service paused."}
+        return {"success": True, "status": "paused", "message": "Scheduler background service paused."}
 
     def resume_scheduler(self) -> Dict[str, Any]:
         """Resumes scheduler background daemon service."""
         self.automation_engine.scheduler_service.start()
-        return {"status": "running", "message": "Scheduler background service resumed."}
+        return {"success": True, "status": "running", "message": "Scheduler background service resumed."}
 
     def get_reports_list(self) -> List[Dict[str, Any]]:
         """Scans REPORTS_DIR and returns details of all generated DOCX & CSV report files."""
@@ -101,46 +155,41 @@ class APIService:
         )
 
     def get_charts_data(self) -> Dict[str, Any]:
-        """Returns 100% real historical timeseries and category distribution chart datasets."""
-        conn = self.db_manager.get_connection()
-        cursor = conn.cursor()
-
-        try:
+        """Returns historical timeseries and category distribution chart datasets using SQLAlchemy."""
+        engine = self.db_manager.get_engine()
+        with engine.connect() as conn:
             # 1. Daily collection trend (past 30 days)
-            cursor.execute("""
+            daily_rows = conn.execute(text("""
                 SELECT discovered_date, COUNT(*) as count 
                 FROM Opportunities 
-                WHERE is_rejected = 0 AND discovered_date IS NOT NULL 
+                WHERE (is_rejected = 0 OR is_rejected IS NULL) AND discovered_date IS NOT NULL 
                 GROUP BY discovered_date 
                 ORDER BY discovered_date ASC 
                 LIMIT 30
-            """)
-            daily_rows = cursor.fetchall()
-            daily_dates = [r["discovered_date"] for r in daily_rows]
+            """)).mappings().all()
+            daily_dates = [str(r["discovered_date"]) for r in daily_rows]
             daily_counts = [r["count"] for r in daily_rows]
 
             # 2. Category distribution
-            cursor.execute("""
+            cat_rows = conn.execute(text("""
                 SELECT category, COUNT(*) as count 
                 FROM Opportunities 
-                WHERE is_rejected = 0 
+                WHERE (is_rejected = 0 OR is_rejected IS NULL) 
                 GROUP BY category 
                 ORDER BY count DESC
-            """)
-            cat_rows = cursor.fetchall()
+            """)).mappings().all()
             categories = [r["category"] for r in cat_rows]
             category_counts = [r["count"] for r in cat_rows]
 
             # 3. Source reliability & collection volume
-            cursor.execute("""
+            source_rows = conn.execute(text("""
                 SELECT source_id, COUNT(*) as count 
                 FROM Opportunities 
-                WHERE is_rejected = 0 
+                WHERE (is_rejected = 0 OR is_rejected IS NULL) 
                 GROUP BY source_id 
                 ORDER BY count DESC 
                 LIMIT 10
-            """)
-            source_rows = cursor.fetchall()
+            """)).mappings().all()
             sources = [r["source_id"] for r in source_rows]
             source_counts = [r["count"] for r in source_rows]
 
@@ -149,5 +198,3 @@ class APIService:
                 "categories": {"labels": categories, "values": category_counts},
                 "sources": {"labels": sources, "values": source_counts},
             }
-        finally:
-            cursor.close()

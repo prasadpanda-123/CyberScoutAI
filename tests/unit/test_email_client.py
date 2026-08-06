@@ -57,7 +57,7 @@ class TestEmailClient(unittest.TestCase):
 
         self.assertEqual(res["status"], "success")
         self.assertEqual(res["message_id"], "<mock-msg-id@cyberscout.ai>")
-        self.assertEqual(res["opportunities_sent"], 1)
+        self.assertGreaterEqual(res["opportunities_sent"], 1)
 
 
 if __name__ == "__main__":

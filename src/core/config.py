@@ -84,7 +84,7 @@ class Config:
             "APP_ENV": "app_env",
             "LOG_LEVEL": "logging.level",
             "LOG_FILE": "logging.file",
-            "DB_NAME": "database.name",
+            "DATABASE_URL": "database.url",
         }
         for env_var, config_path in env_mappings.items():
             val = os.getenv(env_var)
@@ -112,7 +112,6 @@ class Config:
         required = [
             ("app_env", str),
             ("logging.level", str),
-            ("database.name", str),
         ]
         for key, expected_type in required:
             val = self.get(key)

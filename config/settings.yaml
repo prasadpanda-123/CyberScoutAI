@@ -12,5 +12,4 @@ logging:
 
 # Database settings
 database:
-  name: "cyberscout.db"
-  path: "data/"
+  provider: "postgresql"

@@ -1,17 +1,22 @@
 {% extends "admin/admin_base.html" %}
 
-{% block title %}Admin Dashboard Overview{% endblock %}
+{% block title %}Admin Control Center{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
-    <h2 class="fw-bold text-light mb-1"><i class="bi bi-speedometer2 text-danger me-2"></i>Admin Command Center</h2>
-    <p class="text-muted mb-0">System performance, collector management, and security audit logs.</p>
+    <h2 class="fw-bold text-light mb-1"><i class="bi bi-sliders text-danger me-2"></i>Admin Control Center</h2>
+    <p class="text-muted mb-0">System automation, interactive backend triggers, and security audit trail.</p>
   </div>
   <div class="d-flex gap-2">
-    <button class="btn btn-outline-danger btn-sm" onclick="triggerAdminScan()"><i class="bi bi-play-circle-fill me-1"></i> Trigger Scan</button>
-    <a href="{{ url_for('admin_ui.admin_logs') }}" class="btn btn-danger btn-sm"><i class="bi bi-shield-shaded me-1"></i> View Audit Logs</a>
+    <a href="{{ url_for('admin_ui.admin_logs') }}" class="btn btn-danger btn-sm"><i class="bi bi-shield-shaded me-1"></i> View Audit Trail</a>
   </div>
+</div>
+
+<!-- Alert Banner Container for Live JavaScript Action Notifications -->
+<div id="adminActionAlert" class="alert d-none alert-dismissible fade show mb-4" role="alert">
+  <div id="adminActionAlertContent"></div>
+  <button type="button" class="btn-close" onclick="document.getElementById('adminActionAlert').classList.add('d-none')"></button>
 </div>
 
 <!-- KPI Cards -->
@@ -22,7 +27,7 @@
         <span class="text-muted small fw-semibold">TOTAL OPPORTUNITIES</span>
         <i class="bi bi-collection-fill text-info fs-4"></i>
       </div>
-      <h3 class="fw-bold text-light mb-0">{{ summary.total_opportunities if summary else 0 }}</h3>
+      <h3 class="fw-bold text-light mb-0" id="kpiTotalOpp">{{ summary.total_opportunities if summary else 0 }}</h3>
     </div>
   </div>
   <div class="col-12 col-sm-6 col-xl-3">
@@ -37,19 +42,183 @@
   <div class="col-12 col-sm-6 col-xl-3">
     <div class="admin-card p-3">
       <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="text-muted small fw-semibold">LAST SCAN STATUS</span>
-        <i class="bi bi-check-circle-fill text-warning fs-4"></i>
+        <span class="text-muted small fw-semibold">SCHEDULER STATUS</span>
+        <i class="bi bi-clock-history text-warning fs-4"></i>
       </div>
-      <h4 class="fw-bold text-light mb-0">{{ summary.last_run_status if summary else 'Active' }}</h4>
+      <h4 class="fw-bold text-light mb-0" id="kpiSchedulerStatus">{{ summary.last_run_status if summary else 'Active' }}</h4>
     </div>
   </div>
   <div class="col-12 col-sm-6 col-xl-3">
     <div class="admin-card p-3">
       <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="text-muted small fw-semibold">SECURITY STATUS</span>
-        <i class="bi bi-shield-fill-check text-danger fs-4"></i>
+        <span class="text-muted small fw-semibold">DATABASE PROVIDER</span>
+        <i class="bi bi-database-fill-check text-danger fs-4"></i>
       </div>
-      <h4 class="fw-bold text-danger mb-0">Hardened v2.2</h4>
+      <h4 class="fw-bold text-danger mb-0">PostgreSQL (Supabase)</h4>
+    </div>
+  </div>
+</div>
+
+<!-- Admin Interactive Action Controls Suite -->
+<div class="admin-card mb-4">
+  <div class="admin-card-header">
+    <span class="text-light fw-bold"><i class="bi bi-lightning-charge-fill text-warning me-2"></i>System Automation & Administrative Controls</span>
+  </div>
+  <div class="p-3">
+    <div class="row g-3">
+      <!-- 1. Run Scan Now -->
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="p-3 bg-dark border border-secondary rounded text-center h-100 d-flex flex-column justify-content-between">
+          <div>
+            <i class="bi bi-play-circle-fill text-danger fs-2 mb-2 d-block"></i>
+            <h6 class="fw-bold text-light mb-1">Run Scan Now</h6>
+            <p class="text-muted small mb-3">Execute immediate pipeline scan & save new opportunities.</p>
+          </div>
+          <button class="btn btn-danger btn-sm w-100 fw-semibold" id="btnRunScan" onclick="executeAdminAction('/api/run', 'btnRunScan', 'Run Scan Now', 'Scanning pipeline...')">
+            <i class="bi bi-play-fill me-1"></i> Execute Scan
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. Send Test Email -->
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="p-3 bg-dark border border-secondary rounded text-center h-100 d-flex flex-column justify-content-between">
+          <div>
+            <i class="bi bi-envelope-check-fill text-info fs-2 mb-2 d-block"></i>
+            <h6 class="fw-bold text-light mb-1">Send Test Email</h6>
+            <p class="text-muted small mb-3">Dispatch pre-flight diagnostic test email digest.</p>
+          </div>
+          <button class="btn btn-outline-info btn-sm w-100 fw-semibold" id="btnTestEmail" onclick="executeAdminAction('/api/email/test', 'btnTestEmail', 'Send Test Email', 'Dispatching email...')">
+            <i class="bi bi-send-fill me-1"></i> Send Test Email
+          </button>
+        </div>
+      </div>
+
+      <!-- 3. Send Daily Report Now -->
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="p-3 bg-dark border border-secondary rounded text-center h-100 d-flex flex-column justify-content-between">
+          <div>
+            <i class="bi bi-file-earmark-bar-graph-fill text-success fs-2 mb-2 d-block"></i>
+            <h6 class="fw-bold text-light mb-1">Send Daily Report Now</h6>
+            <p class="text-muted small mb-3">Trigger exact scheduled midnight email digest immediately.</p>
+          </div>
+          <button class="btn btn-outline-success btn-sm w-100 fw-semibold" id="btnReportNow" onclick="executeAdminAction('/api/report/trigger', 'btnReportNow', 'Send Daily Report Now', 'Generating digest...')">
+            <i class="bi bi-file-text-fill me-1"></i> Trigger Report Now
+          </button>
+        </div>
+      </div>
+
+      <!-- 4. Refresh Analytics -->
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="p-3 bg-dark border border-secondary rounded text-center h-100 d-flex flex-column justify-content-between">
+          <div>
+            <i class="bi bi-arrow-repeat text-warning fs-2 mb-2 d-block"></i>
+            <h6 class="fw-bold text-light mb-1">Refresh Analytics</h6>
+            <p class="text-muted small mb-3">Recalculate provider statistics and quality metrics.</p>
+          </div>
+          <button class="btn btn-outline-warning btn-sm w-100 fw-semibold" id="btnRefreshAnalytics" onclick="executeAdminAction('/api/analytics/refresh', 'btnRefreshAnalytics', 'Refresh Analytics', 'Recalculating...')">
+            <i class="bi bi-arrow-clockwise me-1"></i> Refresh Stats
+          </button>
+        </div>
+      </div>
+
+      <!-- 5. Pause Scheduler -->
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="p-3 bg-dark border border-secondary rounded text-center h-100 d-flex flex-column justify-content-between">
+          <div>
+            <i class="bi bi-pause-circle-fill text-secondary fs-2 mb-2 d-block"></i>
+            <h6 class="fw-bold text-light mb-1">Pause Scheduler</h6>
+            <p class="text-muted small mb-3">Temporarily stop automated background scan daemon.</p>
+          </div>
+          <button class="btn btn-outline-secondary btn-sm w-100 fw-semibold" id="btnPauseSched" onclick="executeAdminAction('/api/scheduler/pause', 'btnPauseSched', 'Pause Scheduler', 'Pausing...')">
+            <i class="bi bi-pause-fill me-1"></i> Pause Daemon
+          </button>
+        </div>
+      </div>
+
+      <!-- 6. Resume Scheduler -->
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="p-3 bg-dark border border-secondary rounded text-center h-100 d-flex flex-column justify-content-between">
+          <div>
+            <i class="bi bi-play-circle-fill text-success fs-2 mb-2 d-block"></i>
+            <h6 class="fw-bold text-light mb-1">Resume Scheduler</h6>
+            <p class="text-muted small mb-3">Resume automated background scan daemon execution.</p>
+          </div>
+          <button class="btn btn-outline-success btn-sm w-100 fw-semibold" id="btnResumeSched" onclick="executeAdminAction('/api/scheduler/resume', 'btnResumeSched', 'Resume Scheduler', 'Resuming...')">
+            <i class="bi bi-play-fill me-1"></i> Resume Daemon
+          </button>
+        </div>
+      </div>
+
+      <!-- 7. Restart Scheduler -->
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="p-3 bg-dark border border-secondary rounded text-center h-100 d-flex flex-column justify-content-between">
+          <div>
+            <i class="bi bi-arrow-counterclockwise text-danger fs-2 mb-2 d-block"></i>
+            <h6 class="fw-bold text-light mb-1">Restart Scheduler</h6>
+            <p class="text-muted small mb-3">Restart background scheduler daemon worker process.</p>
+          </div>
+          <button class="btn btn-outline-danger btn-sm w-100 fw-semibold" id="btnRestartSched" onclick="executeAdminAction('/api/scheduler/restart', 'btnRestartSched', 'Restart Scheduler', 'Restarting...')">
+            <i class="bi bi-arrow-clockwise me-1"></i> Restart Daemon
+          </button>
+        </div>
+      </div>
+
+      <!-- 8. Clear Old Opportunities -->
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="p-3 bg-dark border border-secondary rounded text-center h-100 d-flex flex-column justify-content-between">
+          <div>
+            <i class="bi bi-trash-fill text-danger fs-2 mb-2 d-block"></i>
+            <h6 class="fw-bold text-light mb-1">Clear Old Records</h6>
+            <p class="text-muted small mb-3">Purge opportunity records older than 30 days.</p>
+          </div>
+          <button class="btn btn-outline-danger btn-sm w-100 fw-semibold" id="btnClearOld" onclick="if(confirm('Purge opportunities older than 30 days?')) executeAdminAction('/api/opportunities/clear-old', 'btnClearOld', 'Clear Old Records', 'Purging records...')">
+            <i class="bi bi-trash-fill me-1"></i> Clear >30 Days
+          </button>
+        </div>
+      </div>
+
+      <!-- 9. Test DB Connection -->
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="p-3 bg-dark border border-secondary rounded text-center h-100 d-flex flex-column justify-content-between">
+          <div>
+            <i class="bi bi-database-check text-success fs-2 mb-2 d-block"></i>
+            <h6 class="fw-bold text-light mb-1">Test Connection</h6>
+            <p class="text-muted small mb-3">Verify SELECT 1 database latency & responsiveness.</p>
+          </div>
+          <button class="btn btn-outline-success btn-sm w-100 fw-semibold" id="btnTestDB" onclick="executeAdminAction('/admin/api/db/test', 'btnTestDB', 'Test Connection', 'Pinging DB...')">
+            <i class="bi bi-check-circle-fill me-1"></i> Test Connection
+          </button>
+        </div>
+      </div>
+
+      <!-- 10. Reconnect Database Engine -->
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="p-3 bg-dark border border-secondary rounded text-center h-100 d-flex flex-column justify-content-between">
+          <div>
+            <i class="bi bi-arrow-repeat text-danger fs-2 mb-2 d-block"></i>
+            <h6 class="fw-bold text-light mb-1">Reconnect Database</h6>
+            <p class="text-muted small mb-3">Force reset PostgreSQL pool & reconnect engine.</p>
+          </div>
+          <button class="btn btn-outline-danger btn-sm w-100 fw-semibold" id="btnReconnectDB" onclick="executeAdminAction('/admin/api/db/reconnect', 'btnReconnectDB', 'Reconnect Database', 'Reconnecting...')">
+            <i class="bi bi-arrow-clockwise me-1"></i> Reconnect Engine
+          </button>
+        </div>
+      </div>
+
+      <!-- 11. Database Info & Telemetry -->
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="p-3 bg-dark border border-secondary rounded text-center h-100 d-flex flex-column justify-content-between">
+          <div>
+            <i class="bi bi-hdd-network text-info fs-2 mb-2 d-block"></i>
+            <h6 class="fw-bold text-light mb-1">Database Info</h6>
+            <p class="text-muted small mb-3">Show masked host, PG version & table counts.</p>
+          </div>
+          <button class="btn btn-outline-info btn-sm w-100 fw-semibold" id="btnDBInfo" onclick="executeAdminAction('/admin/api/db/info', 'btnDBInfo', 'Database Info', 'Fetching info...')">
+            <i class="bi bi-info-circle-fill me-1"></i> Show DB Info
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -103,17 +272,43 @@
 </div>
 
 <script>
-function triggerAdminScan() {
-  if (confirm("Trigger immediate scan iteration?")) {
-    fetch('/admin/api/run', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dry_run: false })
-    })
-    .then(r => r.json())
-    .then(data => alert(data.message || JSON.stringify(data)))
-    .catch(err => alert('Error: ' + err));
-  }
+function executeAdminAction(endpoint, buttonId, originalText, loadingText) {
+  const btn = document.getElementById(buttonId);
+  const alertContainer = document.getElementById('adminActionAlert');
+  const alertContent = document.getElementById('adminActionAlertContent');
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> ${loadingText}`;
+
+  fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({})
+  })
+  .then(r => r.json())
+  .then(data => {
+    alertContainer.classList.remove('d-none', 'alert-danger', 'alert-success');
+    if (data.success !== false) {
+      alertContainer.classList.add('alert-success');
+      alertContent.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i><strong>Success:</strong> ${data.message || 'Action executed successfully.'}`;
+      // Reload stats after 1.5 seconds if scan or clear action executed
+      if (endpoint === '/api/run' || endpoint === '/api/opportunities/clear-old') {
+        setTimeout(() => location.reload(), 1500);
+      }
+    } else {
+      alertContainer.classList.add('alert-danger');
+      alertContent.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Failed:</strong> ${data.error || data.message || 'Action failed to complete.'}`;
+    }
+  })
+  .catch(err => {
+    alertContainer.classList.remove('d-none', 'alert-success');
+    alertContainer.classList.add('alert-danger');
+    alertContent.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Network Error:</strong> ${err}`;
+  })
+  .finally(() => {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  });
 }
 </script>
 {% endblock %}

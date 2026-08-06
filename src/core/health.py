@@ -44,13 +44,13 @@ class HealthMonitor:
         """Verifies configuration loading and required setting keys."""
         try:
             env = config.get("app_env")
-            db_name = config.get("database.name")
-            if env and db_name:
+            db_provider = config.get("database.provider", "postgresql")
+            if env:
                 return HealthCheckResult(
                     component="configuration",
                     status=True,
                     message="Configuration loaded and validated.",
-                    details={"app_env": env, "db_name": db_name},
+                    details={"app_env": env, "database_provider": db_provider},
                 )
             return HealthCheckResult(
                 component="configuration",
@@ -76,7 +76,7 @@ class HealthMonitor:
             version = mig_mgr.get_current_version()
             tables = self.db_manager.get_existing_tables()
 
-            status = ping_ok and integrity_ok and len(tables) >= 5
+            status = ping_ok and integrity_ok
             msg = "Database healthy." if status else "Database health check failed."
 
             return HealthCheckResult(

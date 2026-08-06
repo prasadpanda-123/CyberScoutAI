@@ -16,6 +16,23 @@ logger = get_logger(__name__)
 T = TypeVar("T")
 
 
+def row_to_dict(row: Any, description: Any = None) -> Dict[str, Any]:
+    """Safely converts any DBAPI Row, sqlite3.Row, PgRow, or mapping to a standard python dict."""
+    if row is None:
+        return {}
+    if isinstance(row, dict):
+        return row
+    if hasattr(row, "keys"):
+        return {k: row[k] for k in row.keys()}
+    if description and isinstance(row, (tuple, list)):
+        keys = [col[0] for col in description]
+        return dict(zip(keys, row))
+    try:
+        return dict(row)
+    except Exception:
+        return {}
+
+
 class BaseRepository(Generic[T], ABC):
     """
     Abstract Base Repository encapsulating common SQLite CRUD operations.
@@ -90,7 +107,7 @@ class BaseRepository(Generic[T], ABC):
             cursor.execute(sql, (record_id,))
             row = cursor.fetchone()
             if row:
-                return self._row_to_entity(row)
+                return self._row_to_entity(row_to_dict(row, cursor.description))
             return None
         finally:
             cursor.close()
@@ -167,7 +184,9 @@ class BaseRepository(Generic[T], ABC):
         try:
             cursor.execute(sql, params)
             row = cursor.fetchone()
-            return row["cnt"] if row else 0
+            if not row:
+                return 0
+            return row[0]
         finally:
             cursor.close()
 
@@ -204,7 +223,7 @@ class BaseRepository(Generic[T], ABC):
         try:
             cursor.execute(sql, params)
             rows = cursor.fetchall()
-            return [self._row_to_entity(row) for row in rows]
+            return [self._row_to_entity(row_to_dict(row, cursor.description)) for row in rows]
         finally:
             cursor.close()
 

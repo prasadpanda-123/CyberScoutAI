@@ -36,7 +36,7 @@ def format_banner(env: str = "development", db_status: str = "CONNECTED", db_ver
         f"  Environment  : {env}",
         f"  Python       : {info['python_version']}",
         f"  Platform     : {info['platform']}",
-        f"  Database     : SQLite v{db_version} ({db_status})",
+        f"  Database     : PostgreSQL ({db_status})",
         "=" * 60,
     ]
     return "\n".join(lines)

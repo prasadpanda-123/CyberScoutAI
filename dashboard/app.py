@@ -31,14 +31,24 @@ BASE_DIR = Path(__file__).resolve().parent
 
 def create_app(config_class=DashboardConfig) -> Flask:
     """Application factory for Flask Web Dashboard."""
-    # Ensure database is safely initialized and seeded on deployment
+    # Run exponential backoff startup health check
     from src.database.connection import DatabaseManager
     from src.database.seed import SeedManager
+    from src.core.logging import get_logger
 
+    logger = get_logger(__name__)
     db_mgr = DatabaseManager()
-    db_mgr.initialize_database()
-    seed_mgr = SeedManager(db_mgr)
-    seed_mgr.run_all_seeds()
+
+    db_connected = db_mgr.check_connection_with_backoff(max_retries=5)
+    if db_connected:
+        try:
+            db_mgr.initialize_database()
+            seed_mgr = SeedManager(db_mgr)
+            seed_mgr.run_all_seeds()
+        except Exception as e:
+            logger.error(f"Error during schema initialization: {e}. Dashboard continuing in Degraded Mode.")
+    else:
+        logger.warning("Database unreachable on boot. CyberScout AI starting in Degraded Mode.")
 
     app = Flask(
         __name__,
@@ -73,12 +83,15 @@ def create_app(config_class=DashboardConfig) -> Flask:
     @app.before_request
     def check_first_run_setup():
         """Redirects unconfigured application to /setup if no users exist."""
-        if request.endpoint and request.endpoint in ("auth_ui.setup", "admin_ui.admin_login", "static"):
+        if request.endpoint and (request.endpoint in ("auth_ui.setup", "admin_ui.admin_login", "static", "health.health_status", "health.api_health") or request.path.startswith("/api/health")):
             return None
-        from src.database.user_repository import UserRepository
-        user_repo = UserRepository()
-        if not user_repo.has_users() and not request.path.startswith("/setup"):
-            return redirect(url_for("auth_ui.setup"))
+        try:
+            from src.database.user_repository import UserRepository
+            user_repo = UserRepository()
+            if not user_repo.has_users() and not request.path.startswith("/setup"):
+                return redirect(url_for("auth_ui.setup"))
+        except Exception:
+            pass
         return None
 
     @app.context_processor

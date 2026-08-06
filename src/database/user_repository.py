@@ -1,23 +1,24 @@
 """
-User Repository for CyberScout AI Authentication & RBAC System.
+User Repository for CyberScout AI Authentication and RBAC System.
 
-Manages user creation, authentication via password hashing, role permissions, and user lookup.
+Handles database persistence for user registration, authentication,
+role management, and password updates.
 """
 
 from datetime import datetime, timezone
-import sqlite3
 from typing import Any, Dict, List, Optional
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from src.database.connection import DatabaseManager
+from src.database.base_repository import row_to_dict
 
 
 class UserRepository:
     """
-    Repository managing User entities in the SQLite Users table.
+    Repository for managing user accounts in the Users table.
     """
 
-    VALID_ROLES = ("Super Admin", "Administrator", "Operator", "Viewer")
+    VALID_ROLES = {"Super Admin", "Admin", "Operator", "Viewer"}
 
     def __init__(self, db_manager: Optional[DatabaseManager] = None):
         self.db_manager = db_manager or DatabaseManager()
@@ -68,7 +69,7 @@ class UserRepository:
                 "is_active": is_active,
                 "created_at": ts,
             }
-        except sqlite3.IntegrityError as e:
+        except Exception as e:
             conn.rollback()
             raise ValueError(f"Username or Email already exists: {e}")
         finally:
@@ -89,18 +90,20 @@ class UserRepository:
             if not row:
                 return None
 
-            if not row["is_active"]:
+            row_d = row_to_dict(row, cursor.description)
+
+            if not row_d.get("is_active"):
                 return None
 
-            if check_password_hash(row["password_hash"], password):
+            if check_password_hash(row_d.get("password_hash", ""), password):
                 user_dict = {
-                    "id": row["id"],
-                    "username": row["username"],
-                    "email": row["email"],
-                    "role": row["role"],
-                    "is_active": bool(row["is_active"]),
+                    "id": row_d.get("id"),
+                    "username": row_d.get("username"),
+                    "email": row_d.get("email"),
+                    "role": row_d.get("role"),
+                    "is_active": bool(row_d.get("is_active")),
                 }
-                self.update_last_login(row["id"])
+                self.update_last_login(row_d["id"])
                 return user_dict
             return None
         finally:
@@ -115,7 +118,7 @@ class UserRepository:
             cursor.execute(sql, (user_id,))
             row = cursor.fetchone()
             if row:
-                return dict(row)
+                return row_to_dict(row, cursor.description)
             return None
         finally:
             cursor.close()
@@ -129,7 +132,7 @@ class UserRepository:
             cursor.execute(sql, (email.strip().lower(),))
             row = cursor.fetchone()
             if row:
-                return dict(row)
+                return row_to_dict(row, cursor.description)
             return None
         finally:
             cursor.close()
@@ -138,11 +141,13 @@ class UserRepository:
         """Updates last_login timestamp for target user_id."""
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         sql = "UPDATE Users SET last_login = ? WHERE id = ?"
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
         try:
-            with self.db_manager.transaction() as cursor:
-                cursor.execute(sql, (ts, user_id))
-        except Exception:
-            pass
+            cursor.execute(sql, (ts, user_id))
+            conn.commit()
+        finally:
+            cursor.close()
 
     def list_users(self) -> List[Dict[str, Any]]:
         """Lists all registered users."""
@@ -151,7 +156,8 @@ class UserRepository:
         cursor = conn.cursor()
         try:
             cursor.execute(sql)
-            return [dict(r) for r in cursor.fetchall()]
+            rows = cursor.fetchall()
+            return [row_to_dict(r, cursor.description) for r in rows]
         finally:
             cursor.close()
 
@@ -161,16 +167,18 @@ class UserRepository:
         cursor = conn.cursor()
         try:
             cursor.execute("SELECT COUNT(*) FROM Users")
-            return cursor.fetchone()[0] > 0
+            res = cursor.fetchone()
+            return res[0] > 0 if res else False
         finally:
             cursor.close()
 
     def has_admin(self) -> bool:
-        """Returns True if a Super Admin or Administrator user exists."""
+        """Returns True if at least one admin or super admin user exists."""
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT COUNT(*) FROM Users WHERE role IN ('Super Admin', 'Administrator') AND is_active = 1")
-            return cursor.fetchone()[0] > 0
+            cursor.execute("SELECT COUNT(*) FROM Users WHERE role IN ('Admin', 'Super Admin')")
+            res = cursor.fetchone()
+            return res[0] > 0 if res else False
         finally:
             cursor.close()

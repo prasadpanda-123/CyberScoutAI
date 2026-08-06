@@ -5,7 +5,6 @@ Persists and queries structured log entries from the SQLite AppLogs table.
 """
 
 from datetime import datetime, timezone
-import sqlite3
 from typing import Any, Dict, List, Optional
 
 from src.database.connection import DatabaseManager

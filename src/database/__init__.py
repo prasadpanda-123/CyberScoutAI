@@ -4,7 +4,6 @@ Database & Knowledge Base Package for CyberScout AI.
 
 from src.database.analytics import AnalyticsEngine
 from src.database.archive import ArchiveManager
-from src.database.backup import BackupManager
 from src.database.base_repository import BaseRepository
 from src.database.connection import DatabaseManager
 from src.database.exceptions import KnowledgeError, RetentionError
@@ -45,7 +44,6 @@ __all__ = [
     "SchedulerRepository",
     "MigrationManager",
     "SeedManager",
-    "BackupManager",
     # Interfaces
     "IOpportunityRepository",
     "ISourceRepository",

@@ -276,3 +276,10 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
         sql = "UPDATE Opportunities SET status = ?, duplicate_of_id = ? WHERE id = ?;"
         with self.db_manager.transaction() as cursor:
             cursor.execute(sql, (Status.DUPLICATE.value, canonical_id, opp_id))
+
+    def delete_old_records(self, days: int = 30) -> int:
+        """Deletes opportunities discovered more than specified days ago."""
+        sql = "DELETE FROM Opportunities WHERE discovered_date < CURRENT_DATE - (INTERVAL '1 day' * %s);"
+        with self.db_manager.transaction() as cursor:
+            cursor.execute(sql, (days,))
+            return cursor.rowcount

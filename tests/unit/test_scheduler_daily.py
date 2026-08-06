@@ -22,6 +22,12 @@ class TestDailyReportScheduler(unittest.TestCase):
         self.db_mgr = DatabaseManager(db_path=self.db_path)
         self.db_mgr.initialize_database()
         self.scheduler_repo = SchedulerRepository(db_manager=self.db_mgr)
+        # Reset scheduler state to ensure clean test isolation (shared in-memory DB)
+        conn = self.db_mgr.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM scheduler_state")
+        conn.commit()
+        cursor.close()
 
     def tearDown(self):
         self.db_mgr.close()

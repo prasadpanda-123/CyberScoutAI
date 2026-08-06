@@ -5,7 +5,6 @@ Stores and queries structured administrative audit logs.
 """
 
 from datetime import datetime, timezone
-import sqlite3
 from typing import Any, Dict, List, Optional
 
 from src.database.connection import DatabaseManager
@@ -13,7 +12,7 @@ from src.database.connection import DatabaseManager
 
 class AuditLogRepository:
     """
-    Repository for managing audit entries in the AuditLogs SQLite table.
+    Repository for managing audit entries in the AuditLogs table.
     """
 
     def __init__(self, db_manager: Optional[DatabaseManager] = None):
@@ -66,7 +65,7 @@ class AuditLogRepository:
                 "status": status,
                 "details": details or "",
             }
-        except sqlite3.Error as e:
+        except Exception as e:
             conn.rollback()
             raise ValueError(f"Failed to record audit log: {e}")
         finally:
@@ -117,7 +116,8 @@ class AuditLogRepository:
             data_sql = f"SELECT id, timestamp, user_id, username, event_type, action, source_ip, status, details FROM AuditLogs{where_sql} ORDER BY id DESC LIMIT ? OFFSET ?"
             cursor.execute(data_sql, params + [limit, offset])
             rows = cursor.fetchall()
-            logs = [dict(r) for r in rows]
+            from src.database.base_repository import row_to_dict
+            logs = [row_to_dict(r) for r in rows]
 
             total_pages = max(1, (total_records + limit - 1) // limit)
 

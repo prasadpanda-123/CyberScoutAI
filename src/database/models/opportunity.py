@@ -52,6 +52,8 @@ class OpportunityModel(Base):
     duplicate_of_id = Column(String, ForeignKey("Opportunities.id"), nullable=True)
     run_id = Column(String, ForeignKey("SearchHistory.run_id"), nullable=True)
     raw_data = Column(Text, nullable=True)
+    expired = Column(Integer, default=0)
+    archived = Column(Integer, default=0)
     last_seen = Column(DateTime, nullable=True)
 
     # Relationships

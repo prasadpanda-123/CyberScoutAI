@@ -28,13 +28,13 @@ class ConfigurationError(CyberScoutError):
 
 
 class DatabaseError(CyberScoutError):
-    """Base exception raised for SQLite database operations or schema errors."""
+    """Base exception raised for PostgreSQL database operations or schema errors."""
 
     pass
 
 
 class DatabaseConnectionError(DatabaseError):
-    """Exception raised when SQLite database connection fails or drops."""
+    """Exception raised when PostgreSQL database connection fails or drops."""
 
     pass
 

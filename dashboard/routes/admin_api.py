@@ -177,3 +177,62 @@ def admin_scheduler_restart():
     except Exception as e:
         audit_repo.log_event("SCHEDULER", "RESTART_SCHEDULER", "FAILED", source_ip=request.remote_addr, details=str(e))
         return jsonify({"status": "failed", "error": str(e)})
+
+
+@admin_api_bp.route("/db/test", methods=["POST", "GET"])
+@admin_required
+def admin_db_test():
+    """POST /admin/api/db/test — Test database connection."""
+    from src.database.connection import DatabaseManager
+    db = DatabaseManager()
+    is_ok = db.ping()
+    audit_repo.log_event("DATABASE", "TEST_CONNECTION", "SUCCESS" if is_ok else "FAILED", source_ip=request.remote_addr, details=f"Database test status: {'Connected' if is_ok else 'Disconnected'}")
+    return jsonify({
+        "status": "success" if is_ok else "failed",
+        "connected": is_ok,
+        "database_type": "PostgreSQL",
+        "message": "Database connection verified." if is_ok else "Database connection ping failed.",
+    })
+
+
+@admin_api_bp.route("/db/health", methods=["GET"])
+@admin_required
+def admin_db_health():
+    """GET /admin/api/db/health — Show database health & telemetry metrics."""
+    from src.database.connection import DatabaseManager
+    db = DatabaseManager()
+    metrics = db.get_health_metrics()
+    return jsonify(metrics)
+
+
+@admin_api_bp.route("/db/reconnect", methods=["POST"])
+@admin_required
+def admin_db_reconnect():
+    """POST /admin/api/db/reconnect — Force database connection reset and reconnect."""
+    from src.database.connection import DatabaseManager
+    from src.database.engine import reset_engine
+    try:
+        reset_engine()
+        db = DatabaseManager()
+        db.close_connection()
+        is_ok = db.check_connection_with_backoff(max_retries=3)
+        audit_repo.log_event("DATABASE", "RECONNECT_DB", "SUCCESS" if is_ok else "FAILED", source_ip=request.remote_addr, details="Reconnected database engine pool")
+        return jsonify({
+            "status": "success" if is_ok else "failed",
+            "connected": is_ok,
+            "message": "PostgreSQL engine pool reconnected successfully." if is_ok else "Failed to reconnect to PostgreSQL database.",
+        })
+    except Exception as e:
+        audit_repo.log_event("DATABASE", "RECONNECT_DB", "FAILED", source_ip=request.remote_addr, details=str(e))
+        return jsonify({"status": "failed", "error": str(e)})
+
+
+@admin_api_bp.route("/db/info", methods=["GET"])
+@admin_required
+def admin_db_info():
+    """GET /admin/api/db/info — Show PostgreSQL host (masked), version, and table counts."""
+    from src.database.connection import DatabaseManager
+    db = DatabaseManager()
+    metrics = db.get_health_metrics()
+    return jsonify(metrics)
+

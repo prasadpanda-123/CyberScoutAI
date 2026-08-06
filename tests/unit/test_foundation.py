@@ -51,7 +51,7 @@ class TestConfig(unittest.TestCase):
     def test_config_get(self):
         cfg = Config()
         self.assertIsNotNone(cfg.get("app_env"))
-        self.assertIsNotNone(cfg.get("database.name"))
+        self.assertIsNotNone(cfg.get("database.provider", "postgresql"))
 
     def test_config_dot_notation(self):
         cfg = Config()

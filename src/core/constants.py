@@ -29,8 +29,7 @@ SCHEDULE_CONFIG_FILE = CONFIG_DIR / "schedule.yaml"
 WEIGHTS_CONFIG_FILE = CONFIG_DIR / "weights.yaml"
 
 # Database Constants
-DEFAULT_DB_NAME = "cyberscout.db"
-DB_PATH = DATA_DIR / DEFAULT_DB_NAME
+# PostgreSQL is configured via DATABASE_URL environment variable
 
 # Technical Defaults
 ENCODING = "utf-8"

@@ -22,8 +22,12 @@ api_service = APIService()
 
 @api_bp.route("/health", methods=["GET"])
 def get_health():
-    """GET /api/health — Minimal system health check."""
-    return jsonify({"healthy": True, "status": "ok"}), 200
+    """GET /api/health — Full system & PostgreSQL database health status (Part 12)."""
+    from src.database.connection import DatabaseManager
+    db_mgr = DatabaseManager()
+    metrics = db_mgr.get_health_metrics()
+    status_code = 200 if metrics["status"] == "ok" else 503
+    return jsonify(metrics), status_code
 
 
 @api_bp.route("/stats", methods=["GET"])
@@ -240,6 +244,42 @@ def scheduler_restart():
     try:
         api_service.pause_scheduler()
         res = api_service.resume_scheduler()
-        return jsonify({"status": "restarted", "message": "Scheduler service restarted successfully."})
+        return jsonify({"success": True, "status": "restarted", "message": "Scheduler service restarted successfully."})
     except Exception as e:
-        return jsonify({"status": "failed", "error": str(e)})
+        return jsonify({"success": False, "status": "failed", "error": str(e)})
+
+
+@api_bp.route("/report/trigger", methods=["POST"])
+@admin_required
+def trigger_daily_report():
+    """POST /api/report/trigger — Send Daily Report Now (Sensitive)."""
+    try:
+        res = api_service.send_daily_report_now()
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"success": False, "status": "failed", "error": str(e)})
+
+
+@api_bp.route("/opportunities/clear-old", methods=["POST"])
+@admin_required
+def clear_old_opportunities():
+    """POST /api/opportunities/clear-old — Clear Old Opportunities (Sensitive)."""
+    try:
+        days = 30
+        if request.is_json and request.json:
+            days = int(request.json.get("days", 30))
+        res = api_service.clear_old_opportunities(days=days)
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"success": False, "status": "failed", "error": str(e)})
+
+
+@api_bp.route("/analytics/refresh", methods=["POST"])
+@admin_required
+def refresh_analytics():
+    """POST /api/analytics/refresh — Refresh Analytics (Sensitive)."""
+    try:
+        res = api_service.refresh_analytics()
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"success": False, "status": "failed", "error": str(e)})

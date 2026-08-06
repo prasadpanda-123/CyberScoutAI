@@ -39,9 +39,8 @@ class TestMemoryLeak(unittest.TestCase):
 
     def test_database_connection_cleanup(self):
         """Verify database connections open and close cleanly without handle leaks."""
-        db_path = Path(":memory:")
         for _ in range(20):
-            db = DatabaseManager(db_path=db_path)
+            db = DatabaseManager()
             db.initialize_database()
             self.assertTrue(db.ping())
             db.close()

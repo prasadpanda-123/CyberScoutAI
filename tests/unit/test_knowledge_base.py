@@ -53,10 +53,12 @@ class TestKnowledgeBase(unittest.TestCase):
         self.assertGreaterEqual(mig_manager.get_current_version(), 2)
 
     def test_knowledge_manager_lifecycle(self):
+        import uuid
+        uid = uuid.uuid4().hex[:8]
         km = KnowledgeManager(db_manager=self.db_manager)
         opp = Opportunity(
-            title="CISA Advisory 1",
-            url="https://cisa.gov/adv/1",
+            title=f"CISA Advisory {uid}",
+            url=f"https://cisa.gov/adv/{uid}",
             source_id="cisa_alerts",
             score=80,
         )
@@ -70,7 +72,7 @@ class TestKnowledgeBase(unittest.TestCase):
         self.assertEqual(state2, "SEEN_BEFORE")
 
         # 3. Updated
-        opp.title = "CISA Advisory 1 Updated"
+        opp.title = f"CISA Advisory {uid} Updated"
         state3 = km.process_opportunity_state(opp)
         self.assertEqual(state3, "UPDATED")
 

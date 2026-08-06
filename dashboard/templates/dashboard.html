@@ -11,13 +11,31 @@
   </div>
 </div>
 
-<!-- Primary Real-Time Metric Cards -->
+<!-- Database Status & Real-Time Metric Banner -->
 <div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card p-3 shadow-sm border-start border-4 {% if summary.database_status == 'Connected' %}border-success{% else %}border-danger{% endif %}">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="text-muted small fw-bold">Database Status</span>
+        <span class="badge {% if summary.database_status == 'Connected' %}bg-success{% else %}bg-danger{% endif %}">
+          {% if summary.database_status == 'Connected' %}✓ Connected{% else %}✖ Disconnected{% endif %}
+        </span>
+      </div>
+      <div class="fs-4 fw-bold text-primary">{{ summary.database_type }}</div>
+      <div class="text-muted small mt-1">
+        <i class="bi bi-hdd-network me-1"></i> Host: {{ summary.database_host }}
+        {% if summary.database_latency_ms >= 0 %}
+          <span class="ms-1 text-success">({{ summary.database_latency_ms }}ms)</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
   <div class="col-md-3">
     <div class="card p-3 shadow-sm">
       <div class="text-muted small">Total Opportunities</div>
       <div class="fs-2 fw-bold text-info">{{ summary.total_opportunities }}</div>
-      <div class="text-muted small"><i class="bi bi-database-check me-1"></i> Verified in SQLite DB</div>
+      <div class="text-muted small"><i class="bi bi-database-check me-1"></i> PostgreSQL Persistence</div>
     </div>
   </div>
   <div class="col-md-3">
@@ -32,13 +50,6 @@
       <div class="text-muted small">Active Collectors</div>
       <div class="fs-2 fw-bold text-primary">{{ summary.active_collectors }}</div>
       <div class="text-primary small"><i class="bi bi-cpu me-1"></i> Operational Pipeline</div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card p-3 shadow-sm">
-      <div class="text-muted small">Emails Dispatched</div>
-      <div class="fs-2 fw-bold text-warning">{{ summary.emails_sent }}</div>
-      <div class="text-warning small"><i class="bi bi-envelope-check me-1"></i> Brevo REST API</div>
     </div>
   </div>
 </div>
@@ -59,14 +70,14 @@
   </div>
   <div class="col-md-3">
     <div class="card p-3 text-center">
-      <div class="text-muted small">Database Size</div>
-      <div class="fs-3 fw-bold">{{ summary.database_size_mb }} MB</div>
+      <div class="text-muted small">Last DB Write</div>
+      <div class="fs-6 fw-bold text-truncate" title="{{ summary.last_db_write }}">{{ summary.last_db_write }}</div>
     </div>
   </div>
   <div class="col-md-3">
     <div class="card p-3 text-center">
-      <div class="text-muted small">Generated Reports</div>
-      <div class="fs-3 fw-bold text-info">{{ summary.reports_generated }}</div>
+      <div class="text-muted small">Emails Dispatched</div>
+      <div class="fs-3 fw-bold text-warning">{{ summary.emails_sent }}</div>
     </div>
   </div>
 </div>
