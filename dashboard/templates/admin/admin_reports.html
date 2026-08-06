@@ -1,0 +1,48 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Admin Reports Download Center{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="fw-bold text-light mb-1"><i class="bi bi-file-earmark-bar-graph-fill text-danger me-2"></i>Admin Reports Download Center</h2>
+    <p class="text-muted mb-0">Access and download generated DOCX and CSV security reports.</p>
+  </div>
+</div>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <span><i class="bi bi-folder-fill text-warning me-2"></i>Generated Reports</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-dark table-hover mb-0 align-middle">
+      <thead>
+        <tr class="text-muted small border-bottom border-secondary">
+          <th>FILENAME</th>
+          <th>TYPE</th>
+          <th>ACTION</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if reports %}
+          {% for r in reports %}
+          <tr>
+            <td class="admin-code text-light fw-semibold">{{ r.name or r }}</td>
+            <td><span class="badge bg-secondary">Doc / CSV</span></td>
+            <td>
+              <a href="{{ url_for('admin_ui.admin_download_report', filename=r.name or r) }}" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-download me-1"></i> Download
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="3" class="text-center text-muted py-4">No reports generated yet.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Admin Collectors Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="fw-bold text-light mb-1"><i class="bi bi-diagram-3-fill text-danger me-2"></i>Collectors Management</h2>
+    <p class="text-muted mb-0">Monitor active opportunity collectors, trigger manual scans, and verify source health.</p>
+  </div>
+  <button class="btn btn-danger btn-sm" onclick="triggerAdminScan()"><i class="bi bi-play-fill me-1"></i> Trigger Scan Iteration</button>
+</div>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <span><i class="bi bi-hdd-network-fill text-info me-2"></i>Active Data Sources & Collectors</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-dark table-hover mb-0 align-middle">
+      <thead>
+        <tr class="text-muted small border-bottom border-secondary">
+          <th>COLLECTOR ID</th>
+          <th>NAME</th>
+          <th>METHOD</th>
+          <th>CATEGORY</th>
+          <th>STATUS</th>
+          <th>TRUST SCORE</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if collectors %}
+          {% for c in collectors %}
+          <tr>
+            <td class="admin-code text-light small fw-bold">{{ c.id }}</td>
+            <td class="fw-semibold text-light">{{ c.name }}</td>
+            <td><span class="badge bg-secondary">{{ c.collection_method }}</span></td>
+            <td class="text-info">{{ c.default_category }}</td>
+            <td>
+              {% if c.enabled %}
+              <span class="badge bg-success">Active</span>
+              {% else %}
+              <span class="badge bg-secondary">Disabled</span>
+              {% endif %}
+            </td>
+            <td class="admin-code text-warning">{{ c.trust_score }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="text-center text-muted py-4">No collectors registered.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function triggerAdminScan() {
+  if (confirm("Execute scan iteration now?")) {
+    fetch('/admin/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dry_run: false })
+    })
+    .then(r => r.json())
+    .then(d => alert(d.message || JSON.stringify(d)))
+    .catch(e => alert('Error: ' + e));
+  }
+}
+</script>
+{% endblock %}

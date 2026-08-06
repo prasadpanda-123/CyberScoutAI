@@ -1,0 +1,119 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Admin Dashboard Overview{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="fw-bold text-light mb-1"><i class="bi bi-speedometer2 text-danger me-2"></i>Admin Command Center</h2>
+    <p class="text-muted mb-0">System performance, collector management, and security audit logs.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-danger btn-sm" onclick="triggerAdminScan()"><i class="bi bi-play-circle-fill me-1"></i> Trigger Scan</button>
+    <a href="{{ url_for('admin_ui.admin_logs') }}" class="btn btn-danger btn-sm"><i class="bi bi-shield-shaded me-1"></i> View Audit Logs</a>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="admin-card p-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="text-muted small fw-semibold">TOTAL OPPORTUNITIES</span>
+        <i class="bi bi-collection-fill text-info fs-4"></i>
+      </div>
+      <h3 class="fw-bold text-light mb-0">{{ summary.total_opportunities if summary else 0 }}</h3>
+    </div>
+  </div>
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="admin-card p-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="text-muted small fw-semibold">ACTIVE SOURCES</span>
+        <i class="bi bi-diagram-3-fill text-success fs-4"></i>
+      </div>
+      <h3 class="fw-bold text-light mb-0">{{ summary.active_sources if summary else 0 }}</h3>
+    </div>
+  </div>
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="admin-card p-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="text-muted small fw-semibold">LAST SCAN STATUS</span>
+        <i class="bi bi-check-circle-fill text-warning fs-4"></i>
+      </div>
+      <h4 class="fw-bold text-light mb-0">{{ summary.last_run_status if summary else 'Active' }}</h4>
+    </div>
+  </div>
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="admin-card p-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="text-muted small fw-semibold">SECURITY STATUS</span>
+        <i class="bi bi-shield-fill-check text-danger fs-4"></i>
+      </div>
+      <h4 class="fw-bold text-danger mb-0">Hardened v2.2</h4>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Security Audit Trail -->
+<div class="admin-card mb-4">
+  <div class="admin-card-header">
+    <span class="text-light fw-bold"><i class="bi bi-shield-lock-fill text-danger me-2"></i>Recent Administrative Activity & Audit Trail</span>
+    <a href="{{ url_for('admin_ui.admin_logs', tab='audit_logs') }}" class="btn btn-outline-secondary btn-sm">Full Trail</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-dark table-hover mb-0 align-middle">
+      <thead>
+        <tr class="text-muted small border-bottom border-secondary">
+          <th>TIMESTAMP</th>
+          <th>EVENT</th>
+          <th>ACTION</th>
+          <th>USER</th>
+          <th>SOURCE IP</th>
+          <th>STATUS</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if recent_audits %}
+          {% for log in recent_audits %}
+          <tr>
+            <td class="admin-code small">{{ log.timestamp }}</td>
+            <td><span class="badge bg-secondary">{{ log.event_type }}</span></td>
+            <td class="fw-semibold text-light">{{ log.action }}</td>
+            <td class="text-info">{{ log.username or 'Anonymous' }}</td>
+            <td class="admin-code text-muted small">{{ log.source_ip }}</td>
+            <td>
+              {% if log.status == 'SUCCESS' %}
+              <span class="badge bg-success">SUCCESS</span>
+              {% elif log.status == 'FAILED' or log.status == 'DENIED' %}
+              <span class="badge bg-danger">{{ log.status }}</span>
+              {% else %}
+              <span class="badge bg-warning text-dark">{{ log.status }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="text-center text-muted py-4">No audit events recorded yet.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function triggerAdminScan() {
+  if (confirm("Trigger immediate scan iteration?")) {
+    fetch('/admin/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dry_run: false })
+    })
+    .then(r => r.json())
+    .then(data => alert(data.message || JSON.stringify(data)))
+    .catch(err => alert('Error: ' + err));
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,124 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Admin Logs & Audit Center{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="fw-bold text-light mb-1"><i class="bi bi-terminal-fill text-danger me-2"></i>Structured Logs & Security Audit Center</h2>
+    <p class="text-muted mb-0">Monitor application runtime events and administrative audit trails.</p>
+  </div>
+  <div>
+    <a href="{{ url_for('admin_api.admin_export_logs') }}" class="btn btn-outline-danger btn-sm"><i class="bi bi-download me-1"></i> Export JSON Logs</a>
+  </div>
+</div>
+
+<ul class="nav nav-tabs border-secondary mb-4">
+  <li class="nav-item">
+    <a class="nav-link {% if active_tab != 'audit_logs' %}active bg-dark text-light border-secondary{% else %}text-muted{% endif %}" href="{{ url_for('admin_ui.admin_logs', tab='app_logs') }}">
+      <i class="bi bi-journal-text me-1"></i> Application Logs
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if active_tab == 'audit_logs' %}active bg-dark text-danger border-secondary{% else %}text-muted{% endif %}" href="{{ url_for('admin_ui.admin_logs', tab='audit_logs') }}">
+      <i class="bi bi-shield-lock-fill me-1"></i> Security Audit Trail
+    </a>
+  </li>
+</ul>
+
+{% if active_tab == 'audit_logs' %}
+<!-- Audit Logs View -->
+<div class="admin-card">
+  <div class="admin-card-header">
+    <span><i class="bi bi-shield-check text-danger me-2"></i>Administrative Audit Logs</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-dark table-hover mb-0 align-middle">
+      <thead>
+        <tr class="text-muted small border-bottom border-secondary">
+          <th>TIMESTAMP</th>
+          <th>EVENT</th>
+          <th>ACTION</th>
+          <th>USER</th>
+          <th>SOURCE IP</th>
+          <th>STATUS</th>
+          <th>DETAILS</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if audit_logs %}
+          {% for log in audit_logs %}
+          <tr>
+            <td class="admin-code small text-nowrap">{{ log.timestamp }}</td>
+            <td><span class="badge bg-secondary">{{ log.event_type }}</span></td>
+            <td class="fw-semibold text-light">{{ log.action }}</td>
+            <td class="text-info">{{ log.username or 'Anonymous' }}</td>
+            <td class="admin-code text-muted small">{{ log.source_ip }}</td>
+            <td>
+              {% if log.status == 'SUCCESS' %}
+              <span class="badge bg-success">SUCCESS</span>
+              {% elif log.status == 'FAILED' or log.status == 'DENIED' %}
+              <span class="badge bg-danger">{{ log.status }}</span>
+              {% else %}
+              <span class="badge bg-warning text-dark">{{ log.status }}</span>
+              {% endif %}
+            </td>
+            <td class="small text-muted">{{ log.details }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted py-4">No security audit logs found.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<!-- App Logs View -->
+<div class="admin-card">
+  <div class="admin-card-header">
+    <span><i class="bi bi-list-nested text-info me-2"></i>Application Logs</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-dark table-hover mb-0 align-middle">
+      <thead>
+        <tr class="text-muted small border-bottom border-secondary">
+          <th>TIMESTAMP</th>
+          <th>LEVEL</th>
+          <th>MODULE</th>
+          <th>FUNCTION</th>
+          <th>MESSAGE</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if logs %}
+          {% for log in logs %}
+          <tr>
+            <td class="admin-code small text-nowrap">{{ log.timestamp }}</td>
+            <td>
+              {% if log.level == 'ERROR' %}
+              <span class="badge bg-danger">ERROR</span>
+              {% elif log.level == 'WARNING' %}
+              <span class="badge bg-warning text-dark">WARNING</span>
+              {% else %}
+              <span class="badge bg-info text-dark">INFO</span>
+              {% endif %}
+            </td>
+            <td class="admin-code text-light small">{{ log.module }}</td>
+            <td class="admin-code text-muted small">{{ log.function_name }}</td>
+            <td class="small">{{ log.message }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="5" class="text-center text-muted py-4">No application logs available.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

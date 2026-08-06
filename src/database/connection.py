@@ -324,6 +324,19 @@ class DatabaseManager:
             last_login TIMESTAMP
         );
 
+        -- 12. Security Audit Logs Table
+        CREATE TABLE IF NOT EXISTS AuditLogs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            user_id INTEGER,
+            username TEXT,
+            event_type TEXT NOT NULL,
+            action TEXT NOT NULL,
+            source_ip TEXT,
+            status TEXT NOT NULL,
+            details TEXT
+        );
+
         -- Indexes
         CREATE INDEX IF NOT EXISTS idx_opportunities_url_hash ON Opportunities(url_hash);
         CREATE INDEX IF NOT EXISTS idx_opportunities_status ON Opportunities(status);
@@ -338,6 +351,8 @@ class DatabaseManager:
         CREATE INDEX IF NOT EXISTS idx_applogs_module ON AppLogs(module);
         CREATE INDEX IF NOT EXISTS idx_users_email ON Users(email);
         CREATE INDEX IF NOT EXISTS idx_users_username ON Users(username);
+        CREATE INDEX IF NOT EXISTS idx_auditlogs_timestamp ON AuditLogs(timestamp);
+        CREATE INDEX IF NOT EXISTS idx_auditlogs_event_type ON AuditLogs(event_type);
         """
         cursor = conn.cursor()
         cursor.executescript(schema_sql)

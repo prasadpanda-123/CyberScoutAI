@@ -3,10 +3,12 @@ Flask Application Factory for CyberScout AI Web Dashboard.
 """
 
 from pathlib import Path
-from flask import Flask, jsonify, redirect, request, session, url_for
+from flask import Flask, Response, jsonify, redirect, request, session, url_for
 
 from dashboard.config import DashboardConfig
 from dashboard.routes import (
+    admin_api_bp,
+    admin_bp,
     analytics_bp,
     api_bp,
     auth_bp,
@@ -50,6 +52,8 @@ def create_app(config_class=DashboardConfig) -> Flask:
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
     # Register Blueprints
+    app.register_blueprint(admin_bp)
+    app.register_blueprint(admin_api_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(opportunities_bp)
@@ -69,7 +73,7 @@ def create_app(config_class=DashboardConfig) -> Flask:
     @app.before_request
     def check_first_run_setup():
         """Redirects unconfigured application to /setup if no users exist."""
-        if request.endpoint and request.endpoint in ("auth_ui.setup", "static"):
+        if request.endpoint and request.endpoint in ("auth_ui.setup", "admin_ui.admin_login", "static"):
             return None
         from src.database.user_repository import UserRepository
         user_repo = UserRepository()
@@ -78,16 +82,41 @@ def create_app(config_class=DashboardConfig) -> Flask:
         return None
 
     @app.context_processor
-    def inject_user():
-        """Injects active user session details into Jinja2 templates."""
+    def inject_user_and_admin():
+        """Injects active user session and admin session details into Jinja2 templates."""
         return {
             "current_user": {
                 "id": session.get("user_id"),
                 "username": session.get("username", "Guest"),
                 "role": session.get("role", "Viewer"),
                 "is_authenticated": bool(session.get("user_id")),
-            }
+            },
+            "current_admin": {
+                "id": session.get("admin_user_id"),
+                "username": session.get("admin_username", "Administrator"),
+                "role": session.get("admin_role", "Super Admin"),
+                "is_authenticated": bool(session.get("admin_authenticated")),
+                "csrf_token": session.get("admin_csrf_token", ""),
+            },
         }
+
+    @app.route("/robots.txt")
+    def robots_txt():
+        """Hardens route discovery by disallowing crawler access to /admin/* endpoints."""
+        content = "User-agent: *\nDisallow: /admin/\nDisallow: /admin/*\nDisallow: /api/admin/\n"
+        return Response(content, mimetype="text/plain")
+
+    @app.route("/sitemap.xml")
+    def sitemap_xml():
+        """Public sitemap excluding administrative portal routes."""
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>/dashboard</loc></url>
+  <url><loc>/opportunities</loc></url>
+  <url><loc>/analytics</loc></url>
+  <url><loc>/login</loc></url>
+</urlset>"""
+        return Response(xml, mimetype="application/xml")
 
     @app.after_request
     def apply_security_headers(response):
@@ -115,9 +144,11 @@ def create_app(config_class=DashboardConfig) -> Flask:
 
     @app.errorhandler(404)
     def handle_404_error(e):
-        if request.path.startswith("/api/"):
+        if request.path.startswith("/api/") or request.path.startswith("/admin/api/"):
             return jsonify({"status": "failed", "error": "API endpoint not found"}), 404
         return ("<h2>404 Not Found</h2>", 404)
+
+    return app
 
     return app
 

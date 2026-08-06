@@ -82,11 +82,11 @@ class TestSecurityAuth(unittest.TestCase):
 
         # Viewer trying to access Super Admin / Admin config route
         res = self.client.get("/configuration")
-        self.assertEqual(res.status_code, 302)  # Redirected due to access error
+        self.assertEqual(res.status_code, 403)  # HTTP 403 Forbidden
 
         # Viewer trying to access Super Admin logs route
         res_logs = self.client.get("/logs")
-        self.assertEqual(res_logs.status_code, 302)
+        self.assertEqual(res_logs.status_code, 403)
 
     def test_first_run_setup_flow_disabled_when_admin_exists(self):
         """Verify GET /setup redirects to /login when administrator accounts exist."""

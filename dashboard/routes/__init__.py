@@ -3,6 +3,8 @@ Routes package for CyberScout AI dashboard.
 """
 
 from dashboard.routes.auth import auth_bp
+from dashboard.routes.admin import admin_bp
+from dashboard.routes.admin_api import admin_api_bp
 from dashboard.routes.dashboard import dashboard_bp
 from dashboard.routes.opportunities import opportunities_bp
 from dashboard.routes.analytics import analytics_bp
@@ -20,6 +22,8 @@ from dashboard.routes.production import production_bp
 
 __all__ = [
     "auth_bp",
+    "admin_bp",
+    "admin_api_bp",
     "dashboard_bp",
     "opportunities_bp",
     "analytics_bp",

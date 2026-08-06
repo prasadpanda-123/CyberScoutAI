@@ -1,0 +1,59 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Administrator Authentication{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center my-5">
+  <div class="col-12 col-md-6 col-lg-4">
+    <div class="admin-card p-4 border-danger">
+      <div class="text-center mb-4">
+        <div class="d-inline-flex align-items-center justify-content-center bg-danger bg-opacity-25 text-danger rounded-circle p-3 mb-3">
+          <i class="bi bi-shield-lock-fill fs-1"></i>
+        </div>
+        <h3 class="fw-bold text-light mb-1">Admin Portal</h3>
+        <p class="text-muted small">CyberScout AI v2.2 Access Boundary</p>
+      </div>
+
+      <form method="POST" action="{{ url_for('admin_ui.admin_login') }}">
+        <input type="hidden" name="csrf_token" value="{{ current_admin.csrf_token }}">
+        {% if next %}
+        <input type="hidden" name="next" value="{{ next }}">
+        {% endif %}
+
+        <div class="mb-3">
+          <label for="identifier" class="form-label text-light fw-semibold small">ADMIN USERNAME / EMAIL</label>
+          <div class="input-group">
+            <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-person-fill"></i></span>
+            <input type="text" class="form-control bg-dark text-light border-secondary" id="identifier" name="identifier" required placeholder="admin@cyberscout.ai" autofocus>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label for="password" class="form-label text-light fw-semibold small">PASSWORD</label>
+          <div class="input-group">
+            <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-key-fill"></i></span>
+            <input type="password" class="form-control bg-dark text-light border-secondary" id="password" name="password" required placeholder="••••••••••••">
+          </div>
+        </div>
+
+        <div class="d-grid mb-3">
+          <button type="submit" class="btn btn-danger btn-lg fw-bold d-flex align-items-center justify-content-center gap-2">
+            <i class="bi bi-unlock-fill"></i> Authenticate Administrator
+          </button>
+        </div>
+
+        <div class="text-center mt-3 pt-3 border-top border-secondary">
+          <p class="text-muted small mb-0">Standard user account? <a href="{{ url_for('auth_ui.login') }}" class="text-info text-decoration-none">Go to Public Portal Login</a></p>
+        </div>
+      </form>
+    </div>
+
+    <div class="text-center mt-4">
+      <div class="p-3 rounded bg-dark border border-secondary text-muted small">
+        <i class="bi bi-shield-exclamation text-warning me-1"></i>
+        Notice: All administrative access attempts are monitored and recorded with source IP and timestamps.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

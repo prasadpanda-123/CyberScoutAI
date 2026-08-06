@@ -8,7 +8,7 @@ from dashboard.services.analytics_service import AnalyticsService
 from dashboard.services.api_service import APIService
 from dashboard.services.dashboard_service import DashboardService
 from dashboard.services.statistics_service import StatisticsService
-from src.auth.decorators import login_required, roles_required
+from src.auth.decorators import admin_required, login_required, roles_required
 from src.core.constants import REPORTS_DIR
 from src.core.version import get_version_info
 
@@ -22,9 +22,8 @@ api_service = APIService()
 
 @api_bp.route("/health", methods=["GET"])
 def get_health():
-    """GET /api/health — System health check."""
-    report = dash_service.get_health_report()
-    return jsonify(report)
+    """GET /api/health — Minimal system health check."""
+    return jsonify({"healthy": True, "status": "ok"}), 200
 
 
 @api_bp.route("/stats", methods=["GET"])
@@ -111,9 +110,9 @@ def get_statistics():
 
 @api_bp.route("/collectors", methods=["GET"])
 @api_bp.route("/dashboard/collectors", methods=["GET"])
-@login_required
+@admin_required
 def get_collectors():
-    """GET /api/dashboard/collectors — Collector status list."""
+    """GET /api/dashboard/collectors — Collector status list (Sensitive)."""
     collectors = dash_service.get_collectors_status()
     return jsonify(collectors)
 
@@ -128,28 +127,27 @@ def get_reports():
 
 
 @api_bp.route("/system", methods=["GET"])
-@login_required
+@admin_required
 def get_system():
-    """GET /api/system — System metadata."""
+    """GET /api/system — System metadata (Sensitive)."""
     info = get_version_info()
     return jsonify(info)
 
 
 @api_bp.route("/system/smtp-health", methods=["GET"])
 @api_bp.route("/email/health", methods=["GET"])
-@login_required
+@admin_required
 def get_smtp_health():
-    """GET /api/system/smtp-health — Returns email provider pre-flight diagnostics."""
+    """GET /api/system/smtp-health — Returns email provider pre-flight diagnostics (Sensitive)."""
     res = api_service.check_smtp_health()
     return jsonify(res)
 
 
 @api_bp.route("/logs", methods=["GET"])
 @api_bp.route("/dashboard/logs", methods=["GET"])
-@login_required
-@roles_required("Super Admin")
+@admin_required
 def get_logs():
-    """GET /api/dashboard/logs — Structured AppLogs with level/module/search filters and pagination."""
+    """GET /api/dashboard/logs — Structured AppLogs (Sensitive)."""
     level = request.args.get("level")
     module = request.args.get("module")
     q = request.args.get("q")
@@ -167,10 +165,9 @@ def get_logs():
 
 
 @api_bp.route("/logs/export", methods=["GET"])
-@login_required
-@roles_required("Super Admin")
+@admin_required
 def export_logs():
-    """GET /api/logs/export — Export logs in JSON format."""
+    """GET /api/logs/export — Export logs in JSON format (Sensitive)."""
     data = api_service.get_logs(limit=1000)
     json_bytes = json.dumps(data.get("logs", []), indent=2).encode("utf-8")
     return Response(
@@ -181,20 +178,18 @@ def export_logs():
 
 
 @api_bp.route("/config", methods=["GET"])
-@login_required
-@roles_required("Super Admin")
+@admin_required
 def get_config():
-    """GET /api/config — Application settings config."""
+    """GET /api/config — Application settings config (Sensitive)."""
     from src.core.config import config
     return jsonify(config.as_dict())
 
 
-# POST Action Commands with JSON error safety and RBAC
+# POST Action Commands with JSON error safety and Admin authentication
 @api_bp.route("/run", methods=["POST"])
-@login_required
-@roles_required("Super Admin", "Administrator")
+@admin_required
 def trigger_run():
-    """POST /api/run — Trigger single scan iteration."""
+    """POST /api/run — Trigger single scan iteration (Sensitive)."""
     try:
         dry_run = False
         if request.is_json and request.json:
@@ -206,10 +201,9 @@ def trigger_run():
 
 
 @api_bp.route("/email/test", methods=["POST"])
-@login_required
-@roles_required("Super Admin", "Administrator")
+@admin_required
 def email_test():
-    """POST /api/email/test — Dispatch test HTML email."""
+    """POST /api/email/test — Dispatch test HTML email (Sensitive)."""
     try:
         res = api_service.send_test_email()
         return jsonify(res)
@@ -218,10 +212,9 @@ def email_test():
 
 
 @api_bp.route("/scheduler/pause", methods=["POST"])
-@login_required
-@roles_required("Super Admin", "Administrator")
+@admin_required
 def scheduler_pause():
-    """POST /api/scheduler/pause — Pause scheduler."""
+    """POST /api/scheduler/pause — Pause scheduler (Sensitive)."""
     try:
         res = api_service.pause_scheduler()
         return jsonify(res)
@@ -230,10 +223,9 @@ def scheduler_pause():
 
 
 @api_bp.route("/scheduler/resume", methods=["POST"])
-@login_required
-@roles_required("Super Admin", "Administrator")
+@admin_required
 def scheduler_resume():
-    """POST /api/scheduler/resume — Resume scheduler."""
+    """POST /api/scheduler/resume — Resume scheduler (Sensitive)."""
     try:
         res = api_service.resume_scheduler()
         return jsonify(res)
@@ -242,10 +234,9 @@ def scheduler_resume():
 
 
 @api_bp.route("/scheduler/restart", methods=["POST"])
-@login_required
-@roles_required("Super Admin", "Administrator")
+@admin_required
 def scheduler_restart():
-    """POST /api/scheduler/restart — Restart scheduler."""
+    """POST /api/scheduler/restart — Restart scheduler (Sensitive)."""
     try:
         api_service.pause_scheduler()
         res = api_service.resume_scheduler()

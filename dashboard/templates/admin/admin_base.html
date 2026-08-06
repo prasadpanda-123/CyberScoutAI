@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Administrator Portal{% endblock %} - CyberScout AI v2.2</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --admin-bg-primary: #0a0d14;
+      --admin-bg-surface: #121824;
+      --admin-bg-card: #1a2234;
+      --admin-border: #2a364f;
+      --admin-accent: #dc3545;
+      --admin-accent-glow: rgba(220, 53, 69, 0.25);
+      --admin-text-main: #e2e8f0;
+      --admin-text-muted: #94a3b8;
+    }
+
+    body {
+      background-color: var(--admin-bg-primary);
+      color: var(--admin-text-main);
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .admin-navbar {
+      background: rgba(18, 24, 36, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 2px solid var(--admin-accent);
+      box-shadow: 0 4px 20px var(--admin-accent-glow);
+    }
+
+    .admin-brand {
+      font-weight: 700;
+      font-size: 1.25rem;
+      letter-spacing: 0.5px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .admin-badge {
+      background: linear-gradient(135deg, #dc3545, #b02a37);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .admin-nav-link {
+      color: var(--admin-text-muted) !important;
+      font-weight: 500;
+      padding: 8px 14px !important;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .admin-nav-link:hover, .admin-nav-link.active {
+      color: #fff !important;
+      background-color: rgba(220, 53, 69, 0.15);
+      border-left: 3px solid var(--admin-accent);
+    }
+
+    .admin-card {
+      background-color: var(--admin-bg-card);
+      border: 1px solid var(--admin-border);
+      border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .admin-card-header {
+      background-color: rgba(18, 24, 36, 0.8);
+      border-bottom: 1px solid var(--admin-border);
+      font-weight: 600;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .admin-code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+    }
+
+    .security-status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(40, 167, 69, 0.15);
+      color: #28a745;
+      border: 1px solid rgba(40, 167, 69, 0.3);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .security-status-indicator.warning {
+      background: rgba(255, 193, 7, 0.15);
+      color: #ffc107;
+      border-color: rgba(255, 193, 7, 0.3);
+    }
+
+    footer.admin-footer {
+      margin-top: auto;
+      background-color: var(--admin-bg-surface);
+      border-top: 1px solid var(--admin-border);
+      padding: 15px 0;
+      color: var(--admin-text-muted);
+      font-size: 0.85rem;
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark admin-navbar sticky-top">
+    <div class="container-fluid px-4">
+      <a class="navbar-brand admin-brand" href="{{ url_for('admin_ui.admin_dashboard') }}">
+        <i class="bi bi-shield-lock-fill text-danger fs-4"></i>
+        <span>CYBERSCOUT AI</span>
+        <span class="admin-badge">ADMIN PORTAL</span>
+      </a>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbarContent">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="adminNavbarContent">
+        {% if current_admin.is_authenticated %}
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
+          <li class="nav-item">
+            <a class="nav-link admin-nav-link {% if active_page == 'admin_dashboard' %}active{% endif %}" href="{{ url_for('admin_ui.admin_dashboard') }}">
+              <i class="bi bi-speedometer2"></i> Dashboard
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link admin-nav-link {% if active_page == 'admin_collectors' %}active{% endif %}" href="{{ url_for('admin_ui.admin_collectors') }}">
+              <i class="bi bi-diagram-3-fill"></i> Collectors
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link admin-nav-link {% if active_page == 'admin_scheduler' %}active{% endif %}" href="{{ url_for('admin_ui.admin_scheduler') }}">
+              <i class="bi bi-clock-history"></i> Scheduler
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link admin-nav-link {% if active_page == 'admin_logs' %}active{% endif %}" href="{{ url_for('admin_ui.admin_logs') }}">
+              <i class="bi bi-terminal-fill"></i> Logs & Audit
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link admin-nav-link {% if active_page == 'admin_users' %}active{% endif %}" href="{{ url_for('admin_ui.admin_users') }}">
+              <i class="bi bi-people-fill"></i> Users
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link admin-nav-link {% if active_page == 'admin_configuration' %}active{% endif %}" href="{{ url_for('admin_ui.admin_configuration') }}">
+              <i class="bi bi-sliders"></i> Config
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link admin-nav-link {% if active_page == 'admin_diagnostics' %}active{% endif %}" href="{{ url_for('admin_ui.admin_diagnostics') }}">
+              <i class="bi bi-activity"></i> Diagnostics
+            </a>
+          </li>
+        </ul>
+
+        <div class="d-flex align-items-center gap-3">
+          <div class="security-status-indicator">
+            <i class="bi bi-shield-check"></i> ISOLATED BOUNDARY
+          </div>
+          <div class="dropdown">
+            <button class="btn btn-outline-danger btn-sm dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-person-badge-fill"></i>
+              <span>{{ current_admin.username }}</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end bg-dark border-secondary shadow">
+              <li><span class="dropdown-item-text text-muted small">Role: {{ current_admin.role }}</span></li>
+              <li><hr class="dropdown-divider border-secondary"></li>
+              <li><a class="dropdown-item text-danger" href="{{ url_for('admin_ui.admin_logout') }}"><i class="bi bi-box-arrow-right"></i> Exit Admin Portal</a></li>
+            </ul>
+          </div>
+        </div>
+        {% else %}
+        <div class="ms-auto">
+          <span class="text-danger fw-bold small"><i class="bi bi-lock-fill"></i> STRICT ACCESS BOUNDARY</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  <main class="container-fluid px-4 py-4 flex-grow-1">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show admin-card border-0 mb-4" role="alert">
+            <i class="bi {% if category == 'success' %}bi-check-circle-fill{% elif category == 'danger' %}bi-exclamation-triangle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="admin-footer text-center">
+    <div class="container-fluid px-4 d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
+      <div>
+        <span class="fw-bold text-light">CyberScout AI v2.2</span> &mdash; Administrative Control Surface
+      </div>
+      <div class="small">
+        <span class="badge bg-secondary">CSRF Protected</span>
+        <span class="badge bg-danger">Audit Logging Active</span>
+        <span class="badge bg-dark border border-secondary">Session Isolated</span>
+      </div>
+    </div>
+  </footer>
+
+  <script href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>
