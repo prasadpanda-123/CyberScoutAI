@@ -113,7 +113,7 @@ class AuditLogRepository:
         try:
             cursor.execute(count_sql, params)
             count_row = cursor.fetchone()
-            total_records = count_row[0] if count_row and len(count_row) > 0 and count_row[0] is not None else 0
+            total_records = int(count_row[0]) if (count_row is not None and count_row[0] is not None) else 0
 
             offset = max(0, (page - 1) * limit)
             data_sql = f"SELECT id, timestamp, user_id, username, event_type, action, source_ip, status, details FROM AuditLogs{where_sql} ORDER BY id DESC LIMIT ? OFFSET ?"

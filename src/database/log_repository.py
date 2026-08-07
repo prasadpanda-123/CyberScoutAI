@@ -99,7 +99,7 @@ class LogRepository:
         try:
             cursor.execute(count_sql, params)
             count_row = cursor.fetchone()
-            total_count = count_row[0] if count_row and len(count_row) > 0 and count_row[0] is not None else 0
+            total_count = int(count_row[0]) if (count_row is not None and count_row[0] is not None) else 0
 
             cursor.execute(select_sql, params + [limit, offset])
             rows = cursor.fetchall() or []
@@ -146,7 +146,7 @@ class LogRepository:
 
             cursor.execute("SELECT COUNT(*) FROM AppLogs")
             total_row = cursor.fetchone()
-            total = total_row[0] if total_row and len(total_row) > 0 and total_row[0] is not None else 0
+            total = int(total_row[0]) if (total_row is not None and total_row[0] is not None) else 0
 
             return {
                 "total_logs": total,
