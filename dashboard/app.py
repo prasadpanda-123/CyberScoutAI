@@ -156,7 +156,7 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
             "img-src 'self' data:; "
-            "connect-src 'self';"
+            "connect-src 'self' https://cdn.jsdelivr.net;"
         )
         response.headers.pop("Server", None)
         response.headers.pop("X-Powered-By", None)
