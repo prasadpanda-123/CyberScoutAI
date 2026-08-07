@@ -94,17 +94,23 @@ class EmailHistoryRepository:
 
     def record_emailed_opportunity(self, opportunity_id: str, email_run_id: str) -> None:
         """Records an opportunity as sent in an email digest."""
+        self.record_emailed_opportunities_batch([opportunity_id], email_run_id=email_run_id)
+
+    def record_emailed_opportunities_batch(self, opportunity_ids: List[str], email_run_id: str) -> None:
+        """Records multiple opportunities as sent in a single bulk transaction."""
+        if not opportunity_ids:
+            return
         sql = """
         INSERT INTO EmailHistory (id, opportunity_id, email_run_id, sent_at, clicked)
         VALUES (?, ?, ?, ?, FALSE);
         """
-        record_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
+        params_list = [(str(uuid.uuid4()), opp_id, email_run_id, now) for opp_id in opportunity_ids]
         try:
             with self.db_manager.transaction() as cursor:
-                cursor.execute(sql, (record_id, opportunity_id, email_run_id, now))
+                cursor.executemany(sql, params_list)
         except Exception as e:
-            raise DatabaseError(f"Failed to record email history for '{opportunity_id}': {e}", original_exception=e)
+            logger.warning(f"Failed to record batch email history: {e}")
 
     def is_already_emailed(self, opportunity_id: str) -> bool:
         """Checks if an opportunity was previously sent in an email digest."""

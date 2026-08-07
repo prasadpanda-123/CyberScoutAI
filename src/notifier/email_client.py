@@ -258,9 +258,10 @@ class EmailClient:
             send_duration = time.time() - send_start
             self.metrics.record_sent(send_duration)
 
-            # Record delivery history for sent opportunities
-            for opp in payload.all_opportunities:
-                self.history_tracker.log_delivery(opp.id, email_run_id=run_id)
+            # Record delivery history for sent opportunities in a single bulk transaction
+            opp_ids = [opp.id for opp in payload.all_opportunities if getattr(opp, "id", None)]
+            if opp_ids:
+                self.history_tracker.log_deliveries_batch(opp_ids, email_run_id=run_id)
 
             return {
                 "status": "success",

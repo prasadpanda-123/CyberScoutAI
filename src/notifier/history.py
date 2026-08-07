@@ -20,12 +20,17 @@ class HistoryTracker:
     def log_delivery(self, opportunity_id: str, email_run_id: str) -> None:
         """
         Records an emailed opportunity link entry.
-
-        Args:
-            opportunity_id: Target Opportunity ID.
-            email_run_id: Notifier run execution ID.
         """
         try:
             self.repo.record_emailed_opportunity(opportunity_id, email_run_id=email_run_id)
+        except Exception:
+            pass
+
+    def log_deliveries_batch(self, opportunity_ids: list[str], email_run_id: str) -> None:
+        """
+        Records batch of emailed opportunity entries in a single transaction.
+        """
+        try:
+            self.repo.record_emailed_opportunities_batch(opportunity_ids, email_run_id=email_run_id)
         except Exception:
             pass
