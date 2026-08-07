@@ -178,16 +178,20 @@ class DatabaseManager:
     Database Connection & Infrastructure Manager for PostgreSQL.
     """
 
-    def __init__(self, custom_url: Optional[str] = None, **kwargs):
+    def __init__(self, custom_url: Optional[str] = None, db_path: Optional[Any] = None, **kwargs):
         """
         Initializes DatabaseManager.
 
         Args:
             custom_url: Optional override database connection URL.
+            db_path: Optional file path for SQLite database.
             **kwargs: Ignored legacy parameters for backward compatibility.
         """
+        if not custom_url and db_path:
+            db_p = str(db_path).replace("\\", "/")
+            custom_url = f"sqlite:///{db_p}"
         self.custom_url = custom_url
-        self.db_path = None
+        self.db_path = db_path
         self._engine = None
         self._connection = None
         self._last_check_iso: Optional[str] = None

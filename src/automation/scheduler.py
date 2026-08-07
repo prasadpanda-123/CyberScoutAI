@@ -92,8 +92,9 @@ class SchedulerService:
                         job.execute()
                     except Exception as e:
                         logger.error(f"Error executing job '{job.name}': {e}", exc_info=True)
-            # Sleep in increments of 1 second checking stop event
-            time.sleep(1)
+            # Sleep in tiny increments checking stop event
+            if self._stop_event.wait(timeout=0.1):
+                break
 
     def get_status(self) -> Dict[str, Any]:
         """Returns scheduler state parameters."""
