@@ -102,15 +102,19 @@ class HealthMonitor:
             status = ping_ok and integrity_ok
             msg = "Database healthy." if status else "Database health check failed."
 
+            provider_name = "PostgreSQL (Supabase)" if self.db_manager.provider == "postgresql" else "SQLite (CI/Test Mode)"
+            port_val = 6543 if self.db_manager.provider == "postgresql" else 0
+            db_name = "postgres" if self.db_manager.provider == "postgresql" else "memory"
+
             return HealthCheckResult(
                 component="database",
                 status=status,
                 message=msg,
                 details={
-                    "provider": "PostgreSQL (Supabase)",
+                    "provider": provider_name,
                     "host": metrics.get("database_host", "*****"),
-                    "port": 6543,
-                    "database_name": "postgres",
+                    "port": port_val,
+                    "database_name": db_name,
                     "version": metrics.get("version", "PostgreSQL 15.8"),
                     "connectivity": ping_ok,
                     "schema_status": "healthy" if status else "degraded",

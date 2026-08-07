@@ -31,6 +31,9 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run System Diagnostics & Health Check
+        env:
+          TESTING: "true"
+          DATABASE_URL: "sqlite:///:memory:"
         run: |
           python main.py --version
           python main.py --config-check
@@ -38,5 +41,8 @@ jobs:
           python main.py --health
 
       - name: Execute Automated Unit Test Suite
+        env:
+          TESTING: "true"
+          DATABASE_URL: "sqlite:///:memory:"
         run: |
           python -m unittest discover -s tests/unit
