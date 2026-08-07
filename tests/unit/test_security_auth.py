@@ -116,11 +116,21 @@ class TestSecurityAuth(unittest.TestCase):
             data = res_api.get_json()
             self.assertEqual(data.get("status"), "failed")
 
-        # Admin protected pages redirect anonymous visitors directly to landing page '/'
+        # Admin protected pages redirect anonymous visitors to dedicated admin login page '/admin/login'
         for admin_path in ["/admin/dashboard", "/admin/users", "/admin/logs", "/admin/configuration", "/admin/diagnostics"]:
             res_admin = anon_client.get(admin_path)
             self.assertEqual(res_admin.status_code, 302)
-            self.assertTrue(res_admin.location.endswith("/"), f"Admin path {admin_path} location should redirect to landing page '/'")
+            self.assertIn("/admin/login", res_admin.location, f"Admin path {admin_path} location should redirect to '/admin/login'")
+
+        # Unknown browser URLs redirect to public landing page '/'
+        res_unknown = anon_client.get("/something-random-xyz")
+        self.assertEqual(res_unknown.status_code, 302)
+        self.assertTrue(res_unknown.location.endswith("/"))
+
+        # Unknown API URLs return 404 JSON
+        res_api_unknown = anon_client.get("/api/something-random-xyz")
+        self.assertEqual(res_api_unknown.status_code, 404)
+        self.assertEqual(res_api_unknown.get_json().get("status"), "error")
 
     def test_direct_unauthenticated_opportunities_access_prevention(self):
         """EXPLICIT REGRESSION TEST: Unauthenticated GET /opportunities MUST NOT return 200 or render opportunity data."""

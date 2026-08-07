@@ -101,13 +101,13 @@ def admin_required(f):
                     }), 403
                 return ("<div style='font-family:sans-serif; text-align:center; padding:50px;'><h1>403 Forbidden</h1><p>Access Denied: Administrative Portal access requires admin credentials.</p></div>", 403)
 
-            # Not logged in at all -> Redirect unauthenticated users to landing page '/'
+            # Not logged in at all -> Redirect unauthenticated users to admin login page '/admin/login'
             if is_api:
                 return jsonify({
-                    "status": "failed",
+                    "status": "unauthorized",
                     "error": "Admin authentication required"
                 }), 401
-            return redirect(url_for("dashboard_ui.landing"))
+            return redirect(url_for("admin_ui.admin_login"))
 
         if admin_role not in ("Admin", "admin", "Super Admin", "Administrator"):
             if is_api:

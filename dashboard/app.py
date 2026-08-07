@@ -177,9 +177,16 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
 
     @app.errorhandler(404)
     def handle_404_error(e):
-        if request.path.startswith("/api/") or request.path.startswith("/admin/api/"):
-            return jsonify({"status": "failed", "error": "API endpoint not found"}), 404
-        return ("<h2>404 Not Found</h2>", 404)
+        if (
+            request.path.startswith("/api/")
+            or request.path.startswith("/admin/api/")
+            or request.headers.get("Accept") == "application/json"
+            or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        ):
+            return jsonify({"status": "error", "error": "API endpoint not found"}), 404
+        if request.path.startswith("/static") or request.path == "/favicon.ico":
+            return ("File Not Found", 404)
+        return redirect(url_for("dashboard_ui.landing"))
 
     return app
 
