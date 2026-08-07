@@ -111,8 +111,8 @@ class AuditLogRepository:
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute(count_sql, params)
-            total_records = cursor.fetchone()[0]
+            count_row = cursor.fetchone()
+            total_records = count_row[0] if count_row else 0
 
             offset = max(0, (page - 1) * limit)
             data_sql = f"SELECT id, timestamp, user_id, username, event_type, action, source_ip, status, details FROM AuditLogs{where_sql} ORDER BY id DESC LIMIT ? OFFSET ?"
