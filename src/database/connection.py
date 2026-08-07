@@ -124,6 +124,11 @@ class PgConnectionAdapter:
     """DBAPI Connection Adapter wrapping PostgreSQL raw connections."""
     def __init__(self, raw_conn):
         self._conn = raw_conn
+        if hasattr(self._conn, "status") and getattr(self._conn, "status", 0) != 0:
+            try:
+                self._conn.rollback()
+            except Exception:
+                pass
 
     def cursor(self):
         return PgCursorAdapter(self._conn.cursor())
@@ -238,8 +243,8 @@ class DatabaseManager:
                 self._connection = PgConnectionAdapter(dbapi_conn)
             except Exception as e:
                 err_str = str(e).lower()
-                if "ssl" in err_str or "closed" in err_str or "connection" in err_str:
-                    logger.warning(f"Database pool connection dropped ({e}). Resetting engine pool and retrying connection.")
+                if "ssl" in err_str or "closed" in err_str or "connection" in err_str or "set_session" in err_str or "transaction" in err_str:
+                    logger.warning(f"Database pool connection dropped/stale ({e}). Resetting engine pool and retrying connection.")
                     try:
                         self.reset_pool()
                         engine = self.get_engine()

@@ -119,7 +119,7 @@ def create_db_engine(custom_url: Optional[str] = None) -> Engine:
         isolation_level="READ COMMITTED",
         pool_size=3,
         max_overflow=5,
-        pool_pre_ping=True,
+        pool_pre_ping=False,
         pool_recycle=45,
         connect_args={
             "keepalives": 1,
