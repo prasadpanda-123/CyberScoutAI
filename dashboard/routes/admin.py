@@ -34,8 +34,12 @@ api_service = APIService()
 @admin_bp.before_request
 def ensure_csrf_token():
     """Ensures a CSRF token is present in the admin session."""
-    if "admin_csrf_token" not in session:
-        session["admin_csrf_token"] = AdminSecurityManager.generate_csrf_token()
+    try:
+        if "admin_csrf_token" not in session:
+            session["admin_csrf_token"] = AdminSecurityManager.generate_csrf_token()
+    except Exception as e:
+        from src.core.logging import get_logger
+        get_logger(__name__).warning(f"Error generating admin_csrf_token: {e}")
 
 
 @admin_bp.route("/login", methods=["GET", "POST"])
@@ -44,88 +48,126 @@ def admin_login():
     Dedicated Admin Login Portal.
     Only allows users with role 'Super Admin' or 'Administrator' to authenticate.
     """
-    # If already authenticated as admin, redirect to admin dashboard
-    if session.get("admin_authenticated"):
-        return redirect(url_for("admin_ui.admin_dashboard"))
+    try:
+        # If already authenticated as admin, redirect to admin dashboard
+        if session.get("admin_authenticated"):
+            return redirect(url_for("admin_ui.admin_dashboard"))
 
-    client_ip = request.remote_addr or "127.0.0.1"
+        client_ip = request.remote_addr or "127.0.0.1"
 
-    if request.method == "POST":
-        identifier = request.form.get("identifier", "").strip()
-        password = request.form.get("password", "").strip()
-        csrf_token = request.form.get("csrf_token", "").strip()
-        next_url = request.form.get("next") or request.args.get("next") or url_for("admin_ui.admin_dashboard")
+        if request.method == "POST":
+            identifier = request.form.get("identifier", "").strip()
+            password = request.form.get("password", "").strip()
+            csrf_token = request.form.get("csrf_token", "").strip()
+            next_url = request.form.get("next") or request.args.get("next") or url_for("admin_ui.admin_dashboard")
 
-        # 1. Validate CSRF Token
-        if not AdminSecurityManager.verify_csrf_token(session.get("admin_csrf_token"), csrf_token):
-            flash("CSRF validation failed. Please try again.", "danger")
-            audit_repo.log_event("AUTH", "ADMIN_LOGIN", "FAILED", username=identifier, source_ip=client_ip, details="CSRF token mismatch")
-            return render_template("admin/admin_login.html", next=next_url)
+            # 1. Validate CSRF Token
+            if not AdminSecurityManager.verify_csrf_token(session.get("admin_csrf_token"), csrf_token):
+                flash("CSRF validation failed. Please try again.", "danger")
+                try:
+                    audit_repo.log_event("AUTH", "ADMIN_LOGIN", "FAILED", username=identifier, source_ip=client_ip, details="CSRF token mismatch")
+                except Exception:
+                    pass
+                return render_template("admin/admin_login.html", next=next_url)
 
-        # 2. Check Rate Limit / Account Lockout
-        if AdminSecurityManager.is_locked_out(client_ip, identifier):
-            flash("Account locked due to 5 consecutive failed login attempts. Please wait 15 minutes.", "danger")
-            audit_repo.log_event("AUTH", "ADMIN_LOGIN", "LOCKED_OUT", username=identifier, source_ip=client_ip, details="Attempt during lockout period")
-            return render_template("admin/admin_login.html", next=next_url)
+            # 2. Check Rate Limit / Account Lockout
+            try:
+                locked = AdminSecurityManager.is_locked_out(client_ip, identifier)
+            except Exception:
+                locked = False
 
-        # 3. Authenticate User
-        user = user_repo.authenticate(identifier, password)
+            if locked:
+                flash("Account locked due to 5 consecutive failed login attempts. Please wait 15 minutes.", "danger")
+                try:
+                    audit_repo.log_event("AUTH", "ADMIN_LOGIN", "LOCKED_OUT", username=identifier, source_ip=client_ip, details="Attempt during lockout period")
+                except Exception:
+                    pass
+                return render_template("admin/admin_login.html", next=next_url)
 
-        if not user:
-            AdminSecurityManager.record_failed_attempt(client_ip, identifier)
-            flash("Invalid administrator credentials.", "danger")
-            audit_repo.log_event("AUTH", "ADMIN_LOGIN", "FAILED", username=identifier, source_ip=client_ip, details="Invalid credentials")
-            return render_template("admin/admin_login.html", next=next_url)
+            # 3. Authenticate User
+            try:
+                user = user_repo.authenticate(identifier, password)
+            except Exception as e:
+                from src.core.logging import get_logger
+                get_logger(__name__).error(f"User authentication error: {e}")
+                user = None
 
-        # 4. Role Authorization Check: Admin role permitted
-        user_role = user.get("role")
-        if user_role not in ("Admin", "admin", "Super Admin", "Administrator"):
-            AdminSecurityManager.record_failed_attempt(client_ip, identifier)
-            flash("Access Denied: Standard user accounts cannot authenticate through the Administrator Portal.", "danger")
-            audit_repo.log_event("AUTH", "ADMIN_LOGIN", "DENIED", user_id=user["id"], username=user["username"], source_ip=client_ip, details=f"Non-admin role '{user_role}' attempted admin login")
-            return render_template("admin/admin_login.html", next=next_url)
+            if not user:
+                try:
+                    AdminSecurityManager.record_failed_attempt(client_ip, identifier)
+                except Exception:
+                    pass
+                flash("Invalid administrator credentials.", "danger")
+                try:
+                    audit_repo.log_event("AUTH", "ADMIN_LOGIN", "FAILED", username=identifier, source_ip=client_ip, details="Invalid credentials")
+                except Exception:
+                    pass
+                return render_template("admin/admin_login.html", next=next_url)
 
-        # 5. Password Verified -> Generate 6-digit OTP & Store Pending MFA State (Phases 6 - 8)
-        otp_code = AdminSecurityManager.generate_otp_code()
-        otp_hash = AdminSecurityManager.hash_otp_code(otp_code)
-        expires_at = int(time.time()) + 300  # 5 minutes validity
+            # 4. Role Authorization Check: Admin role permitted
+            user_role = user.get("role")
+            if user_role not in ("Admin", "admin", "Super Admin", "Administrator"):
+                try:
+                    AdminSecurityManager.record_failed_attempt(client_ip, identifier)
+                except Exception:
+                    pass
+                flash("Access Denied: Standard user accounts cannot authenticate through the Administrator Portal.", "danger")
+                try:
+                    audit_repo.log_event("AUTH", "ADMIN_LOGIN", "DENIED", user_id=user["id"], username=user["username"], source_ip=client_ip, details=f"Non-admin role '{user_role}' attempted admin login")
+                except Exception:
+                    pass
+                return render_template("admin/admin_login.html", next=next_url)
 
-        session["admin_pending_user_id"] = user["id"]
-        session["admin_pending_username"] = user["username"]
-        session["admin_pending_role"] = user["role"]
-        session["admin_pending_email"] = user["email"]
-        session["admin_pending_otp_hash"] = otp_hash
-        session["admin_pending_otp_expires_at"] = expires_at
-        session["admin_pending_otp_attempts"] = 0
-        session["admin_pending_next"] = next_url
+            # 5. Password Verified -> Generate 6-digit OTP & Store Pending MFA State
+            otp_code = AdminSecurityManager.generate_otp_code()
+            otp_hash = AdminSecurityManager.hash_otp_code(otp_code)
+            expires_at = int(time.time()) + 300  # 5 minutes validity
 
-        # Transmit OTP Code via Production Email Service
-        try:
-            from src.notifier.email_sender import EmailSender
-            sender = EmailSender()
-            subject = "CyberScout AI — Administrator Verification Code"
-            plain_body = f"Hello {user['username']},\n\nYour 6-digit administrator verification code is:\n\n   {otp_code}\n\nThis code is valid for 5 minutes. Do not share this code with anyone.\n\nCyberScout AI Security"
-            html_body = f"""<!DOCTYPE html><html><body style="font-family:sans-serif; background-color:#0f172a; color:#f8fafc; padding:30px;">
-            <div style="max-width:500px; margin:0 auto; background-color:#1e293b; padding:30px; border-radius:10px; border:1px solid #334155;">
-              <h2 style="color:#ef4444; margin-top:0;">CyberScout AI Security</h2>
-              <p>Administrator Multi-Factor Authentication Code:</p>
-              <div style="background-color:#0f172a; border:1px solid #ef4444; color:#ef4444; font-size:32px; font-weight:bold; letter-spacing:5px; text-align:center; padding:15px; border-radius:8px; margin:20px 0;">
-                {otp_code}
-              </div>
-              <p style="font-size:13px; color:#94a3b8;">This code is valid for 5 minutes. If you did not request this login, please notify system administrators immediately.</p>
-            </div>
-            </body></html>"""
-            sender.send_email(html_content=html_body, plain_content=plain_body, subject=subject)
-            audit_repo.log_event("MFA", "OTP_GENERATED", "SUCCESS", user_id=user["id"], username=user["username"], source_ip=client_ip, details="OTP code dispatched via email")
-            flash("Credentials verified! A 6-digit verification code has been dispatched to your email address.", "info")
-        except Exception as e:
-            # Audit log records fallback code for development & testing environments
-            audit_repo.log_event("MFA", "OTP_GENERATED", "DEV_FALLBACK", user_id=user["id"], username=user["username"], source_ip=client_ip, details=f"OTP: {otp_code} (Dispatch info: {e})")
-            flash(f"Credentials verified! Verification Code: {otp_code}", "info")
+            session["admin_pending_user_id"] = user["id"]
+            session["admin_pending_username"] = user["username"]
+            session["admin_pending_role"] = user["role"]
+            session["admin_pending_email"] = user["email"]
+            session["admin_pending_otp_hash"] = otp_hash
+            session["admin_pending_otp_expires_at"] = expires_at
+            session["admin_pending_otp_attempts"] = 0
+            session["admin_pending_next"] = next_url
 
-        return redirect(url_for("admin_ui.admin_verify_otp"))
+            # Transmit OTP Code via Production Email Service
+            try:
+                from src.notifier.email_sender import EmailSender
+                sender = EmailSender()
+                subject = "CyberScout AI — Administrator Verification Code"
+                plain_body = f"Hello {user['username']},\n\nYour 6-digit administrator verification code is:\n\n   {otp_code}\n\nThis code is valid for 5 minutes. Do not share this code with anyone.\n\nCyberScout AI Security"
+                html_body = f"""<!DOCTYPE html><html><body style="font-family:sans-serif; background-color:#0f172a; color:#f8fafc; padding:30px;">
+                <div style="max-width:500px; margin:0 auto; background-color:#1e293b; padding:30px; border-radius:10px; border:1px solid #334155;">
+                  <h2 style="color:#ef4444; margin-top:0;">CyberScout AI Security</h2>
+                  <p>Administrator Multi-Factor Authentication Code:</p>
+                  <div style="background-color:#0f172a; border:1px solid #ef4444; color:#ef4444; font-size:32px; font-weight:bold; letter-spacing:5px; text-align:center; padding:15px; border-radius:8px; margin:20px 0;">
+                    {otp_code}
+                  </div>
+                  <p style="font-size:13px; color:#94a3b8;">This code is valid for 5 minutes. If you did not request this login, please notify system administrators immediately.</p>
+                </div>
+                </body></html>"""
+                sender.send_email(html_content=html_body, plain_content=plain_body, subject=subject)
+                try:
+                    audit_repo.log_event("MFA", "OTP_GENERATED", "SUCCESS", user_id=user["id"], username=user["username"], source_ip=client_ip, details="OTP code dispatched via email")
+                except Exception:
+                    pass
+                flash("Credentials verified! A 6-digit verification code has been dispatched to your email address.", "info")
+            except Exception as e:
+                try:
+                    audit_repo.log_event("MFA", "OTP_GENERATED", "DEV_FALLBACK", user_id=user["id"], username=user["username"], source_ip=client_ip, details=f"OTP: {otp_code} (Dispatch info: {e})")
+                except Exception:
+                    pass
+                flash(f"Credentials verified! Verification Code: {otp_code}", "info")
 
-    return render_template("admin/admin_login.html", next=request.args.get("next", ""))
+            return redirect(url_for("admin_ui.admin_verify_otp"))
+
+        return render_template("admin/admin_login.html", next=request.args.get("next", ""))
+    except Exception as e:
+        from src.core.logging import get_logger
+        get_logger(__name__).error(f"Error rendering admin_login page: {e}")
+        return render_template("admin/admin_login.html", next=request.args.get("next", ""))
 
 
 @admin_bp.route("/verify-otp", methods=["GET", "POST"])
