@@ -60,18 +60,17 @@ def login():
 
         user = user_repo.authenticate(identifier, password)
         if user:
+            # Enforce Portal Isolation: Admin accounts must authenticate via /admin/login
+            if user.get("role") in ("Admin", "admin", "Super Admin", "Administrator"):
+                flash("Administrator accounts must authenticate through the dedicated Administrator Portal at /admin/login.", "warning")
+                return redirect(url_for("admin_ui.admin_login"))
+
             # Session Fixation Defense: Clear existing session dictionary before setting authenticated session keys
             session.clear()
             session["user_id"] = user["id"]
             session["username"] = user["username"]
             session["email"] = user["email"]
             session["role"] = user["role"]
-
-            if user.get("role") in ("Admin", "admin", "Super Admin", "Administrator"):
-                session["admin_authenticated"] = True
-                session["admin_user_id"] = user["id"]
-                session["admin_username"] = user["username"]
-                session["admin_role"] = user["role"]
 
             flash(f"Welcome back, {user['username']}! Logged in as {user['role']}.", "success")
             return redirect(next_url)

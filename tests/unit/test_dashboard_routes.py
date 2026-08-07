@@ -18,9 +18,9 @@ class TestDashboardRoutes(unittest.TestCase):
 
         from src.database.user_repository import UserRepository
         repo = UserRepository()
-        if not repo.get_by_email("admin@cyberscout.ai"):
+        if not repo.get_by_email("testuser@cyberscout.ai"):
             try:
-                repo.create_user("admin", "admin@cyberscout.ai", "Admin@CyberScout2026!", "Super Admin")
+                repo.create_user("testuser", "testuser@cyberscout.ai", "UserPassword2026!", "User")
             except Exception:
                 pass
 
@@ -44,19 +44,19 @@ class TestDashboardRoutes(unittest.TestCase):
 
     def test_dashboard_index_route(self):
         """GET /dashboard — Overview dashboard page."""
-        self.client.post("/login", data={"identifier": "admin@cyberscout.ai", "password": "Admin@CyberScout2026!"})
+        self.client.post("/login", data={"identifier": "testuser@cyberscout.ai", "password": "UserPassword2026!"})
         response = self.client.get("/dashboard")
         self.assertEqual(response.status_code, 200)
 
     def test_opportunities_route(self):
         """GET /opportunities — Opportunities page."""
-        self.client.post("/login", data={"identifier": "admin@cyberscout.ai", "password": "Admin@CyberScout2026!"})
+        self.client.post("/login", data={"identifier": "testuser@cyberscout.ai", "password": "UserPassword2026!"})
         response = self.client.get("/opportunities")
         self.assertEqual(response.status_code, 200)
 
     def test_analytics_route(self):
         """GET /analytics — Analytics page."""
-        self.client.post("/login", data={"identifier": "admin@cyberscout.ai", "password": "Admin@CyberScout2026!"})
+        self.client.post("/login", data={"identifier": "testuser@cyberscout.ai", "password": "UserPassword2026!"})
         response = self.client.get("/analytics")
         self.assertEqual(response.status_code, 200)
 
@@ -79,6 +79,21 @@ class TestDashboardRoutes(unittest.TestCase):
         """GET /admin/logs — Admin Log viewer page."""
         response = self.client.get("/admin/logs")
         self.assertEqual(response.status_code, 200)
+
+
+    def test_admin_cannot_login_at_user_login(self):
+        """Verify Admin credentials are prohibited on standard /login page and redirected to /admin/login."""
+        from src.database.user_repository import UserRepository
+        repo = UserRepository()
+        if not repo.get_by_email("admin@cyberscout.ai"):
+            try:
+                repo.create_user("admin", "admin@cyberscout.ai", "Admin@CyberScout2026!", "Admin")
+            except Exception:
+                pass
+        unauth_client = self.app.test_client()
+        res = unauth_client.post("/login", data={"identifier": "admin@cyberscout.ai", "password": "Admin@CyberScout2026!"})
+        self.assertEqual(res.status_code, 302)
+        self.assertIn("/admin/login", res.location)
 
 
 if __name__ == "__main__":
