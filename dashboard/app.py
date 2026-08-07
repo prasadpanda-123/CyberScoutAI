@@ -40,7 +40,7 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
     db_mgr = db_manager or DatabaseManager()
     app = Flask(__name__, template_folder=str(BASE_DIR / "templates"), static_folder=str(BASE_DIR / "static"))
     app.config.from_object(config_class)
-    app.db_manager = db_mgr
+    setattr(app, "db_manager", db_mgr)
 
     db_connected = db_mgr.check_connection_with_backoff(max_retries=5)
     if db_connected:
@@ -174,8 +174,6 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
         if request.path.startswith("/api/") or request.path.startswith("/admin/api/"):
             return jsonify({"status": "failed", "error": "API endpoint not found"}), 404
         return ("<h2>404 Not Found</h2>", 404)
-
-    return app
 
     return app
 
