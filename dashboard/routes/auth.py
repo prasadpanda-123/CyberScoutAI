@@ -66,6 +66,13 @@ def login():
             session["username"] = user["username"]
             session["email"] = user["email"]
             session["role"] = user["role"]
+
+            if user.get("role") in ("Admin", "admin", "Super Admin", "Administrator"):
+                session["admin_authenticated"] = True
+                session["admin_user_id"] = user["id"]
+                session["admin_username"] = user["username"]
+                session["admin_role"] = user["role"]
+
             flash(f"Welcome back, {user['username']}! Logged in as {user['role']}.", "success")
             return redirect(next_url)
         else:

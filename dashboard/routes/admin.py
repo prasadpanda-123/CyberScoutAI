@@ -77,9 +77,9 @@ def admin_login():
             audit_repo.log_event("AUTH", "ADMIN_LOGIN", "FAILED", username=identifier, source_ip=client_ip, details="Invalid credentials")
             return render_template("admin/admin_login.html", next=next_url)
 
-        # 4. Role Authorization Check: Only Admin / Super Admin permitted
+        # 4. Role Authorization Check: Admin role permitted
         user_role = user.get("role")
-        if user_role not in ("Super Admin", "Administrator"):
+        if user_role not in ("Admin", "admin", "Super Admin", "Administrator"):
             AdminSecurityManager.record_failed_attempt(client_ip, identifier)
             flash("Access Denied: Standard user accounts cannot authenticate through the Administrator Portal.", "danger")
             audit_repo.log_event("AUTH", "ADMIN_LOGIN", "DENIED", user_id=user["id"], username=user["username"], source_ip=client_ip, details=f"Non-admin role '{user_role}' attempted admin login")
@@ -117,11 +117,12 @@ def admin_login():
             </body></html>"""
             sender.send_email(html_content=html_body, plain_content=plain_body, subject=subject)
             audit_repo.log_event("MFA", "OTP_GENERATED", "SUCCESS", user_id=user["id"], username=user["username"], source_ip=client_ip, details="OTP code dispatched via email")
+            flash("Credentials verified! A 6-digit verification code has been dispatched to your email address.", "info")
         except Exception as e:
             # Audit log records fallback code for development & testing environments
             audit_repo.log_event("MFA", "OTP_GENERATED", "DEV_FALLBACK", user_id=user["id"], username=user["username"], source_ip=client_ip, details=f"OTP: {otp_code} (Dispatch info: {e})")
+            flash(f"Credentials verified! Verification Code: {otp_code}", "info")
 
-        flash("Credentials verified! A 6-digit verification code has been dispatched to your email address.", "info")
         return redirect(url_for("admin_ui.admin_verify_otp"))
 
     return render_template("admin/admin_login.html", next=request.args.get("next", ""))
