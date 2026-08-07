@@ -1,7 +1,7 @@
 """
 History Repository for CyberScout AI.
 
-Manages SearchHistory and EmailHistory logging in SQLite.
+Manages SearchHistory and EmailHistory logging in PostgreSQL.
 """
 
 from datetime import datetime, timezone

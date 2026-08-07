@@ -10,7 +10,7 @@ This document is the authoritative definition. Any breaking change to the model 
 
 ## 1. Canonical Field Specification
 
-The field names below are the canonical names used across collectors, processors, the SQLite schema, and ranking logic.
+The field names below are the canonical names used across collectors, processors, the database schema, and ranking logic.
 
 | Field | Type | Required? | Description | Example | Validation Rules |
 |---|---|---|---|---|---|

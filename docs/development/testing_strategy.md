@@ -32,7 +32,7 @@ Mocks should be used sparingly and only at the network boundary. The project sho
 
 ## 5. Database Testing
 
-Database behavior should be tested with a temporary local SQLite database. Tests should verify:
+Database behavior should be tested with a controlled PostgreSQL test database. Tests should verify:
 - idempotent upserts
 - duplicate handling
 - status transitions

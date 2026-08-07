@@ -17,21 +17,17 @@ from src.scheduler.daily_report_scheduler import DailyReportScheduler
 
 class TestDailyReportScheduler(unittest.TestCase):
     def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.temp_dir.name) / "test_sched.db"
-        self.db_mgr = DatabaseManager(db_path=self.db_path)
+        self.db_mgr = DatabaseManager()
         self.db_mgr.initialize_database()
         self.scheduler_repo = SchedulerRepository(db_manager=self.db_mgr)
-        # Reset scheduler state to ensure clean test isolation (shared in-memory DB)
         conn = self.db_mgr.get_connection()
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM scheduler_state")
+        cursor.execute('DELETE FROM scheduler_state')
         conn.commit()
         cursor.close()
 
     def tearDown(self):
         self.db_mgr.close()
-        self.temp_dir.cleanup()
 
     def test_database_persistence_and_initialization(self):
         """Verify scheduler_state table initialization and repository persistence."""

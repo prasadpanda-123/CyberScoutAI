@@ -73,7 +73,7 @@ class CyberScoutApp:
     def startup(self) -> AppContext:
         """
         Executes deterministic startup pipeline:
-        Env -> Config -> Logging -> Directories -> SQLite -> Migrations -> Seed -> Repositories -> Scheduler -> AppContext.
+        Env -> Config -> Logging -> Directories -> Database -> Migrations -> Seed -> Repositories -> Scheduler -> AppContext.
 
         Returns:
             Instantiated AppContext.

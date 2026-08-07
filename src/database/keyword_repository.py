@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 
 class KeywordRepository(BaseRepository[Keyword], IKeywordRepository):
     """
-    DAO for managing Keyword taxonomy terms in SQLite.
+    DAO for managing Keyword taxonomy terms in PostgreSQL.
     """
 
     def __init__(self, db_manager: Optional[DatabaseManager] = None):

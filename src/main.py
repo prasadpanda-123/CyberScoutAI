@@ -88,7 +88,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--db-check",
         action="store_true",
-        help="Verify SQLite database connectivity and schema integrity.",
+        help="Verify PostgreSQL database connectivity and schema integrity.",
     )
     parser.add_argument(
         "--env-status",

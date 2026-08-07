@@ -1,7 +1,7 @@
 """
 Centralized logging for the CyberScout AI application.
 
-Supports stdout, rotating file logging, and SQLite AppLogs table persistence.
+Supports stdout, rotating file logging, and PostgreSQL AppLogs table persistence.
 """
 
 import logging
@@ -116,12 +116,12 @@ def setup_logging(
     file_handler.setFormatter(formatter)
     root_logger.addHandler(file_handler)
 
-    # Database Log Handler (SQLite AppLogs Table)
+    # Database Log Handler (PostgreSQL AppLogs Table)
     db_handler = DatabaseLogHandler(level=log_level)
     db_handler.setFormatter(formatter)
     root_logger.addHandler(db_handler)
 
-    logging.info("Centralized logging system initialized with SQLite AppLogs persistence.")
+    logging.info("Centralized logging system initialized with PostgreSQL AppLogs persistence.")
     return root_logger
 
 

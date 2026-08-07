@@ -2,7 +2,7 @@
 Scheduler State Repository for CyberScout AI.
 
 Manages persistent tracking of last_email_sent, last_pipeline_run, and updated_at
-in SQLite to ensure restart safety and prevent duplicate daily email delivery.
+in PostgreSQL to ensure restart safety and prevent duplicate daily email delivery.
 """
 
 from datetime import datetime, timezone
@@ -16,7 +16,7 @@ logger = get_logger(__name__)
 
 class SchedulerRepository:
     """
-    Repository managing SQLite scheduler_state table persistence.
+    Repository managing PostgreSQL scheduler_state table persistence.
     """
 
     def __init__(self, db_manager: Optional[DatabaseManager] = None):
@@ -24,7 +24,7 @@ class SchedulerRepository:
 
     def get_state(self) -> Dict[str, Any]:
         """
-        Retrieves current scheduler state from SQLite database.
+        Retrieves current scheduler state from PostgreSQL database.
         Ensures a default row exists if missing.
 
         Returns:

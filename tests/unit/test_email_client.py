@@ -16,7 +16,7 @@ from src.notifier.email_sender import EmailSender
 
 class TestEmailClient(unittest.TestCase):
     def setUp(self):
-        self.db_manager = DatabaseManager(db_path=Path(":memory:"))
+        self.db_manager = DatabaseManager()
         self.db_manager.initialize_database()
 
         # Seed Source

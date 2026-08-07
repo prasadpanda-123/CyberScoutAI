@@ -417,7 +417,6 @@ def admin_system():
         "python_version": version_info.get("python_version", "3.12.10"),
         "platform": version_info.get("platform", "Windows-11"),
         "git_tag": "v2.2-admin-hardening",
-        "sqlite_version": "3.45.1",
         "uptime": "Active",
     }
     return render_template(

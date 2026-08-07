@@ -50,23 +50,16 @@ class PgRow:
 
 
 class PgCursorAdapter:
-    """DBAPI Cursor Adapter translating placeholders based on underlying DBAPI driver."""
+    """DBAPI Cursor Adapter translating placeholders and quoting table names for PostgreSQL."""
     def __init__(self, raw_cursor):
         self._cursor = raw_cursor
-        mod_name = type(raw_cursor).__module__.lower()
-        cls_name = type(raw_cursor).__name__.lower()
-        self._is_sqlite = "sqlite" in mod_name or "sqlite" in cls_name
 
     def _fix_sql(self, sql: str) -> str:
-        if self._is_sqlite:
-            if "%s" in sql:
-                sql = sql.replace("%s", "?")
-        else:
-            if "?" in sql and "%s" not in sql:
-                sql = sql.replace("?", "%s")
-            import re
-            for tbl in ["Sources", "Opportunities", "Users", "SearchHistory", "EmailHistory", "AppLogs", "Preferences", "Statistics", "Keywords", "AuditLogs"]:
-                sql = re.sub(rf'\b(?<!"){tbl}(?!")\b', f'"{tbl}"', sql)
+        if "?" in sql and "%s" not in sql:
+            sql = sql.replace("?", "%s")
+        import re
+        for tbl in ["Sources", "Opportunities", "Users", "SearchHistory", "EmailHistory", "AppLogs", "Preferences", "Statistics", "Keywords", "AuditLogs"]:
+            sql = re.sub(rf'\b(?<!"){tbl}(?!")\b', f'"{tbl}"', sql)
         return sql
 
     def execute(self, sql: str, parameters=()):
@@ -78,22 +71,18 @@ class PgCursorAdapter:
 
     def executemany(self, sql: str, seq_of_parameters=()):
         sql = self._fix_sql(sql)
-        if not self._is_sqlite:
-            try:
-                from psycopg2.extras import execute_batch
-                execute_batch(self._cursor, sql, seq_of_parameters, page_size=100)
-                return self
-            except Exception:
-                pass
+        try:
+            from psycopg2.extras import execute_batch
+            execute_batch(self._cursor, sql, seq_of_parameters, page_size=100)
+            return self
+        except Exception:
+            pass
         self._cursor.executemany(sql, seq_of_parameters)
         return self
 
     def executescript(self, script_sql: str):
         sql = self._fix_sql(script_sql)
-        if hasattr(self._cursor, "executescript"):
-            self._cursor.executescript(sql)
-        else:
-            self._cursor.execute(sql)
+        self._cursor.execute(sql)
 
     def fetchone(self):
         row = self._cursor.fetchone()
@@ -178,20 +167,15 @@ class DatabaseManager:
     Database Connection & Infrastructure Manager for PostgreSQL.
     """
 
-    def __init__(self, custom_url: Optional[str] = None, db_path: Optional[Any] = None, **kwargs):
+    def __init__(self, custom_url: Optional[str] = None, **kwargs):
         """
         Initializes DatabaseManager.
 
         Args:
-            custom_url: Optional override database connection URL.
-            db_path: Optional file path for SQLite database.
+            custom_url: Optional override PostgreSQL database connection URL.
             **kwargs: Ignored legacy parameters for backward compatibility.
         """
-        if not custom_url and db_path:
-            db_p = str(db_path).replace("\\", "/")
-            custom_url = f"sqlite:///{db_p}"
         self.custom_url = custom_url
-        self.db_path = db_path
         self._engine = None
         self._connection = None
         self._last_check_iso: Optional[str] = None

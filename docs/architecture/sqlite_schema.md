@@ -1,4 +1,4 @@
-# SQLite Schema Design
+# Database Schema Design
 
 No SQL here — this document describes the structural contract the future database layer should implement. The field names below are intentionally aligned with [data_model.md](data_model.md) and the enums in [enums.md](enums.md).
 

@@ -30,7 +30,7 @@ Duplicate Detection  (within-run + against history)
    Ranking  (compute score + score_breakdown)
        │
        ▼
- SQLite Storage  (upsert, update status, log run)
+ PostgreSQL Storage  (upsert, update status, log run)
        │
        ▼
 Email Generation  (select top items, render HTML)
@@ -104,7 +104,7 @@ Each arrow is a **hard boundary**: the stage on the right must not need to know 
 - **Responsibilities:** Apply `weights.yaml` additive scoring per `ranking_algorithm.md`.
 - **Error handling:** Missing signals contribute 0 points, never an error — an item with no detectable `certificate` field simply doesn't get the certificate bonus.
 
-### 10. SQLite Storage
+### 10. PostgreSQL Storage
 - **Input:** All processed items (active, duplicate, and expired-on-arrival if `deadline` already passed).
 - **Output:** Confirmation of rows written/updated; a `run_summary` record.
 - **Responsibilities:** Upsert into `Opportunities` (insert new, update `last_seen`/`score` for existing actives), write `duplicate` records with their reference, log the run to `SearchHistory`.

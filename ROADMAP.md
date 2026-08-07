@@ -7,7 +7,7 @@ This document outlines completed engineering milestones and future architectural
 ## 🟢 Completed Milestones (v1.0.0 – v1.1.1)
 
 - [x] **Phase 0 — Research & Architecture Specification**: Requirements gathering, zero-cost constraints.
-- [x] **Phase 1 — Core Foundation**: Bootstrap pipeline, logging engine, SQLite connection manager.
+- [x] **Phase 1 — Core Foundation**: Bootstrap pipeline, logging engine, Database connection manager.
 - [x] **Phase 2 — Search Intelligence**: Keyword engine, query builder, validation, search planner.
 - [x] **Phase 3.1 — Universal Collection Framework**: BaseCollector, HTTP client, rate limiter, cache, robots.txt.
 - [x] **Phase 3.2 — Core Collectors**: RSS/Atom collector, GitHub API collector, YouTube RSS, CTFtime API.

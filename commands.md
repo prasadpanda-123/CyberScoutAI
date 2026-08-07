@@ -20,7 +20,7 @@
 | **SYSTEM** | `python main.py --validate-rss` | Execute live RSS feed fetching and XML parser validation. |
 | **SYSTEM** | `python main.py --rss-report` | Display RSS feed parser diagnostics and error tracking report. |
 | **SYSTEM** | `python main.py --repair-config` | Automatically repair source collector recommendations in sources.yaml. |
-| **SYSTEM** | `python main.py --db-check` | Verify SQLite database connectivity and schema integrity. |
+| **SYSTEM** | `python main.py --db-check` | Verify PostgreSQL database connectivity and schema integrity. |
 | **ENVIRONMENT** | `python main.py --env-status` | Display local .env environment variable configuration status. |
 | **ENVIRONMENT** | `python main.py --github-status` | Display GitHub API token configuration, authentication state, and rate limits. |
 | **DOCUMENTATION** | `python main.py --generate-command-docs` | Automatically generate commands.txt and commands.md CLI documentation files. |

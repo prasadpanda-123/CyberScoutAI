@@ -2,7 +2,7 @@
 Opportunity Repository for CyberScout AI.
 
 Handles database CRUD, upserts, duplicate management, and lifecycle status
-updates for Opportunity objects in SQLite.
+updates for Opportunity objects in PostgreSQL.
 """
 
 import json
@@ -21,7 +21,7 @@ logger = get_logger(__name__)
 
 class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository):
     """
-    DAO for managing Opportunity records in SQLite.
+    DAO for managing Opportunity records in PostgreSQL.
     """
 
     def __init__(self, db_manager: Optional[DatabaseManager] = None):

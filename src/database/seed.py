@@ -1,7 +1,7 @@
 """
 Seed Data Manager for CyberScout AI.
 
-Loads and inserts default sources, default preferences, and taxonomy keywords into SQLite.
+Loads and inserts default sources, default preferences, and taxonomy keywords into PostgreSQL.
 """
 
 from typing import Optional

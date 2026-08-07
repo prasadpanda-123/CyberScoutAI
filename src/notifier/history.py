@@ -10,7 +10,7 @@ from src.database.history_repository import EmailHistoryRepository
 
 class HistoryTracker:
     """
-    Logs email delivery outcomes into SQLite database EmailHistory table.
+    Logs email delivery outcomes into PostgreSQL database EmailHistory table.
     """
 
     def __init__(self, db_manager: Optional[DatabaseManager] = None):

@@ -54,7 +54,7 @@ Each processor implements exactly one stage from [pipeline.md](pipeline.md). All
 
 ## 7. Storage Manager
 
-- **Responsibilities:** Upsert processed items into SQLite, transition `status`, log runs to `SearchHistory`, and expose the read-only queries used by duplicate detection and email generation.
+- **Responsibilities:** Upsert processed items into PostgreSQL, transition `status`, log runs to `SearchHistory`, and expose the read-only queries used by duplicate detection and email generation.
 - **Input:** Fully processed items for a given `run_id`.
 - **Output:** Write confirmation and row counts.
 - **Dependencies:** [sqlite_schema.md](sqlite_schema.md).

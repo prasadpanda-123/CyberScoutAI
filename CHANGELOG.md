@@ -112,4 +112,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial Foundation milestone.
-- Core configuration loader, centralized logging, SQLite DatabaseManager, and CLI parser.
+- Core configuration loader, centralized logging, PostgreSQL DatabaseManager, and CLI parser.

@@ -30,7 +30,7 @@ python main.py --repair-config
     Automatically repair source collector recommendations in sources.yaml.
 
 python main.py --db-check
-    Verify SQLite database connectivity and schema integrity.
+    Verify PostgreSQL database connectivity and schema integrity.
 
 python main.py --run-scheduler
     Run daily report scheduler daemon loop in background execution mode.

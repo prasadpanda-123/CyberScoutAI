@@ -37,8 +37,8 @@ CyberScout AI is built on a strictly decoupled presentation-engine-data architec
 |  [ 6-Stage Intelligence & Processing Pipeline (src/) ]                        |
 |    SearchPlanner ➔ Collectors ➔ Processors ➔ Ranking ➔ KB ➔ Notifier         |
 |                                                                               |
-|  [ SQLite Database Storage (data/cyberscout.db) ]                             |
-|    Schema v2, WAL Mode, Foreign Key Enforcement, 12 Core Tables               |
+|  [ PostgreSQL / Supabase Database Storage ]                                   |
+|    Schema v2, Transaction Pooler, Foreign Key Enforcement, 12 Core Tables     |
 +-------------------------------------------------------------------------------+
 ```
 
@@ -179,7 +179,7 @@ cp .env.example .env
 APP_ENV=development
 LOG_LEVEL=INFO
 LOG_FILE=cyberscout.log
-DB_NAME=cyberscout.db
+DATABASE_URL=postgresql://postgres:password@localhost:5432/cyberscout
 
 # Optional GitHub Personal Access Token (5,000 req/hr capacity)
 GITHUB_TOKEN=ghp_your_actual_token_here

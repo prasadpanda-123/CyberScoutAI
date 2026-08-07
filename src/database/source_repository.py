@@ -1,7 +1,7 @@
 """
 Source Repository for CyberScout AI.
 
-Syncs registered sources from sources.yaml into SQLite and queries source definitions.
+Syncs registered sources from sources.yaml into PostgreSQL and queries source definitions.
 """
 
 from typing import Any, Dict, List, Optional
@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 
 class SourceRepository(BaseRepository[Source], ISourceRepository):
     """
-    DAO for managing target Sources in SQLite.
+    DAO for managing target Sources in PostgreSQL.
     """
 
     def __init__(self, db_manager: Optional[DatabaseManager] = None):

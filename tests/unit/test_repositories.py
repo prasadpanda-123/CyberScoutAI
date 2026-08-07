@@ -16,9 +16,7 @@ from src.models.opportunity import Opportunity
 
 class TestRepositories(unittest.TestCase):
     def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.temp_dir.name) / "test_repo.db"
-        self.db_manager = DatabaseManager(db_path=self.db_path)
+        self.db_manager = DatabaseManager()
         self.db_manager.initialize_database()
 
         self.opp_repo = OpportunityRepository(self.db_manager)
@@ -33,7 +31,7 @@ class TestRepositories(unittest.TestCase):
                     {
                         "id": "sans",
                         "name": "SANS Institute",
-                        "collection_method": "html",
+                        "collection_method": "rss",
                         "default_category": "scholarship",
                     },
                     {
@@ -48,7 +46,6 @@ class TestRepositories(unittest.TestCase):
 
     def tearDown(self):
         self.db_manager.close()
-        self.temp_dir.cleanup()
 
     def test_opportunity_repository_crud_and_upsert(self):
         # 1. Insert Canonical Opportunity

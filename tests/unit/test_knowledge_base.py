@@ -23,7 +23,7 @@ from src.models.opportunity import Opportunity
 
 class TestKnowledgeBase(unittest.TestCase):
     def setUp(self):
-        self.db_manager = DatabaseManager(db_path=Path(":memory:"))
+        self.db_manager = DatabaseManager()
         self.db_manager.initialize_database()
 
         # Apply migrations

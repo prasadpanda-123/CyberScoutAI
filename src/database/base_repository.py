@@ -17,7 +17,7 @@ T = TypeVar("T")
 
 
 def row_to_dict(row: Any, description: Any = None) -> Dict[str, Any]:
-    """Safely converts any DBAPI Row, sqlite3.Row, PgRow, or mapping to a standard python dict."""
+    """Safely converts any DBAPI Row, PgRow, or mapping to a standard python dict."""
     if row is None:
         return {}
     if isinstance(row, dict):
@@ -35,7 +35,7 @@ def row_to_dict(row: Any, description: Any = None) -> Dict[str, Any]:
 
 class BaseRepository(Generic[T], ABC):
     """
-    Abstract Base Repository encapsulating common SQLite CRUD operations.
+    Abstract Base Repository encapsulating common PostgreSQL CRUD operations.
     """
 
     def __init__(self, db_manager: Optional[DatabaseManager] = None):

@@ -14,7 +14,7 @@ from src.processors.cleaner import CleanerProcessor
 
 class TestSecurityValidation(unittest.TestCase):
     def setUp(self):
-        self.db_manager = DatabaseManager(db_path=Path(":memory:"))
+        self.db_manager = DatabaseManager()
         self.db_manager.initialize_database()
         SeedManager(self.db_manager).run_all_seeds()
         self.repo = OpportunityRepository(db_manager=self.db_manager)

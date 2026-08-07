@@ -33,19 +33,16 @@ def get_db_url(custom_url: Optional[str] = None) -> str:
         raw_url = os.getenv("SUPABASE_DATABASE_URL", "").strip() or os.getenv("DB_URL", "").strip()
 
     if not raw_url:
-        app_env = os.getenv("APP_ENV", "").strip().lower()
-        if app_env == "production":
-            logger.error("DATABASE_URL environment variable is missing in production environment.")
-            raise DatabaseConnectionError("DATABASE_URL environment variable is required in production environment.")
+        if "PYTEST_CURRENT_TEST" in os.environ or os.getenv("APP_ENV") in ("test", "testing") or os.getenv("CI") or os.getenv("GITHUB_ACTIONS"):
+            raw_url = os.getenv("TEST_DATABASE_URL", "").strip()
 
-        if "PYTEST_CURRENT_TEST" in os.environ or app_env in ("test", "testing") or os.getenv("CI") or os.getenv("GITHUB_ACTIONS"):
-            return "sqlite:///file:testdb?mode=memory&cache=shared&uri=true"
+    if not raw_url:
+        logger.error("DATABASE_URL environment variable is missing.")
+        raise DatabaseConnectionError("DATABASE_URL (or TEST_DATABASE_URL for tests) environment variable is required. SQLite is not supported.")
 
-        from src.core.constants import DATA_DIR
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        sqlite_path = DATA_DIR / "cyberscout.db"
-        logger.info(f"DATABASE_URL not set in development mode. Using local SQLite database at '{sqlite_path}'.")
-        return f"sqlite:///{sqlite_path.as_posix()}"
+    if raw_url.startswith("sqlite"):
+        logger.error("Unsupported database backend: SQLite is not supported.")
+        raise DatabaseConnectionError("Unsupported database backend: SQLite is not supported. CyberScout AI requires PostgreSQL.")
 
     # Convert legacy postgres:// to postgresql:// if present (Render/Heroku convention)
     if raw_url.startswith("postgres://"):
@@ -92,39 +89,29 @@ def get_masked_db_host(custom_url: Optional[str] = None) -> str:
         return "*****"
 
 
-from sqlalchemy.pool import StaticPool
-
-
 def create_db_engine(custom_url: Optional[str] = None) -> Engine:
     """
-    Factory creating a SQLAlchemy Engine configured for PostgreSQL (or in-memory SQLite during isolated pytest).
+    Factory creating a SQLAlchemy Engine configured for PostgreSQL.
     Enables connection pooling, pool_pre_ping, pool_recycle, and future mode.
     """
     connection_url = get_db_url(custom_url=custom_url)
 
     if connection_url.startswith("sqlite"):
-        logger.info(f"Initializing Test Engine at '{connection_url}'.")
-        return create_engine(
-            connection_url,
-            connect_args={"check_same_thread": False},
-            poolclass=StaticPool,
-            future=True,
-        )
+        raise DatabaseConnectionError("Unsupported database backend: SQLite is not supported. CyberScout AI requires PostgreSQL.")
 
-    if not connection_url.startswith("sqlite"):
-        try:
-            parsed = urllib.parse.urlparse(connection_url)
-            host = parsed.hostname or "unknown"
-            port = parsed.port or 5432
-            dbname = parsed.path.lstrip("/") or "postgres"
-            query_params = urllib.parse.parse_qs(parsed.query)
-            sslmode = query_params.get("sslmode", ["require"])[0]
-            masked_h = f"{host[:2]}***{host[-4:]}" if len(host) > 6 else host
-            logger.info(
-                f"PostgreSQL Configured — Host: {masked_h}, Port: {port}, Database: {dbname}, SSLMode: {sslmode}"
-            )
-        except Exception:
-            pass
+    try:
+        parsed = urllib.parse.urlparse(connection_url)
+        host = parsed.hostname or "unknown"
+        port = parsed.port or 5432
+        dbname = parsed.path.lstrip("/") or "postgres"
+        query_params = urllib.parse.parse_qs(parsed.query)
+        sslmode = query_params.get("sslmode", ["require"])[0]
+        masked_h = f"{host[:2]}***{host[-4:]}" if len(host) > 6 else host
+        logger.info(
+            f"PostgreSQL Configured — Host: {masked_h}, Port: {port}, Database: {dbname}, SSLMode: {sslmode}"
+        )
+    except Exception:
+        pass
 
     logger.info("Initializing PostgreSQL SQLAlchemy Database Engine.")
     return create_engine(

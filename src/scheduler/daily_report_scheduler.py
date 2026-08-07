@@ -113,7 +113,7 @@ class DailyReportScheduler:
 
     def should_send_today(self) -> bool:
         """
-        Checks SQLite scheduler_state to ensure no email report has been sent yet today.
+        Checks PostgreSQL scheduler_state to ensure no email report has been sent yet today.
 
         Returns:
             True if today's email has not been sent, False otherwise.
@@ -132,7 +132,7 @@ class DailyReportScheduler:
             2. Run complete scan & collection pipeline
             3. Compile HTML report digest
             4. Send Email via SMTP
-            5. Persist updated last_email_sent to SQLite scheduler_state
+            5. Persist updated last_email_sent to PostgreSQL scheduler_state
 
         Args:
             force: If True, bypasses schedule and duplicate prevention checks (for manual test mode).

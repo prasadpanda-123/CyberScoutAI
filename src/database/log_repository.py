@@ -1,7 +1,7 @@
 """
 Structured Log Repository for CyberScout AI.
 
-Persists and queries structured log entries from the SQLite AppLogs table.
+Persists and queries structured log entries from the PostgreSQL AppLogs table.
 """
 
 from datetime import datetime, timezone
