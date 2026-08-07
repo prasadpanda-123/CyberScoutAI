@@ -120,18 +120,12 @@
         <ul class="navbar-nav ms-auto align-items-center gap-3">
           <li class="nav-item"><a class="nav-link text-light" href="#features">Features</a></li>
           <li class="nav-item"><a class="nav-link text-light" href="#intelligence">Intelligence Pipeline</a></li>
-          {% if session.get('user_id') or session.get('admin_authenticated') %}
-            <li class="nav-item">
-              <a href="/dashboard" class="btn btn-info fw-semibold px-4"><i class="bi bi-speedometer2 me-1"></i> Go to Dashboard</a>
-            </li>
-          {% else %}
-            <li class="nav-item">
-              <a href="/login" class="btn btn-outline-light px-4">Sign In</a>
-            </li>
-            <li class="nav-item">
-              <a href="/register" class="btn btn-info fw-semibold px-4">Get Started</a>
-            </li>
-          {% endif %}
+          <li class="nav-item">
+            <a href="/login" class="btn btn-outline-light px-4">Sign In</a>
+          </li>
+          <li class="nav-item">
+            <a href="/register" class="btn btn-info fw-semibold px-4">Register</a>
+          </li>
         </ul>
       </div>
     </div>
@@ -150,12 +144,8 @@
         CyberScout AI continuously monitors global security feeds, RSS channels, repositories, CTF platforms, and research portals to deliver real-time, scored cybersecurity opportunities directly to your team.
       </p>
       <div class="d-flex justify-content-center gap-3 mb-5">
-        {% if session.get('user_id') or session.get('admin_authenticated') %}
-          <a href="/dashboard" class="btn btn-info btn-lg fw-bold px-5 py-3 shadow"><i class="bi bi-speedometer2 me-2"></i> Access Dashboard</a>
-        {% else %}
-          <a href="/register" class="btn btn-info btn-lg fw-bold px-5 py-3 shadow"><i class="bi bi-rocket-takeoff me-2"></i> Create Free Account</a>
-          <a href="/login" class="btn btn-outline-light btn-lg px-5 py-3"><i class="bi bi-box-arrow-in-right me-2"></i> User Login</a>
-        {% endif %}
+        <a href="/login" class="btn btn-outline-light btn-lg px-5 py-3"><i class="bi bi-box-arrow-in-right me-2"></i> Sign In</a>
+        <a href="/register" class="btn btn-info btn-lg fw-bold px-5 py-3 shadow"><i class="bi bi-rocket-takeoff me-2"></i> Register Account</a>
       </div>
 
       <!-- Quick Telemetry Stats -->
@@ -222,11 +212,8 @@
       <div class="cta-banner">
         <h2 class="fw-bold mb-3">Ready to Streamline Your Cybersecurity Discovery?</h2>
         <p class="text-muted mb-4 fs-5 mx-auto" style="max-width: 600px;">Access curated CTFs, labs, vulnerabilities, and research opportunities instantly.</p>
-        {% if session.get('user_id') or session.get('admin_authenticated') %}
-          <a href="/dashboard" class="btn btn-info btn-lg fw-bold px-5 py-3"><i class="bi bi-speedometer2 me-2"></i> Launch CyberScout Dashboard</a>
-        {% else %}
-          <a href="/register" class="btn btn-info btn-lg fw-bold px-5 py-3"><i class="bi bi-person-plus me-2"></i> Register Account Now</a>
-        {% endif %}
+        <a href="/login" class="btn btn-outline-light btn-lg px-4 py-3 me-2"><i class="bi bi-box-arrow-in-right me-1"></i> Sign In</a>
+        <a href="/register" class="btn btn-info btn-lg fw-bold px-5 py-3"><i class="bi bi-person-plus me-2"></i> Register Account Now</a>
       </div>
     </div>
   </section>

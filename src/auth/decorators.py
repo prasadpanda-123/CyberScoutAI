@@ -9,13 +9,20 @@ from flask import flash, jsonify, redirect, request, session, url_for
 def login_required(f):
     """
     Decorator enforcing user authentication for Flask view functions and API endpoints.
+    Unauthenticated HTML requests redirect to public landing page ('/').
+    Unauthenticated API requests return HTTP 401 JSON.
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get("user_id") and not session.get("admin_authenticated"):
-            if request.path.startswith("/api/") or request.headers.get("Accept") == "application/json":
-                return jsonify({"status": "failed", "error": "Authentication required", "login_url": "/login"}), 401
-            return redirect(url_for("auth_ui.login", next=request.path))
+            if (
+                request.path.startswith("/api/")
+                or request.path.startswith("/admin/api/")
+                or request.headers.get("Accept") == "application/json"
+                or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+            ):
+                return jsonify({"status": "failed", "error": "Authentication required"}), 401
+            return redirect(url_for("dashboard_ui.landing"))
         return f(*args, **kwargs)
 
     return decorated_function
@@ -25,27 +32,34 @@ def roles_required(*allowed_roles):
     """
     Decorator enforcing Role-Based Access Control (RBAC) permissions.
     Valid Roles: 'Super Admin', 'Administrator', 'Operator', 'Viewer'.
-    Super Admin has full system access to all endpoints.
     """
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            if not session.get("user_id"):
-                if request.path.startswith("/api/") or request.headers.get("Accept") == "application/json":
-                    return jsonify({"status": "failed", "error": "Authentication required", "login_url": "/login"}), 401
-                return redirect(url_for("auth_ui.login", next=request.path))
+            if not session.get("user_id") and not session.get("admin_authenticated"):
+                if (
+                    request.path.startswith("/api/")
+                    or request.headers.get("Accept") == "application/json"
+                    or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+                ):
+                    return jsonify({"status": "failed", "error": "Authentication required"}), 401
+                return redirect(url_for("dashboard_ui.landing"))
 
             user_role = session.get("role", "Viewer")
 
             # Admin role bypasses role restrictions
-            if user_role in ("Admin", "admin", "Super Admin", "Administrator"):
+            if user_role in ("Admin", "admin", "Super Admin", "Administrator") or session.get("admin_authenticated"):
                 return f(*args, **kwargs)
 
             if user_role not in allowed_roles:
-                if request.path.startswith("/api/") or request.headers.get("Accept") == "application/json":
+                if (
+                    request.path.startswith("/api/")
+                    or request.headers.get("Accept") == "application/json"
+                    or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+                ):
                     return jsonify({"status": "failed", "error": f"Access denied. Required roles: {', '.join(allowed_roles)}"}), 403
                 flash(f"Access Denied: Your role '{user_role}' is not authorized to access this section.", "danger")
-                return redirect(url_for("dashboard_ui.index"))
+                return redirect(url_for("dashboard_ui.landing"))
 
             return f(*args, **kwargs)
 
@@ -61,7 +75,7 @@ def admin_required(f):
     and administrative role ('Admin', 'admin', 'Super Admin', 'Administrator').
 
     Behavior:
-    - Not logged in -> 302 Redirect to `/admin/login` (HTML) or HTTP 401 JSON (API).
+    - Unauthenticated -> 302 Redirect to `/` (HTML) or HTTP 401 JSON (API).
     - Logged in as normal user -> HTTP 403 Forbidden (HTML/JSON).
     - Logged in as admin -> Access granted.
     """
@@ -87,14 +101,13 @@ def admin_required(f):
                     }), 403
                 return ("<div style='font-family:sans-serif; text-align:center; padding:50px;'><h1>403 Forbidden</h1><p>Access Denied: Administrative Portal access requires admin credentials.</p></div>", 403)
 
-            # Not logged in at all
+            # Not logged in at all -> Redirect unauthenticated users to landing page '/'
             if is_api:
                 return jsonify({
                     "status": "failed",
-                    "error": "Admin authentication required",
-                    "login_url": "/admin/login"
+                    "error": "Admin authentication required"
                 }), 401
-            return redirect(url_for("admin_ui.admin_login", next=request.path))
+            return redirect(url_for("dashboard_ui.landing"))
 
         if admin_role not in ("Admin", "admin", "Super Admin", "Administrator"):
             if is_api:
