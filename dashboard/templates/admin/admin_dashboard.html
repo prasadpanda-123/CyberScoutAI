@@ -278,10 +278,15 @@ async function safeFetchJson(url, options = {}) {
     const contentType = res.headers.get("content-type") || "";
     let data = {};
     if (contentType.includes("application/json")) {
-      data = await res.json();
+      try {
+        data = await res.json();
+      } catch (jsonErr) {
+        const text = await res.text().catch(() => "");
+        data = { success: false, status: res.status, error: text || "Invalid JSON response from server" };
+      }
     } else {
-      const text = await res.text();
-      data = { success: res.ok, status: res.status, message: text || res.statusText };
+      const text = await res.text().catch(() => "");
+      data = { success: false, status: res.status, error: text || `HTTP ${res.status}: ${res.statusText}` };
     }
     if (!res.ok) {
       data.success = false;
