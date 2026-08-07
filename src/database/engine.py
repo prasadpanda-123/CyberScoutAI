@@ -51,7 +51,7 @@ def get_db_url(custom_url: Optional[str] = None) -> str:
     if raw_url.startswith("postgres://"):
         raw_url = raw_url.replace("postgres://", "postgresql://", 1)
 
-    # Automatically transform direct Supabase hostnames (db.<ref>.supabase.co:5432) to Session Pooler format for Render IPv4 compatibility
+    # Automatically transform direct Supabase hostnames (db.<ref>.supabase.co:5432) or Session Pooler port 5432 to Transaction Pooler port 6543 for IPv4 compatibility
     try:
         parsed = urllib.parse.urlparse(raw_url)
         host = parsed.hostname or ""
@@ -59,15 +59,20 @@ def get_db_url(custom_url: Optional[str] = None) -> str:
         password = parsed.password or ""
         dbname = parsed.path.lstrip("/") or "postgres"
 
-        if "supabase.co" in host and host.startswith("db."):
-            project_ref = host.split(".")[1] if len(host.split(".")) > 1 else ""
-            pooler_host = os.getenv("SUPABASE_POOLER_HOST", "pooler.supabase.com")
-            pooler_port = int(os.getenv("SUPABASE_POOLER_PORT", "6543"))
-            pooler_user = user if "." in user else f"{user}.{project_ref}"
+        if "supabase.co" in host or "supabase.com" in host:
+            if host.startswith("db."):
+                project_ref = host.split(".")[1] if len(host.split(".")) > 1 else ""
+                pooler_host = os.getenv("SUPABASE_POOLER_HOST", "pooler.supabase.com")
+                pooler_port = int(os.getenv("SUPABASE_POOLER_PORT", "6543"))
+                pooler_user = user if "." in user else f"{user}.{project_ref}"
 
-            user_pass = f"{pooler_user}:{urllib.parse.quote(password)}" if password else pooler_user
-            raw_url = f"postgresql://{user_pass}@{pooler_host}:{pooler_port}/{dbname}"
-            logger.info(f"Auto-normalized direct Supabase host '{host}' to Session Pooler '{pooler_host}:{pooler_port}'.")
+                user_pass = f"{pooler_user}:{urllib.parse.quote(password)}" if password else pooler_user
+                raw_url = f"postgresql://{user_pass}@{pooler_host}:{pooler_port}/{dbname}"
+                logger.info(f"Auto-normalized direct Supabase host '{host}' to Transaction Pooler '{pooler_host}:{pooler_port}'.")
+            elif parsed.port == 5432 or ":5432" in raw_url:
+                pooler_port = int(os.getenv("SUPABASE_POOLER_PORT", "6543"))
+                raw_url = raw_url.replace(":5432", f":{pooler_port}", 1)
+                logger.info(f"Auto-normalized Supabase Pooler port from 5432 (Session mode) to {pooler_port} (Transaction mode).")
     except Exception as e:
         logger.warning(f"Note: URL normalization check encountered an exception: {e}")
 

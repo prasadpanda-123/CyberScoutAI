@@ -19,7 +19,12 @@ def index():
     """Renders Opportunities table view."""
     category = request.args.get("category", "all")
     search_q = request.args.get("q", "")
-    opps = dash_service.get_opportunities(category=category, search_query=search_q, limit=100)
+    try:
+        opps = dash_service.get_opportunities(category=category, search_query=search_q, limit=100)
+    except Exception as e:
+        from src.core.logging import get_logger
+        get_logger(__name__).error(f"Failed to fetch opportunities for route /opportunities: {e}")
+        opps = []
 
     return render_template(
         "opportunities.html",

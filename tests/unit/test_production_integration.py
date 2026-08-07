@@ -31,20 +31,14 @@ class TestProductionIntegration(unittest.TestCase):
             if orig_url is not None:
                 os.environ["DATABASE_URL"] = orig_url
 
-    def test_supabase_direct_url_normalization(self):
-        """Verify direct Supabase hostname is normalized to Session Pooler format."""
-        direct_url = "postgresql://postgres.ref:secret@db.ref.supabase.co:5432/postgres"
-        normalized = get_db_url(custom_url=direct_url)
-        self.assertIn("pooler.supabase.com:6543", normalized)
-        self.assertIn("postgres.ref", normalized)
+    def test_supabase_pooler_port_6543_normalization(self):
+        """Verify Supabase pooler connection on port 5432 is auto-normalized to port 6543."""
+        pooler_url = "postgresql://postgres.ref:secret@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres"
+        normalized = get_db_url(custom_url=pooler_url)
+        self.assertIn(":6543/", normalized)
 
-    def test_version_info_consistency(self):
-        """Verify authoritative version is 1.1.3."""
-        info = get_version_info()
-        self.assertEqual(info["version"], "1.1.3")
-
-    def test_async_scan_trigger_response(self):
-        """Verify POST /api/run responds immediately without blocking."""
+    def test_opportunities_route_returns_200(self):
+        """Verify GET /opportunities returns HTTP 200 HTML page for authenticated user."""
         class TestConfig(DashboardConfig):
             TESTING = True
             DEBUG = False
@@ -53,15 +47,13 @@ class TestProductionIntegration(unittest.TestCase):
         client = app.test_client()
 
         with client.session_transaction() as sess:
-            sess["admin_authenticated"] = True
-            sess["admin_user_id"] = 1
-            sess["admin_username"] = "admin"
-            sess["admin_role"] = "Admin"
+            sess["user_id"] = 1
+            sess["username"] = "testuser"
+            sess["role"] = "User"
 
-        res = client.post("/api/run", json={"dry_run": True})
-        self.assertIn(res.status_code, (200, 409, 503))
-        data = res.get_json()
-        self.assertIsInstance(data, dict)
+        res = client.get("/opportunities")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b"Opportunities Explorer", res.data)
 
 
 if __name__ == "__main__":

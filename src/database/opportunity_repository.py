@@ -93,12 +93,21 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
             except (IndexError, KeyError):
                 return default
 
-        raw_tags = _get_field("tags")
-        tags = json.loads(raw_tags) if raw_tags else []
-        raw_score_bd = _get_field("score_breakdown")
-        score_breakdown = json.loads(raw_score_bd) if raw_score_bd else {}
-        raw_rd = _get_field("raw_data")
-        raw_data = json.loads(raw_rd) if raw_rd else {}
+        def _parse_json(val: Any, default: Any) -> Any:
+            if val is None:
+                return default
+            if isinstance(val, (dict, list)):
+                return val
+            if isinstance(val, str):
+                try:
+                    return json.loads(val)
+                except Exception:
+                    return default
+            return default
+
+        tags = _parse_json(_get_field("tags"), [])
+        score_breakdown = _parse_json(_get_field("score_breakdown"), {})
+        raw_data = _parse_json(_get_field("raw_data"), {})
 
         return Opportunity(
             id=row["id"],
