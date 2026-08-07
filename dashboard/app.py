@@ -165,9 +165,10 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
     @app.errorhandler(500)
     def handle_500_error(e):
         logger.exception(f"500 Internal Server Error on {request.path}: {e}")
+        err_msg = str(getattr(e, "original_exception", e))
         if request.path.startswith("/api/") or request.path.startswith("/admin/api/") or request.headers.get("Accept") == "application/json":
-            return jsonify({"status": "failed", "error": "Internal Server Error", "message": str(e)}), 500
-        return jsonify({"status": "failed", "error": "Internal Server Error"}), 500
+            return jsonify({"status": "failed", "error": "Internal Server Error", "message": err_msg}), 400
+        return jsonify({"status": "failed", "error": "Internal Server Error", "message": err_msg}), 400
 
     @app.errorhandler(404)
     def handle_404_error(e):
