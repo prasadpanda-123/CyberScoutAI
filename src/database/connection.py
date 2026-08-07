@@ -247,10 +247,25 @@ class DatabaseManager:
                 dbapi_conn = getattr(raw_conn, "dbapi_connection", None) or getattr(raw_conn, "connection", raw_conn)
                 self._connection = PgConnectionAdapter(dbapi_conn)
             except Exception as e:
-                self._last_failure_reason = str(e)
-                self._last_failure_timestamp_iso = datetime.now(timezone.utc).isoformat()
-                logger.error(f"PostgreSQL connection failed: {e}")
-                raise DatabaseConnectionError(f"PostgreSQL connection failed: {e}", original_exception=e)
+                err_str = str(e).lower()
+                if "ssl" in err_str or "closed" in err_str or "connection" in err_str:
+                    logger.warning(f"Database pool connection dropped ({e}). Resetting engine pool and retrying connection.")
+                    try:
+                        self.reset_pool()
+                        engine = self.get_engine()
+                        raw_conn = engine.raw_connection()
+                        dbapi_conn = getattr(raw_conn, "dbapi_connection", None) or getattr(raw_conn, "connection", raw_conn)
+                        self._connection = PgConnectionAdapter(dbapi_conn)
+                    except Exception as retry_err:
+                        self._last_failure_reason = str(retry_err)
+                        self._last_failure_timestamp_iso = datetime.now(timezone.utc).isoformat()
+                        logger.error(f"PostgreSQL reconnection failed: {retry_err}")
+                        raise DatabaseConnectionError(f"PostgreSQL connection failed: {retry_err}", original_exception=retry_err)
+                else:
+                    self._last_failure_reason = str(e)
+                    self._last_failure_timestamp_iso = datetime.now(timezone.utc).isoformat()
+                    logger.error(f"PostgreSQL connection failed: {e}")
+                    raise DatabaseConnectionError(f"PostgreSQL connection failed: {e}", original_exception=e)
 
         if self._connection is None:
             raise DatabaseConnectionError("PostgreSQL connection could not be established.")

@@ -129,7 +129,13 @@ def create_db_engine(custom_url: Optional[str] = None) -> Engine:
         pool_size=3,
         max_overflow=5,
         pool_pre_ping=True,
-        pool_recycle=300,
+        pool_recycle=45,
+        connect_args={
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 3,
+        },
         future=True,
     )
 
