@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CyberScout AI — Automated Cybersecurity Intelligence Platform</title>
-  <meta name="description" content="CyberScout AI is an automated cybersecurity intelligence platform collecting, filtering, and ranking high-value security opportunities, CTFs, research grants, and threat telemetry in real-time.">
+  <title>CyberScout AI — Personal Cybersecurity Opportunity Intelligence Platform</title>
+  <meta name="description" content="CyberScout AI is an automated cybersecurity opportunity intelligence platform that continuously discovers, cleans, categorizes, and ranks high-value security opportunities, CTFs, research grants, and learning resources.">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -16,6 +16,7 @@
       --accent-cyan: #06b6d4;
       --accent-blue: #3b82f6;
       --accent-emerald: #10b981;
+      --accent-purple: #8b5cf6;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
     }
@@ -26,19 +27,19 @@
       overflow-x: hidden;
     }
     .glass-nav {
-      background: rgba(9, 13, 22, 0.85);
+      background: rgba(9, 13, 22, 0.90);
       backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border-color);
     }
     .hero-section {
-      padding: 100px 0 80px;
-      background: radial-gradient(circle at 50% 20%, rgba(6, 182, 212, 0.15), transparent 70%);
+      padding: 120px 0 80px;
+      background: radial-gradient(circle at 50% 15%, rgba(6, 182, 212, 0.15), transparent 70%);
     }
     .hero-badge {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 6px 16px;
+      padding: 6px 18px;
       border-radius: 50px;
       background: rgba(6, 182, 212, 0.1);
       border: 1px solid rgba(6, 182, 212, 0.3);
@@ -70,7 +71,7 @@
     .feature-card:hover {
       transform: translateY(-5px);
       border-color: rgba(6, 182, 212, 0.4);
-      box-shadow: 0 12px 30px rgba(6, 182, 212, 0.1);
+      box-shadow: 0 12px 30px rgba(6, 182, 212, 0.12);
     }
     .feature-icon {
       width: 56px;
@@ -85,9 +86,9 @@
       color: var(--accent-cyan);
     }
     .stat-box {
-      background: rgba(15, 23, 42, 0.5);
+      background: rgba(15, 23, 42, 0.6);
       border: 1px solid var(--border-color);
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 24px;
       text-align: center;
     }
@@ -96,73 +97,115 @@
       font-weight: 700;
       color: var(--accent-cyan);
     }
-    .cta-banner {
-      background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(59, 130, 246, 0.2));
-      border: 1px solid rgba(6, 182, 212, 0.3);
+    .pipeline-step {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 20px;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+    .pipeline-step:hover {
+      border-color: var(--accent-cyan);
+    }
+    .pipeline-badge {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      color: #000;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.875rem;
+      margin-bottom: 12px;
+    }
+    .category-tag {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      border-radius: 30px;
+      padding: 10px 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      color: var(--text-main);
+      transition: all 0.2s ease;
+    }
+    .category-tag:hover {
+      border-color: var(--accent-cyan);
+      background: rgba(6, 182, 212, 0.1);
+      color: var(--accent-cyan);
+    }
+    .info-section {
+      padding: 80px 0;
+      border-top: 1px solid var(--border-color);
+    }
+    .purpose-banner {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(59, 130, 246, 0.12));
+      border: 1px solid rgba(6, 182, 212, 0.25);
       border-radius: 20px;
-      padding: 60px 40px;
+      padding: 50px 40px;
       text-align: center;
     }
   </style>
 </head>
 <body>
 
-  <!-- Navbar -->
+  <!-- Navbar — The ONLY location for authentication controls -->
   <nav class="navbar navbar-expand-lg fixed-top glass-nav">
     <div class="container">
       <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-white fs-4" href="/">
         <i class="bi bi-shield-lock-fill text-info"></i> CyberScout <span class="badge bg-info text-dark">AI</span>
       </a>
-      <button class="navbar-toggler border-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <button class="navbar-toggler border-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav ms-auto align-items-center gap-3">
-          <li class="nav-item"><a class="nav-link text-light" href="#features">Features</a></li>
-          <li class="nav-item"><a class="nav-link text-light" href="#intelligence">Intelligence Pipeline</a></li>
-          <li class="nav-item">
-            <a href="/login" class="btn btn-outline-light px-4">Sign In</a>
-          </li>
-          <li class="nav-item">
-            <a href="/register" class="btn btn-info fw-semibold px-4">Register</a>
-          </li>
+        <ul class="navbar-nav me-auto ms-4 align-items-center gap-2">
+          <li class="nav-item"><a class="nav-link text-light" href="#about">About</a></li>
+          <li class="nav-item"><a class="nav-link text-light" href="#services">What We Provide</a></li>
+          <li class="nav-item"><a class="nav-link text-light" href="#pipeline">Intelligence Pipeline</a></li>
+          <li class="nav-item"><a class="nav-link text-light" href="#why-us">Why CyberScout</a></li>
+          <li class="nav-item"><a class="nav-link text-light" href="#audience">Who It's For</a></li>
         </ul>
+        <div class="d-flex align-items-center gap-3">
+          <a href="/login" class="btn btn-outline-light px-4">Sign In</a>
+          <a href="/register" class="btn btn-info fw-semibold px-4">Register</a>
+        </div>
       </div>
     </div>
   </nav>
 
-  <!-- Hero Section -->
+  <!-- Hero Section (Zero Action/Dashboard Buttons) -->
   <section class="hero-section text-center">
     <div class="container">
       <div class="hero-badge mb-4">
-        <i class="bi bi-cpu-fill"></i> Next-Gen Cybersecurity Intelligence Engine v{{ app_info.version }}
+        <i class="bi bi-cpu-fill"></i> Personal Cybersecurity Opportunity Intelligence Platform v{{ app_info.version }}
       </div>
       <h1 class="hero-title mb-4">
-        Automated Cybersecurity <br><span class="hero-title-highlight">Opportunity & Threat Discovery</span>
+        Never Miss a Cybersecurity <br><span class="hero-title-highlight">Opportunity & Skill Milestone Again</span>
       </h1>
-      <p class="lead text-muted mx-auto mb-5" style="max-width: 750px;">
-        CyberScout AI continuously monitors global security feeds, RSS channels, repositories, CTF platforms, and research portals to deliver real-time, scored cybersecurity opportunities directly to your team.
+      <p class="lead text-muted mx-auto mb-5" style="max-width: 800px;">
+        CyberScout AI is an automated cybersecurity intelligence platform that continuously discovers, cleans, categorizes, and ranks high-value security opportunities, CTF events, learning resources, and research grants in real time.
       </p>
-      <div class="d-flex justify-content-center gap-3 mb-5">
-        <a href="/login" class="btn btn-outline-light btn-lg px-5 py-3"><i class="bi bi-box-arrow-in-right me-2"></i> Sign In</a>
-        <a href="/register" class="btn btn-info btn-lg fw-bold px-5 py-3 shadow"><i class="bi bi-rocket-takeoff me-2"></i> Register Account</a>
-      </div>
 
-      <!-- Quick Telemetry Stats -->
-      <div class="row g-4 justify-content-center" id="intelligence">
-        <div class="col-md-3">
+      <!-- Public Telemetry Stats -->
+      <div class="row g-4 justify-content-center">
+        <div class="col-md-3 col-6">
           <div class="stat-box">
-            <div class="stat-number">9+</div>
-            <div class="text-muted small">Live Intelligence Sources</div>
+            <div class="stat-number">20+</div>
+            <div class="text-muted small">Configured Security Feeds</div>
           </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 col-6">
           <div class="stat-box">
-            <div class="stat-number">750+</div>
-            <div class="text-muted small">Curated Opportunities</div>
+            <div class="stat-number">1,000+</div>
+            <div class="text-muted small">Opportunities Processed</div>
           </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 col-6">
           <div class="stat-box">
             <div class="stat-number">100%</div>
             <div class="text-muted small">Automated Quality Scoring</div>
@@ -172,48 +215,304 @@
     </div>
   </section>
 
-  <!-- Features Section -->
-  <section class="py-5" id="features">
+  <!-- Section 1: What is CyberScout AI? -->
+  <section class="info-section" id="about">
     <div class="container">
-      <div class="text-center mb-5">
-        <h2 class="fw-bold fs-1">Built for Security Engineers & Researchers</h2>
-        <p class="text-muted">Multi-stage autonomous collection, deduplication, quality evaluation, and alert digests.</p>
-      </div>
-
-      <div class="row g-4">
-        <div class="col-md-4">
-          <div class="feature-card h-100">
-            <div class="feature-icon"><i class="bi bi-diagram-3"></i></div>
-            <h4 class="fw-bold mb-3">Multi-Source Harvesting</h4>
-            <p class="text-muted">Scrapes and aggregates CTF events, GitHub research repos, RSS vulnerability channels, HackerNews, and security academies in real-time.</p>
-          </div>
+      <div class="row align-items-center g-5">
+        <div class="col-lg-6">
+          <h2 class="fw-bold fs-1 mb-4">What is CyberScout AI?</h2>
+          <p class="text-muted fs-5 mb-4">
+            Finding high-quality cybersecurity opportunities, internships, CTF competitions, and free learning resources usually requires checking dozens of separate forums, GitHub repositories, RSS feeds, and social channels every day.
+          </p>
+          <p class="text-muted fs-5 mb-0">
+            CyberScout AI automates this tedious discovery process. By combining multi-source harvesting with AI-assisted deduplication and scoring engines, CyberScout AI aggregates security opportunities into a structured intelligence repository—saving researchers, students, and practitioners hundreds of hours.
+          </p>
         </div>
-        <div class="col-md-4">
-          <div class="feature-card h-100">
-            <div class="feature-icon"><i class="bi bi-funnel"></i></div>
-            <h4 class="fw-bold mb-3">Quality & Anti-Spam Engine</h4>
-            <p class="text-muted">Filters low-confidence listings, spam repositories, and duplicate items using AI confidence metrics and topic classification.</p>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="feature-card h-100">
-            <div class="feature-icon"><i class="bi bi-bell"></i></div>
-            <h4 class="fw-bold mb-3">Automated Digests</h4>
-            <p class="text-muted">Receive scheduled email digests with high-priority opportunities, personalized category breakdowns, and exportable reports.</p>
+        <div class="col-lg-6">
+          <div class="feature-card p-4">
+            <div class="d-flex align-items-start gap-3 mb-4">
+              <div class="feature-icon mb-0"><i class="bi bi-search"></i></div>
+              <div>
+                <h5 class="fw-bold mb-1">Continuous Web Harvesting</h5>
+                <p class="text-muted small mb-0">Monitors RSS vulnerability feeds, security blogs, GitHub repos, CTF portals, and academic challenge boards 24/7.</p>
+              </div>
+            </div>
+            <div class="d-flex align-items-start gap-3 mb-4">
+              <div class="feature-icon mb-0"><i class="bi bi-shield-check"></i></div>
+              <div>
+                <h5 class="fw-bold mb-1">Quality & Spam Filtering</h5>
+                <p class="text-muted small mb-0">Automatically evaluates confidence metrics, eliminating expired listings, duplicate links, and promotional noise.</p>
+              </div>
+            </div>
+            <div class="d-flex align-items-start gap-3">
+              <div class="feature-icon mb-0"><i class="bi bi-box-arrow-up-right"></i></div>
+              <div>
+                <h5 class="fw-bold mb-1">Structured Categorization</h5>
+                <p class="text-muted small mb-0">Organizes items into clear domains: Internships, CTFs, Certifications, Courses, Scholarships, and Webinars.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- CTA Banner -->
-  <section class="py-5">
+  <!-- Section 2: What CyberScout AI Provides -->
+  <section class="info-section" id="services">
     <div class="container">
-      <div class="cta-banner">
-        <h2 class="fw-bold mb-3">Ready to Streamline Your Cybersecurity Discovery?</h2>
-        <p class="text-muted mb-4 fs-5 mx-auto" style="max-width: 600px;">Access curated CTFs, labs, vulnerabilities, and research opportunities instantly.</p>
-        <a href="/login" class="btn btn-outline-light btn-lg px-4 py-3 me-2"><i class="bi bi-box-arrow-in-right me-1"></i> Sign In</a>
-        <a href="/register" class="btn btn-info btn-lg fw-bold px-5 py-3"><i class="bi bi-person-plus me-2"></i> Register Account Now</a>
+      <div class="text-center mb-5">
+        <h2 class="fw-bold fs-1 mb-3">What CyberScout AI Provides</h2>
+        <p class="text-muted fs-5">One unified platform for discovering, filtering, scoring, and tracking cybersecurity opportunities.</p>
+      </div>
+
+      <div class="row g-4">
+        <!-- A. Internships & Career Opportunities -->
+        <div class="col-md-4">
+          <div class="feature-card h-100">
+            <div class="feature-icon"><i class="bi bi-briefcase"></i></div>
+            <h4 class="fw-bold mb-3">Internships & Career Opportunities</h4>
+            <p class="text-muted small mb-0">
+              Surfaces cybersecurity internships, student programs, entry-level security analyst roles, security engineering fellowships, and research assistantships collected from verified security organizations.
+            </p>
+          </div>
+        </div>
+        <!-- B. Courses & Learning Resources -->
+        <div class="col-md-4">
+          <div class="feature-card h-100">
+            <div class="feature-icon"><i class="bi bi-book"></i></div>
+            <h4 class="fw-bold mb-3">Courses & Learning Resources</h4>
+            <p class="text-muted small mb-0">
+              Aggregates free cybersecurity courses, ethical hacking tutorials, penetration testing guides, programming resources, certification prep materials, and curated GitHub educational repositories.
+            </p>
+          </div>
+        </div>
+        <!-- C. CTFs & Hackathons -->
+        <div class="col-md-4">
+          <div class="feature-card h-100">
+            <div class="feature-icon"><i class="bi bi-trophy"></i></div>
+            <h4 class="fw-bold mb-3">CTFs & Hackathons</h4>
+            <p class="text-muted small mb-0">
+              Tracks upcoming Capture The Flag (CTF) competitions, cybersecurity hackathons, vulnerability hunting challenges, and student security games to practice hands-on technical skills.
+            </p>
+          </div>
+        </div>
+        <!-- D. Scholarships & Fellowships -->
+        <div class="col-md-4">
+          <div class="feature-card h-100">
+            <div class="feature-icon"><i class="bi bi-mortarboard"></i></div>
+            <h4 class="fw-bold mb-3">Scholarships & Fellowships</h4>
+            <p class="text-muted small mb-0">
+              Identifies cybersecurity academic scholarships, research grants, diversity fellowships, student conference stipends, and specialized security training sponsorship programs.
+            </p>
+          </div>
+        </div>
+        <!-- E. Webinars & Security Events -->
+        <div class="col-md-4">
+          <div class="feature-card h-100">
+            <div class="feature-icon"><i class="bi bi-calendar-event"></i></div>
+            <h4 class="fw-bold mb-3">Webinars & Security Events</h4>
+            <p class="text-muted small mb-0">
+              Monitors upcoming cybersecurity webinars, technical workshops, virtual security conferences, community meetups, and live threat intelligence briefings.
+            </p>
+          </div>
+        </div>
+        <!-- F. Security Resources & Intelligence -->
+        <div class="col-md-4">
+          <div class="feature-card h-100">
+            <div class="feature-icon"><i class="bi bi-code-slash"></i></div>
+            <h4 class="fw-bold mb-3">Security Resources & Tools</h4>
+            <p class="text-muted small mb-0">
+              Indexes open-source security tools, GitHub research projects, vulnerability disclosure alerts, threat analysis whitepapers, and technical reference documentation.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 3: Intelligence Pipeline -->
+  <section class="info-section" id="pipeline">
+    <div class="container">
+      <div class="text-center mb-5">
+        <h2 class="fw-bold fs-1 mb-3">From Discovery to Opportunity</h2>
+        <p class="text-muted fs-5">How CyberScout AI processes raw web intelligence into structured opportunity digests.</p>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md">
+          <div class="pipeline-step text-center">
+            <div class="pipeline-badge mx-auto">1</div>
+            <h6 class="fw-bold mb-2">COLLECT</h6>
+            <p class="text-muted small mb-0">Gather raw feeds from RSS, APIs, & web sources.</p>
+          </div>
+        </div>
+        <div class="col-md">
+          <div class="pipeline-step text-center">
+            <div class="pipeline-badge mx-auto">2</div>
+            <h6 class="fw-bold mb-2">EXTRACT</h6>
+            <p class="text-muted small mb-0">Extract dates, URLs, titles, & key metadata.</p>
+          </div>
+        </div>
+        <div class="col-md">
+          <div class="pipeline-step text-center">
+            <div class="pipeline-badge mx-auto">3</div>
+            <h6 class="fw-bold mb-2">CLEAN</h6>
+            <p class="text-muted small mb-0">Deduplicate & discard expired or broken links.</p>
+          </div>
+        </div>
+        <div class="col-md">
+          <div class="pipeline-step text-center">
+            <div class="pipeline-badge mx-auto">4</div>
+            <h6 class="fw-bold mb-2">CATEGORIZE</h6>
+            <p class="text-muted small mb-0">Classify into CTFs, Jobs, Courses, & Events.</p>
+          </div>
+        </div>
+        <div class="col-md">
+          <div class="pipeline-step text-center">
+            <div class="pipeline-badge mx-auto">5</div>
+            <h6 class="fw-bold mb-2">SCORE</h6>
+            <p class="text-muted small mb-0">Evaluate relevance & AI quality metrics.</p>
+          </div>
+        </div>
+        <div class="col-md">
+          <div class="pipeline-step text-center">
+            <div class="pipeline-badge mx-auto">6</div>
+            <h6 class="fw-bold mb-2">STORE</h6>
+            <p class="text-muted small mb-0">Persist in PostgreSQL Supabase database.</p>
+          </div>
+        </div>
+        <div class="col-md">
+          <div class="pipeline-step text-center">
+            <div class="pipeline-badge mx-auto">7</div>
+            <h6 class="fw-bold mb-2">NOTIFY</h6>
+            <p class="text-muted small mb-0">Generate scheduled report & email digests.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 4: Why CyberScout AI? -->
+  <section class="info-section" id="why-us">
+    <div class="container">
+      <div class="text-center mb-5">
+        <h2 class="fw-bold fs-1 mb-3">Why CyberScout AI?</h2>
+        <p class="text-muted fs-5">Designed to eliminate manual searching and streamline your cybersecurity career journey.</p>
+      </div>
+
+      <div class="row g-4 justify-content-center">
+        <div class="col-md-4">
+          <div class="feature-card h-100">
+            <div class="feature-icon"><i class="bi bi-compass"></i></div>
+            <h5 class="fw-bold mb-2">DISCOVER</h5>
+            <p class="text-muted small mb-0">Stop spending hours manually searching forums, Twitter/X, and job boards. Centralize your security discovery.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="feature-card h-100">
+            <div class="feature-icon"><i class="bi bi-funnel"></i></div>
+            <h5 class="fw-bold mb-2">FILTER</h5>
+            <p class="text-muted small mb-0">Focus on genuine high-value security opportunities while low-quality spam and promotional noise are filtered out.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="feature-card h-100">
+            <div class="feature-icon"><i class="bi bi-grid-3x3-gap"></i></div>
+            <h5 class="fw-bold mb-2">ORGANIZE</h5>
+            <p class="text-muted small mb-0">View opportunities clearly structured by topic, source reliability, discovery date, and evaluation confidence score.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="feature-card h-100">
+            <div class="feature-icon"><i class="bi bi-sliders"></i></div>
+            <h5 class="fw-bold mb-2">PRIORITIZE</h5>
+            <p class="text-muted small mb-0">Use platform quality scores to quickly identify top-tier competitions, high-relevance courses, and key deadlines.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="feature-card h-100">
+            <div class="feature-icon"><i class="bi bi-mailbox"></i></div>
+            <h5 class="fw-bold mb-2">STAY UPDATED</h5>
+            <p class="text-muted small mb-0">Receive automated daily or weekly email digests so new opportunities land directly in your inbox.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 5: Built For Cybersecurity Learners & Professionals -->
+  <section class="info-section" id="audience">
+    <div class="container">
+      <div class="text-center mb-5">
+        <h2 class="fw-bold fs-1 mb-3">Built For Cybersecurity Learners & Professionals</h2>
+        <p class="text-muted fs-5">Empowering security enthusiasts across every stage of their technical growth.</p>
+      </div>
+
+      <div class="row g-4 justify-content-center">
+        <div class="col-md-3 col-6">
+          <div class="stat-box h-100">
+            <i class="bi bi-mortarboard text-info fs-2 mb-2 d-block"></i>
+            <h6 class="fw-bold mb-1">Cybersecurity Students</h6>
+            <p class="text-muted small mb-0">Find internships, scholarships, & student CTF challenges.</p>
+          </div>
+        </div>
+        <div class="col-md-3 col-6">
+          <div class="stat-box h-100">
+            <i class="bi bi-terminal text-info fs-2 mb-2 d-block"></i>
+            <h6 class="fw-bold mb-1">Ethical Hacking Learners</h6>
+            <p class="text-muted small mb-0">Discover free lab environments & penetration testing tutorials.</p>
+          </div>
+        </div>
+        <div class="col-md-3 col-6">
+          <div class="stat-box h-100">
+            <i class="bi bi-bug text-info fs-2 mb-2 d-block"></i>
+            <h6 class="fw-bold mb-1">CTF Players & Researchers</h6>
+            <p class="text-muted small mb-0">Track upcoming competitions & vulnerability research repos.</p>
+          </div>
+        </div>
+        <div class="col-md-3 col-6">
+          <div class="stat-box h-100">
+            <i class="bi bi-shield-check text-info fs-2 mb-2 d-block"></i>
+            <h6 class="fw-bold mb-1">Security Engineers</h6>
+            <p class="text-muted small mb-0">Stay updated on industry webinars, events, & cert prep.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 6: Opportunity Categories Overview -->
+  <section class="info-section">
+    <div class="container">
+      <div class="text-center mb-5">
+        <h2 class="fw-bold fs-1 mb-3">Tracked Opportunity Categories</h2>
+        <p class="text-muted fs-5">A comprehensive range of cybersecurity intelligence domains.</p>
+      </div>
+
+      <div class="d-flex flex-wrap justify-content-center gap-3">
+        <span class="category-tag"><i class="bi bi-briefcase text-info"></i> Internships</span>
+        <span class="category-tag"><i class="bi bi-book text-info"></i> Cybersecurity Courses</span>
+        <span class="category-tag"><i class="bi bi-patch-check text-info"></i> Certifications</span>
+        <span class="category-tag"><i class="bi bi-trophy text-info"></i> CTF Competitions</span>
+        <span class="category-tag"><i class="bi bi-code text-info"></i> Hackathons</span>
+        <span class="category-tag"><i class="bi bi-mortarboard text-info"></i> Scholarships</span>
+        <span class="category-tag"><i class="bi bi-award text-info"></i> Fellowships</span>
+        <span class="category-tag"><i class="bi bi-camera-video text-info"></i> Webinars</span>
+        <span class="category-tag"><i class="bi bi-people text-info"></i> Security Conferences</span>
+        <span class="category-tag"><i class="bi bi-journal-code text-info"></i> Research Repositories</span>
+        <span class="category-tag"><i class="bi bi-newspaper text-info"></i> Threat Intelligence News</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 7: Final Purpose Statement (Zero Action/Dashboard Buttons) -->
+  <section class="info-section">
+    <div class="container">
+      <div class="purpose-banner">
+        <h2 class="fw-bold mb-3">Empowering Your Cybersecurity Journey</h2>
+        <p class="text-muted fs-5 mx-auto mb-0" style="max-width: 750px;">
+          CyberScout AI exists to simplify opportunity discovery for security professionals and students worldwide. Sign in or register an account via the navigation menu above to access your personalized intelligence dashboard.
+        </p>
       </div>
     </div>
   </section>
@@ -221,7 +520,7 @@
   <!-- Footer -->
   <footer class="py-4 border-top border-secondary text-center text-muted small">
     <div class="container">
-      &copy; 2026 CyberScout AI Platform. All rights reserved. Automated Threat & Opportunity Intelligence System.
+      &copy; 2026 CyberScout AI Platform. All rights reserved. Personal Cybersecurity Opportunity Intelligence System.
     </div>
   </footer>
 
