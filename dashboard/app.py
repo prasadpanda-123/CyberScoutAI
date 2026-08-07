@@ -93,8 +93,10 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
 
     @app.context_processor
     def inject_user_and_admin():
-        """Injects active user session and admin session details into Jinja2 templates."""
+        """Injects active user session, admin session details, and app version into Jinja2 templates."""
+        from src.core.version import get_version_info
         return {
+            "app_info": get_version_info(),
             "current_user": {
                 "id": session.get("user_id"),
                 "username": session.get("username", "Guest"),
@@ -150,6 +152,8 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
 
     @app.errorhandler(500)
     def handle_500_error(e):
+        if request.path.startswith("/api/") or request.path.startswith("/admin/api/") or request.headers.get("Accept") == "application/json":
+            return jsonify({"status": "failed", "error": "Internal Server Error", "message": str(e)}), 500
         return jsonify({"status": "failed", "error": "Internal Server Error"}), 500
 
     @app.errorhandler(404)

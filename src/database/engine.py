@@ -33,12 +33,18 @@ def get_db_url(custom_url: Optional[str] = None) -> str:
         raw_url = os.getenv("SUPABASE_DATABASE_URL", "").strip() or os.getenv("DB_URL", "").strip()
 
     if not raw_url:
-        if "PYTEST_CURRENT_TEST" in os.environ or "CI" in os.environ or os.getenv("GITHUB_ACTIONS"):
+        app_env = os.getenv("APP_ENV", "").strip().lower()
+        if app_env == "production":
+            logger.error("DATABASE_URL environment variable is missing in production environment.")
+            raise DatabaseConnectionError("DATABASE_URL environment variable is required in production environment.")
+
+        if "PYTEST_CURRENT_TEST" in os.environ or app_env in ("test", "testing") or os.getenv("CI") or os.getenv("GITHUB_ACTIONS"):
             return "sqlite:///file:testdb?mode=memory&cache=shared&uri=true"
+
         from src.core.constants import DATA_DIR
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         sqlite_path = DATA_DIR / "cyberscout.db"
-        logger.info(f"DATABASE_URL not set. Falling back to local SQLite database at '{sqlite_path}'.")
+        logger.info(f"DATABASE_URL not set in development mode. Using local SQLite database at '{sqlite_path}'.")
         return f"sqlite:///{sqlite_path.as_posix()}"
 
     # Convert legacy postgres:// to postgresql:// if present (Render/Heroku convention)
