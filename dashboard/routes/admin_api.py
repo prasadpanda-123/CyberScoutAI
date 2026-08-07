@@ -253,6 +253,45 @@ def admin_db_reconnect():
         return jsonify({"status": "failed", "error": str(e)})
 
 
+@admin_api_bp.route("/report/trigger", methods=["POST"])
+@admin_required
+def admin_trigger_report():
+    """POST /admin/api/report/trigger — Dispatch daily digest report immediately."""
+    try:
+        res = api_service.send_daily_report_now()
+        audit_repo.log_event("REPORTS", "TRIGGER_REPORT", "SUCCESS", source_ip=request.remote_addr, details="Daily report digest triggered")
+        return jsonify(res)
+    except Exception as e:
+        audit_repo.log_event("REPORTS", "TRIGGER_REPORT", "FAILED", source_ip=request.remote_addr, details=str(e))
+        return jsonify({"status": "failed", "error": str(e)})
+
+
+@admin_api_bp.route("/analytics/refresh", methods=["POST"])
+@admin_required
+def admin_refresh_analytics():
+    """POST /admin/api/analytics/refresh — Recalculate provider statistics."""
+    try:
+        res = api_service.refresh_analytics()
+        audit_repo.log_event("ANALYTICS", "REFRESH_STATS", "SUCCESS", source_ip=request.remote_addr, details="Analytics metrics refreshed")
+        return jsonify(res)
+    except Exception as e:
+        audit_repo.log_event("ANALYTICS", "REFRESH_STATS", "FAILED", source_ip=request.remote_addr, details=str(e))
+        return jsonify({"status": "failed", "error": str(e)})
+
+
+@admin_api_bp.route("/opportunities/clear-old", methods=["POST"])
+@admin_required
+def admin_clear_old_opportunities():
+    """POST /admin/api/opportunities/clear-old — Purge records older than 30 days."""
+    try:
+        res = api_service.clear_old_opportunities(days=30)
+        audit_repo.log_event("OPPORTUNITIES", "CLEAR_OLD", "SUCCESS", source_ip=request.remote_addr, details=f"Purged {res.get('deleted_count', 0)} old records")
+        return jsonify(res)
+    except Exception as e:
+        audit_repo.log_event("OPPORTUNITIES", "CLEAR_OLD", "FAILED", source_ip=request.remote_addr, details=str(e))
+        return jsonify({"status": "failed", "error": str(e)})
+
+
 @admin_api_bp.route("/db/info", methods=["GET"])
 @admin_required
 def admin_db_info():

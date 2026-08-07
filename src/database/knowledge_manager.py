@@ -64,3 +64,30 @@ class KnowledgeManager:
                 self.opp_repo.upsert(opportunity)
 
         return state
+
+    def process_opportunity_batch(self, opportunities: list) -> int:
+        """
+        Batch evaluates lifecycle states and saves/updates persistent records efficiently.
+        """
+        if not opportunities:
+            return 0
+
+        hashes = [opp.generate_url_hash() for opp in opportunities if opp.generate_url_hash()]
+        existing_map = {}
+        if hashes:
+            for i in range(0, len(hashes), 100):
+                chunk = hashes[i:i + 100]
+                placeholders = ",".join(["?"] * len(chunk))
+                found = self.opp_repo.search(where_clause=f"url_hash IN ({placeholders})", params=tuple(chunk))
+                for item in found:
+                    existing_map[item.generate_url_hash()] = item
+
+        to_upsert = []
+        for opp in opportunities:
+            uh = opp.generate_url_hash()
+            existing = existing_map.get(uh)
+            if existing:
+                opp.id = existing.id
+            to_upsert.append(opp)
+
+        return self.opp_repo.upsert_batch(to_upsert)

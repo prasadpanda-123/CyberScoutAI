@@ -17,6 +17,11 @@ api_service = APIService()
 
 
 @dashboard_bp.route("/")
+def landing():
+    """Renders public CyberScout AI Landing Page."""
+    return render_template("landing.html")
+
+
 @dashboard_bp.route("/dashboard")
 @login_required
 def index():

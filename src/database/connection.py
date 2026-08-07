@@ -78,6 +78,13 @@ class PgCursorAdapter:
 
     def executemany(self, sql: str, seq_of_parameters=()):
         sql = self._fix_sql(sql)
+        if not self._is_sqlite:
+            try:
+                from psycopg2.extras import execute_batch
+                execute_batch(self._cursor, sql, seq_of_parameters, page_size=100)
+                return self
+            except Exception:
+                pass
         self._cursor.executemany(sql, seq_of_parameters)
         return self
 
@@ -233,6 +240,7 @@ class DatabaseManager:
                 is_closed = getattr(raw, "closed", 0) != 0
 
         if self._connection is None or is_closed:
+            self._connection = None
             try:
                 engine = self.get_engine()
                 raw_conn = engine.raw_connection()
@@ -275,15 +283,28 @@ class DatabaseManager:
         """
         Context manager yielding a transactional DBAPI Cursor.
         Automatically commits on success or rolls back on exception.
+        Automatically handles cloud pooler connection resets.
         """
-        conn = self.get_connection()
-        cursor = conn.cursor()
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+        except Exception:
+            self.close_connection()
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
         try:
             yield cursor
             conn.commit()
         except Exception as e:
-            conn.rollback()
+            try:
+                conn.rollback()
+            except Exception:
+                pass
             err_msg = str(e)
+            if "closed" in err_msg.lower() or "terminated" in err_msg.lower() or "broken pipe" in err_msg.lower():
+                logger.warning(f"Database connection closed unexpectedly ({e}), clearing stale connection cache.")
+                self.close_connection()
             if "duplicate" in err_msg.lower() or "unique" in err_msg.lower() or "integrity" in err_msg.lower():
                 logger.error(f"Transaction integrity error, changes rolled back: {e}")
                 raise IntegrityError(f"Database integrity error: {e}", original_exception=e)

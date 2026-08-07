@@ -115,10 +115,10 @@ def create_db_engine(custom_url: Optional[str] = None) -> Engine:
     return create_engine(
         connection_url,
         isolation_level="READ COMMITTED",
-        pool_size=10,
-        max_overflow=20,
+        pool_size=3,
+        max_overflow=5,
         pool_pre_ping=True,
-        pool_recycle=1800,
+        pool_recycle=300,
         future=True,
     )
 

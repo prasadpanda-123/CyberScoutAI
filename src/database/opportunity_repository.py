@@ -206,6 +206,68 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
         except Exception as e:
             raise RepositoryError(f"Failed to upsert Opportunity '{opp.id}': {e}", original_exception=e)
 
+    def upsert_batch(self, opps: List[Opportunity]) -> int:
+        """Executes a batch upsert for a list of Opportunity objects using executemany."""
+        if not opps:
+            return 0
+
+        sql = """
+        INSERT INTO Opportunities (
+            id, title, description, url, url_hash,
+            source_id, category, provider, company, location,
+            remote, paid, certificate, price_raw, price_normalized,
+            currency, deadline, published_date, discovered_date, duration,
+            difficulty, tags, beginner_friendly, score, score_breakdown,
+            confidence_score, quality_score, is_rejected, rejection_reason,
+            quality_flags, topic_score, keyword_score, spam_score,
+            status, duplicate_of_id, run_id, raw_data, last_seen
+        ) VALUES (
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?, ?, ?
+        )
+        ON CONFLICT(id) DO UPDATE SET
+            title = excluded.title,
+            description = excluded.description,
+            score = excluded.score,
+            score_breakdown = excluded.score_breakdown,
+            confidence_score = excluded.confidence_score,
+            quality_score = excluded.quality_score,
+            is_rejected = excluded.is_rejected,
+            rejection_reason = excluded.rejection_reason,
+            quality_flags = excluded.quality_flags,
+            topic_score = excluded.topic_score,
+            keyword_score = excluded.keyword_score,
+            spam_score = excluded.spam_score,
+            status = excluded.status,
+            last_seen = excluded.last_seen;
+        """
+        seq = []
+        for opp in opps:
+            data = self._entity_to_dict(opp)
+            seq.append((
+                data["id"], data["title"], data["description"], data["url"], data["url_hash"],
+                data["source_id"], data["category"], data["provider"], data["company"], data["location"],
+                data["remote"], data["paid"], data["certificate"], data["price_raw"], data["price_normalized"],
+                data["currency"], data["deadline"], data["published_date"], data["discovered_date"], data["duration"],
+                data["difficulty"], data["tags"], data["beginner_friendly"], data["score"], data["score_breakdown"],
+                data["confidence_score"], data["quality_score"], data["is_rejected"], data["rejection_reason"],
+                data["quality_flags"], data["topic_score"], data["keyword_score"], data["spam_score"],
+                data["status"], data["duplicate_of_id"], data["run_id"], data["raw_data"], data["last_seen"]
+            ))
+
+        try:
+            with self.db_manager.transaction() as cursor:
+                cursor.executemany(sql, seq)
+            return len(opps)
+        except Exception as e:
+            raise RepositoryError(f"Failed batch upsert for {len(opps)} opportunities: {e}", original_exception=e)
+
     def get_by_id(self, opp_id: str) -> Optional[Opportunity]:
         return self.read_by_id(opp_id)
 
@@ -218,13 +280,13 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
     ) -> List[Opportunity]:
         if category:
             return self.search(
-                where_clause="status = ? AND (is_rejected = 0 OR is_rejected IS NULL) AND (expired = 0 OR expired IS NULL) AND (archived = 0 OR archived IS NULL) AND category = ?",
+                where_clause="status = ? AND (is_rejected IS NOT TRUE) AND (expired = 0 OR expired IS NULL) AND (archived = 0 OR archived IS NULL) AND LOWER(category) = LOWER(?)",
                 params=(Status.ACTIVE.value, category),
                 order_by="score DESC, discovered_date DESC",
                 limit=limit,
             )
         return self.search(
-            where_clause="status = ? AND (is_rejected = 0 OR is_rejected IS NULL) AND (expired = 0 OR expired IS NULL) AND (archived = 0 OR archived IS NULL)",
+            where_clause="status = ? AND (is_rejected IS NOT TRUE) AND (expired = 0 OR expired IS NULL) AND (archived = 0 OR archived IS NULL)",
             params=(Status.ACTIVE.value,),
             order_by="score DESC, discovered_date DESC",
             limit=limit,
@@ -235,7 +297,7 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
     ) -> List[Opportunity]:
         """Retrieves rejected opportunities for quality reporting."""
         return self.search(
-            where_clause="is_rejected = 1",
+            where_clause="is_rejected IS TRUE OR is_rejected = 1",
             order_by="discovered_date DESC",
             limit=limit,
         )
@@ -246,21 +308,21 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
         cursor = conn.cursor()
         try:
             stats = {}
-            cursor.execute("SELECT COUNT(*) as cnt FROM Opportunities WHERE is_rejected = 0 OR is_rejected IS NULL;")
+            cursor.execute("SELECT COUNT(*) as cnt FROM Opportunities WHERE is_rejected IS NOT TRUE;")
             stats["accepted_count"] = cursor.fetchone()["cnt"]
 
-            cursor.execute("SELECT COUNT(*) as cnt FROM Opportunities WHERE is_rejected = 1;")
+            cursor.execute("SELECT COUNT(*) as cnt FROM Opportunities WHERE is_rejected IS TRUE;")
             stats["rejected_count"] = cursor.fetchone()["cnt"]
 
-            cursor.execute("SELECT AVG(confidence_score) as avg_conf FROM Opportunities WHERE (is_rejected = 0 OR is_rejected IS NULL) AND confidence_score > 0;")
+            cursor.execute("SELECT AVG(confidence_score) as avg_conf FROM Opportunities WHERE (is_rejected IS NOT TRUE) AND confidence_score > 0;")
             row = cursor.fetchone()
             stats["avg_confidence"] = round(row["avg_conf"] or 0.0, 1)
 
-            cursor.execute("SELECT AVG(quality_score) as avg_qual FROM Opportunities WHERE (is_rejected = 0 OR is_rejected IS NULL) AND quality_score > 0;")
+            cursor.execute("SELECT AVG(quality_score) as avg_qual FROM Opportunities WHERE (is_rejected IS NOT TRUE) AND quality_score > 0;")
             row = cursor.fetchone()
             stats["avg_quality"] = round(row["avg_qual"] or 0.0, 1)
 
-            cursor.execute("SELECT rejection_reason, COUNT(*) as cnt FROM Opportunities WHERE is_rejected = 1 GROUP BY rejection_reason ORDER BY cnt DESC LIMIT 10;")
+            cursor.execute("SELECT rejection_reason, COUNT(*) as cnt FROM Opportunities WHERE is_rejected IS TRUE GROUP BY rejection_reason ORDER BY cnt DESC LIMIT 10;")
             stats["top_rejection_reasons"] = {r["rejection_reason"]: r["cnt"] for r in cursor.fetchall()}
 
             return stats

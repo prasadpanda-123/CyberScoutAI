@@ -75,19 +75,42 @@ class SeedManager:
         return count
 
     def seed_users(self) -> int:
-        """Seeds default Super Admin user if Users table is empty."""
+        """Seeds default Admin user ('admin@cyberscout.ai') and cleans up extra admin accounts."""
         from src.database.user_repository import UserRepository
         user_repo = UserRepository(self.db_manager)
-        existing = user_repo.list_users()
-        if not existing:
+
+        # 1. Clean up legacy admin accounts except admin@cyberscout.ai
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("DELETE FROM Users WHERE LOWER(email) != 'admin@cyberscout.ai' AND LOWER(role) LIKE '%admin%'")
+            conn.commit()
+        except Exception as e:
+            logger.warning(f"Note during user cleanup: {e}")
+        finally:
+            cursor.close()
+
+        # 2. Seed primary Admin user if not present
+        existing_admin = user_repo.get_by_email("admin@cyberscout.ai")
+        if not existing_admin:
             user_repo.create_user(
                 username="admin",
                 email="admin@cyberscout.ai",
                 password="Admin@CyberScout2026!",
-                role="Super Admin",
+                role="Admin",
             )
-            logger.info("Seeded default Super Admin user ('admin@cyberscout.ai').")
+            logger.info("Seeded primary Admin user ('admin@cyberscout.ai').")
             return 1
+        else:
+            # Update role to standard 'Admin'
+            try:
+                conn = self.db_manager.get_connection()
+                cursor = conn.cursor()
+                cursor.execute("UPDATE Users SET role = 'Admin' WHERE LOWER(email) = 'admin@cyberscout.ai'")
+                conn.commit()
+                cursor.close()
+            except Exception:
+                pass
         return 0
 
     def run_all_seeds(self) -> None:

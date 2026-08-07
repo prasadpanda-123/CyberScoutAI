@@ -195,10 +195,19 @@ def run_pipeline_once(
     if not dry_run:
         # Create SearchHistory row first to satisfy FOREIGN KEY (run_id) REFERENCES SearchHistory(run_id)
         sql_init_hist = """
-            INSERT OR REPLACE INTO SearchHistory (
+            INSERT INTO SearchHistory (
                 run_id, triggered_at, completed_at, status, sources_run,
                 items_collected, items_after_dedup, items_emailed, errors
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(run_id) DO UPDATE SET
+                triggered_at = excluded.triggered_at,
+                completed_at = excluded.completed_at,
+                status = excluded.status,
+                sources_run = excluded.sources_run,
+                items_collected = excluded.items_collected,
+                items_after_dedup = excluded.items_after_dedup,
+                items_emailed = excluded.items_emailed,
+                errors = excluded.errors;
         """
         try:
             with db.transaction() as cursor:
@@ -206,14 +215,11 @@ def run_pipeline_once(
                     sql_init_hist,
                     (run_id, started_iso, started_iso, "running", sources_str, len(raw_items), len(ranked_items), 0, ""),
                 )
+                for opp in ranked_items:
+                    opp.run_id = run_id
+                saved_count = km.process_opportunity_batch(ranked_items)
         except Exception as hist_err:
-            logger.warning(f"Could not initialize SearchHistory row: {hist_err}")
-
-        for opp in ranked_items:
-            opp.run_id = run_id
-            state = km.process_opportunity_state(opp)
-            if state in ("NEVER_SEEN", "UPDATED", "SEEN_BEFORE"):
-                saved_count += 1
+            logger.warning(f"Could not persist Knowledge Base records: {hist_err}")
     metrics.db_update_time = time.time() - db_start
 
     # 8. Notifications Phase

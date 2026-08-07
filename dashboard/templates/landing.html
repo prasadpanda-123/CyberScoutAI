@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CyberScout AI — Automated Cybersecurity Intelligence Platform</title>
+  <meta name="description" content="CyberScout AI is an automated cybersecurity intelligence platform collecting, filtering, and ranking high-value security opportunities, CTFs, research grants, and threat telemetry in real-time.">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-card: rgba(15, 23, 42, 0.75);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --accent-cyan: #06b6d4;
+      --accent-blue: #3b82f6;
+      --accent-emerald: #10b981;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      overflow-x: hidden;
+    }
+    .glass-nav {
+      background: rgba(9, 13, 22, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-color);
+    }
+    .hero-section {
+      padding: 100px 0 80px;
+      background: radial-gradient(circle at 50% 20%, rgba(6, 182, 212, 0.15), transparent 70%);
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 50px;
+      background: rgba(6, 182, 212, 0.1);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      color: var(--accent-cyan);
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+    .hero-title {
+      font-size: 3.5rem;
+      font-weight: 800;
+      line-height: 1.15;
+      background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-title-highlight {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .feature-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 32px;
+      transition: all 0.3s ease;
+    }
+    .feature-card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(6, 182, 212, 0.4);
+      box-shadow: 0 12px 30px rgba(6, 182, 212, 0.1);
+    }
+    .feature-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+      margin-bottom: 20px;
+      background: rgba(6, 182, 212, 0.1);
+      color: var(--accent-cyan);
+    }
+    .stat-box {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+    }
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+    .cta-banner {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(59, 130, 246, 0.2));
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      border-radius: 20px;
+      padding: 60px 40px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg fixed-top glass-nav">
+    <div class="container">
+      <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-white fs-4" href="/">
+        <i class="bi bi-shield-lock-fill text-info"></i> CyberScout <span class="badge bg-info text-dark">AI</span>
+      </a>
+      <button class="navbar-toggler border-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto align-items-center gap-3">
+          <li class="nav-item"><a class="nav-link text-light" href="#features">Features</a></li>
+          <li class="nav-item"><a class="nav-link text-light" href="#intelligence">Intelligence Pipeline</a></li>
+          {% if session.get('user_id') or session.get('admin_authenticated') %}
+            <li class="nav-item">
+              <a href="/dashboard" class="btn btn-info fw-semibold px-4"><i class="bi bi-speedometer2 me-1"></i> Go to Dashboard</a>
+            </li>
+          {% else %}
+            <li class="nav-item">
+              <a href="/login" class="btn btn-outline-light px-4">Sign In</a>
+            </li>
+            <li class="nav-item">
+              <a href="/register" class="btn btn-info fw-semibold px-4">Get Started</a>
+            </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero-section text-center">
+    <div class="container">
+      <div class="hero-badge mb-4">
+        <i class="bi bi-cpu-fill"></i> Next-Gen Cybersecurity Intelligence Engine v1.2
+      </div>
+      <h1 class="hero-title mb-4">
+        Automated Cybersecurity <br><span class="hero-title-highlight">Opportunity & Threat Discovery</span>
+      </h1>
+      <p class="lead text-muted mx-auto mb-5" style="max-width: 750px;">
+        CyberScout AI continuously monitors global security feeds, RSS channels, repositories, CTF platforms, and research portals to deliver real-time, scored cybersecurity opportunities directly to your team.
+      </p>
+      <div class="d-flex justify-content-center gap-3 mb-5">
+        {% if session.get('user_id') or session.get('admin_authenticated') %}
+          <a href="/dashboard" class="btn btn-info btn-lg fw-bold px-5 py-3 shadow"><i class="bi bi-speedometer2 me-2"></i> Access Dashboard</a>
+        {% else %}
+          <a href="/register" class="btn btn-info btn-lg fw-bold px-5 py-3 shadow"><i class="bi bi-rocket-takeoff me-2"></i> Create Free Account</a>
+          <a href="/login" class="btn btn-outline-light btn-lg px-5 py-3"><i class="bi bi-box-arrow-in-right me-2"></i> User Login</a>
+        {% endif %}
+      </div>
+
+      <!-- Quick Telemetry Stats -->
+      <div class="row g-4 justify-content-center" id="intelligence">
+        <div class="col-md-3">
+          <div class="stat-box">
+            <div class="stat-number">9+</div>
+            <div class="text-muted small">Live Intelligence Sources</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stat-box">
+            <div class="stat-number">750+</div>
+            <div class="text-muted small">Curated Opportunities</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stat-box">
+            <div class="stat-number">100%</div>
+            <div class="text-muted small">Automated Quality Scoring</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="py-5" id="features">
+    <div class="container">
+      <div class="text-center mb-5">
+        <h2 class="fw-bold fs-1">Built for Security Engineers & Researchers</h2>
+        <p class="text-muted">Multi-stage autonomous collection, deduplication, quality evaluation, and alert digests.</p>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-md-4">
+          <div class="feature-card h-100">
+            <div class="feature-icon"><i class="bi bi-diagram-3"></i></div>
+            <h4 class="fw-bold mb-3">Multi-Source Harvesting</h4>
+            <p class="text-muted">Scrapes and aggregates CTF events, GitHub research repos, RSS vulnerability channels, HackerNews, and security academies in real-time.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="feature-card h-100">
+            <div class="feature-icon"><i class="bi bi-funnel"></i></div>
+            <h4 class="fw-bold mb-3">Quality & Anti-Spam Engine</h4>
+            <p class="text-muted">Filters low-confidence listings, spam repositories, and duplicate items using AI confidence metrics and topic classification.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="feature-card h-100">
+            <div class="feature-icon"><i class="bi bi-bell"></i></div>
+            <h4 class="fw-bold mb-3">Automated Digests</h4>
+            <p class="text-muted">Receive scheduled email digests with high-priority opportunities, personalized category breakdowns, and exportable reports.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Banner -->
+  <section class="py-5">
+    <div class="container">
+      <div class="cta-banner">
+        <h2 class="fw-bold mb-3">Ready to Streamline Your Cybersecurity Discovery?</h2>
+        <p class="text-muted mb-4 fs-5 mx-auto" style="max-width: 600px;">Access curated CTFs, labs, vulnerabilities, and research opportunities instantly.</p>
+        {% if session.get('user_id') or session.get('admin_authenticated') %}
+          <a href="/dashboard" class="btn btn-info btn-lg fw-bold px-5 py-3"><i class="bi bi-speedometer2 me-2"></i> Launch CyberScout Dashboard</a>
+        {% else %}
+          <a href="/register" class="btn btn-info btn-lg fw-bold px-5 py-3"><i class="bi bi-person-plus me-2"></i> Register Account Now</a>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-4 border-top border-secondary text-center text-muted small">
+    <div class="container">
+      &copy; 2026 CyberScout AI Platform. All rights reserved. Automated Threat & Opportunity Intelligence System.
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

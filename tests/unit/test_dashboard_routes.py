@@ -33,17 +33,19 @@ class TestDashboardRoutes(unittest.TestCase):
             sess["admin_csrf_token"] = "test_admin_csrf_token"
 
     def test_unauthenticated_redirect(self):
-        """Verify unauthenticated user is redirected to /login for user pages."""
+        """Verify unauthenticated user is redirected to /login for protected user pages."""
         unauth_client = self.app.test_client()
-        res = unauth_client.get("/")
-        self.assertEqual(res.status_code, 302)
-        self.assertIn("/login", res.location)
+        res_landing = unauth_client.get("/")
+        self.assertEqual(res_landing.status_code, 200)
+
+        res_dash = unauth_client.get("/dashboard")
+        self.assertEqual(res_dash.status_code, 302)
+        self.assertIn("/login", res_dash.location)
 
     def test_dashboard_index_route(self):
-        """GET / — Overview dashboard page."""
-        # Also log in user session for public dashboard
+        """GET /dashboard — Overview dashboard page."""
         self.client.post("/login", data={"identifier": "admin@cyberscout.ai", "password": "Admin@CyberScout2026!"})
-        response = self.client.get("/")
+        response = self.client.get("/dashboard")
         self.assertEqual(response.status_code, 200)
 
     def test_opportunities_route(self):

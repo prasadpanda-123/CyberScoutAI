@@ -37,8 +37,8 @@ def roles_required(*allowed_roles):
 
             user_role = session.get("role", "Viewer")
 
-            # Super Admin bypasses all role restrictions
-            if user_role == "Super Admin":
+            # Admin role bypasses role restrictions
+            if user_role in ("Admin", "admin", "Super Admin", "Administrator"):
                 return f(*args, **kwargs)
 
             if user_role not in allowed_roles:
@@ -58,7 +58,7 @@ def admin_required(f):
     """
     Decorator enforcing strict Administrative Portal access control.
     Requires isolated session flag `session['admin_authenticated'] = True`
-    and administrative role ('Super Admin', 'Administrator').
+    and administrative role ('Admin', 'admin', 'Super Admin', 'Administrator').
 
     Behavior:
     - Not logged in -> 302 Redirect to `/admin/login` (HTML) or HTTP 401 JSON (API).
@@ -96,7 +96,7 @@ def admin_required(f):
                 }), 401
             return redirect(url_for("admin_ui.admin_login", next=request.path))
 
-        if admin_role not in ("Super Admin", "Administrator"):
+        if admin_role not in ("Admin", "admin", "Super Admin", "Administrator"):
             if is_api:
                 return jsonify({
                     "status": "failed",

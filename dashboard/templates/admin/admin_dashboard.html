@@ -74,7 +74,7 @@
             <h6 class="fw-bold text-light mb-1">Run Scan Now</h6>
             <p class="text-muted small mb-3">Execute immediate pipeline scan & save new opportunities.</p>
           </div>
-          <button class="btn btn-danger btn-sm w-100 fw-semibold" id="btnRunScan" onclick="executeAdminAction('/api/run', 'btnRunScan', 'Run Scan Now', 'Scanning pipeline...')">
+          <button class="btn btn-danger btn-sm w-100 fw-semibold" id="btnRunScan" onclick="executeAdminAction('/admin/api/run', 'btnRunScan', 'Run Scan Now', 'Scanning pipeline...')">
             <i class="bi bi-play-fill me-1"></i> Execute Scan
           </button>
         </div>
@@ -88,7 +88,7 @@
             <h6 class="fw-bold text-light mb-1">Send Test Email</h6>
             <p class="text-muted small mb-3">Dispatch pre-flight diagnostic test email digest.</p>
           </div>
-          <button class="btn btn-outline-info btn-sm w-100 fw-semibold" id="btnTestEmail" onclick="executeAdminAction('/api/email/test', 'btnTestEmail', 'Send Test Email', 'Dispatching email...')">
+          <button class="btn btn-outline-info btn-sm w-100 fw-semibold" id="btnTestEmail" onclick="executeAdminAction('/admin/api/email/test', 'btnTestEmail', 'Send Test Email', 'Dispatching email...')">
             <i class="bi bi-send-fill me-1"></i> Send Test Email
           </button>
         </div>
@@ -102,7 +102,7 @@
             <h6 class="fw-bold text-light mb-1">Send Daily Report Now</h6>
             <p class="text-muted small mb-3">Trigger exact scheduled midnight email digest immediately.</p>
           </div>
-          <button class="btn btn-outline-success btn-sm w-100 fw-semibold" id="btnReportNow" onclick="executeAdminAction('/api/report/trigger', 'btnReportNow', 'Send Daily Report Now', 'Generating digest...')">
+          <button class="btn btn-outline-success btn-sm w-100 fw-semibold" id="btnReportNow" onclick="executeAdminAction('/admin/api/report/trigger', 'btnReportNow', 'Send Daily Report Now', 'Generating digest...')">
             <i class="bi bi-file-text-fill me-1"></i> Trigger Report Now
           </button>
         </div>
@@ -116,7 +116,7 @@
             <h6 class="fw-bold text-light mb-1">Refresh Analytics</h6>
             <p class="text-muted small mb-3">Recalculate provider statistics and quality metrics.</p>
           </div>
-          <button class="btn btn-outline-warning btn-sm w-100 fw-semibold" id="btnRefreshAnalytics" onclick="executeAdminAction('/api/analytics/refresh', 'btnRefreshAnalytics', 'Refresh Analytics', 'Recalculating...')">
+          <button class="btn btn-outline-warning btn-sm w-100 fw-semibold" id="btnRefreshAnalytics" onclick="executeAdminAction('/admin/api/analytics/refresh', 'btnRefreshAnalytics', 'Refresh Analytics', 'Recalculating...')">
             <i class="bi bi-arrow-clockwise me-1"></i> Refresh Stats
           </button>
         </div>
@@ -130,7 +130,7 @@
             <h6 class="fw-bold text-light mb-1">Pause Scheduler</h6>
             <p class="text-muted small mb-3">Temporarily stop automated background scan daemon.</p>
           </div>
-          <button class="btn btn-outline-secondary btn-sm w-100 fw-semibold" id="btnPauseSched" onclick="executeAdminAction('/api/scheduler/pause', 'btnPauseSched', 'Pause Scheduler', 'Pausing...')">
+          <button class="btn btn-outline-secondary btn-sm w-100 fw-semibold" id="btnPauseSched" onclick="executeAdminAction('/admin/api/scheduler/pause', 'btnPauseSched', 'Pause Scheduler', 'Pausing...')">
             <i class="bi bi-pause-fill me-1"></i> Pause Daemon
           </button>
         </div>
@@ -144,7 +144,7 @@
             <h6 class="fw-bold text-light mb-1">Resume Scheduler</h6>
             <p class="text-muted small mb-3">Resume automated background scan daemon execution.</p>
           </div>
-          <button class="btn btn-outline-success btn-sm w-100 fw-semibold" id="btnResumeSched" onclick="executeAdminAction('/api/scheduler/resume', 'btnResumeSched', 'Resume Scheduler', 'Resuming...')">
+          <button class="btn btn-outline-success btn-sm w-100 fw-semibold" id="btnResumeSched" onclick="executeAdminAction('/admin/api/scheduler/resume', 'btnResumeSched', 'Resume Scheduler', 'Resuming...')">
             <i class="bi bi-play-fill me-1"></i> Resume Daemon
           </button>
         </div>
@@ -158,7 +158,7 @@
             <h6 class="fw-bold text-light mb-1">Restart Scheduler</h6>
             <p class="text-muted small mb-3">Restart background scheduler daemon worker process.</p>
           </div>
-          <button class="btn btn-outline-danger btn-sm w-100 fw-semibold" id="btnRestartSched" onclick="executeAdminAction('/api/scheduler/restart', 'btnRestartSched', 'Restart Scheduler', 'Restarting...')">
+          <button class="btn btn-outline-danger btn-sm w-100 fw-semibold" id="btnRestartSched" onclick="executeAdminAction('/admin/api/scheduler/restart', 'btnRestartSched', 'Restart Scheduler', 'Restarting...')">
             <i class="bi bi-arrow-clockwise me-1"></i> Restart Daemon
           </button>
         </div>
@@ -172,7 +172,7 @@
             <h6 class="fw-bold text-light mb-1">Clear Old Records</h6>
             <p class="text-muted small mb-3">Purge opportunity records older than 30 days.</p>
           </div>
-          <button class="btn btn-outline-danger btn-sm w-100 fw-semibold" id="btnClearOld" onclick="if(confirm('Purge opportunities older than 30 days?')) executeAdminAction('/api/opportunities/clear-old', 'btnClearOld', 'Clear Old Records', 'Purging records...')">
+          <button class="btn btn-outline-danger btn-sm w-100 fw-semibold" id="btnClearOld" onclick="if(confirm('Purge opportunities older than 30 days?')) executeAdminAction('/admin/api/opportunities/clear-old', 'btnClearOld', 'Clear Old Records', 'Purging records...')">
             <i class="bi bi-trash-fill me-1"></i> Clear >30 Days
           </button>
         </div>

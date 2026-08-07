@@ -18,7 +18,7 @@ class UserRepository:
     Repository for managing user accounts in the Users table.
     """
 
-    VALID_ROLES = {"Super Admin", "Admin", "Operator", "Viewer"}
+    VALID_ROLES = {"Admin", "User", "admin", "user", "Operator", "Viewer", "Super Admin"}
 
     def __init__(self, db_manager: Optional[DatabaseManager] = None):
         self.db_manager = db_manager or DatabaseManager()
@@ -28,15 +28,13 @@ class UserRepository:
         username: str,
         email: str,
         password: str,
-        role: str = "Viewer",
+        role: str = "User",
         is_active: bool = True,
     ) -> Dict[str, Any]:
         """
         Creates a new user with password hashed using PBKDF2 SHA-256.
         """
         clean_role = role.strip()
-        if clean_role not in self.VALID_ROLES:
-            clean_role = "Viewer"
 
         password_hash = generate_password_hash(password, method="pbkdf2:sha256")
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
