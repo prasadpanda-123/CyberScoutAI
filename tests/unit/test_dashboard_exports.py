@@ -15,8 +15,15 @@ class TestDashboardExports(unittest.TestCase):
 
         self.app = create_app(config_class=TestConfig)
         self.client = self.app.test_client()
-        # Log in as Super Admin
-        self.client.post("/login", data={"identifier": "admin@cyberscout.ai", "password": "Admin@CyberScout2026!"})
+        # Log in as standard user
+        from src.database.user_repository import UserRepository
+        repo = UserRepository()
+        if not repo.get_by_email("testuser@cyberscout.ai"):
+            try:
+                repo.create_user("testuser", "testuser@cyberscout.ai", "UserPassword2026!", "User")
+            except Exception:
+                pass
+        self.client.post("/login", data={"identifier": "testuser@cyberscout.ai", "password": "UserPassword2026!"})
 
     def test_export_csv_endpoint(self):
         """GET /opportunities/export/csv"""
