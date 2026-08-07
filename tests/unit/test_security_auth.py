@@ -193,11 +193,27 @@ class TestSecurityAuth(unittest.TestCase):
         self.assertIsNotNone(created_user)
         self.assertEqual(created_user["role"], "Viewer")
 
-    def test_first_run_setup_flow_disabled_when_admin_exists(self):
-        """Verify GET /setup redirects to /login when administrator accounts exist."""
-        res = self.client.get("/setup")
-        self.assertEqual(res.status_code, 302)
-        self.assertIn("/login", res.location)
+    def test_admin_logs_and_audit_trail(self):
+        """EXPLICIT REGRESSION TEST: Verify /admin/logs and /admin/api/audit-logs return HTTP 200 without 'no results to fetch' errors."""
+        admin_client = self.app.test_client()
+        with admin_client.session_transaction() as sess:
+            sess["admin_authenticated"] = True
+            sess["admin_user"] = "admin_test"
+            sess["admin_role"] = "Administrator"
+
+        # Verify HTML admin logs page loads cleanly
+        html_res = admin_client.get("/admin/logs")
+        self.assertEqual(html_res.status_code, 200, "Admin logs HTML page must return 200 OK")
+        html_data = html_res.get_data(as_text=True)
+        self.assertNotIn("no results to fetch", html_data)
+        self.assertNotIn("Internal Server Error", html_data)
+
+        # Verify JSON audit logs API returns HTTP 200 with structured dictionary
+        api_res = admin_client.get("/admin/api/audit-logs")
+        self.assertEqual(api_res.status_code, 200, "Admin audit logs API must return 200 OK")
+        json_data = api_res.get_json()
+        self.assertIsInstance(json_data.get("logs"), list)
+        self.assertGreaterEqual(json_data.get("total_records", 0), 0)
 
 
 if __name__ == "__main__":

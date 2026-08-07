@@ -98,10 +98,11 @@ class LogRepository:
         cursor = conn.cursor()
         try:
             cursor.execute(count_sql, params)
-            total_count = cursor.fetchone()[0]
+            count_row = cursor.fetchone()
+            total_count = count_row[0] if count_row and len(count_row) > 0 and count_row[0] is not None else 0
 
             cursor.execute(select_sql, params + [limit, offset])
-            rows = cursor.fetchall()
+            rows = cursor.fetchall() or []
 
             logs = []
             for row in rows:
@@ -119,7 +120,7 @@ class LogRepository:
                     }
                 )
 
-            total_pages = max(1, (total_count + limit - 1) // limit)
+            total_pages = max(1, (total_count + limit - 1) // limit) if total_count > 0 else 1
             return {
                 "total": total_count,
                 "page": page,
@@ -144,7 +145,8 @@ class LogRepository:
             modules = [row["module"] for row in cursor.fetchall()]
 
             cursor.execute("SELECT COUNT(*) FROM AppLogs")
-            total = cursor.fetchone()[0]
+            total_row = cursor.fetchone()
+            total = total_row[0] if total_row and len(total_row) > 0 and total_row[0] is not None else 0
 
             return {
                 "total_logs": total,

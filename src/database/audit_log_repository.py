@@ -111,17 +111,18 @@ class AuditLogRepository:
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
+            cursor.execute(count_sql, params)
             count_row = cursor.fetchone()
-            total_records = count_row[0] if count_row else 0
+            total_records = count_row[0] if count_row and len(count_row) > 0 and count_row[0] is not None else 0
 
             offset = max(0, (page - 1) * limit)
             data_sql = f"SELECT id, timestamp, user_id, username, event_type, action, source_ip, status, details FROM AuditLogs{where_sql} ORDER BY id DESC LIMIT ? OFFSET ?"
             cursor.execute(data_sql, params + [limit, offset])
-            rows = cursor.fetchall()
+            rows = cursor.fetchall() or []
             from src.database.base_repository import row_to_dict
-            logs = [row_to_dict(r) for r in rows]
+            logs = [row_to_dict(r) for r in rows] if rows else []
 
-            total_pages = max(1, (total_records + limit - 1) // limit)
+            total_pages = max(1, (total_records + limit - 1) // limit) if total_records > 0 else 1
 
             return {
                 "logs": logs,
