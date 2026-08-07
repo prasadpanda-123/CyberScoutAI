@@ -10,6 +10,7 @@ jobs:
   test:
     name: Build & Run Test Suite
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     strategy:
       matrix:
@@ -45,4 +46,4 @@ jobs:
           TESTING: "true"
           DATABASE_URL: "sqlite:///:memory:"
         run: |
-          python -m unittest discover -s tests/unit
+          python -m unittest discover -s tests/unit -v

@@ -197,10 +197,12 @@ class DatabaseManager:
         self._retry_attempts: int = 0
 
     def get_engine(self) -> Engine:
-        """Gets active SQLAlchemy engine for this manager instance."""
-        if self._engine is None:
-            self._engine = create_db_engine(custom_url=self.custom_url)
-        return self._engine
+        """Gets active SQLAlchemy engine for this manager instance (reusing singleton engine)."""
+        if self.custom_url:
+            if self._engine is None:
+                self._engine = create_db_engine(custom_url=self.custom_url)
+            return self._engine
+        return get_engine()
 
     def initialize_database(self) -> None:
         """
