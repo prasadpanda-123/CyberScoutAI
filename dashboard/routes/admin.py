@@ -235,12 +235,40 @@ def admin_logout():
 @admin_required
 def admin_dashboard():
     """Protected Admin Command Dashboard Overview."""
-    summary = dash_service.get_summary_stats()
-    cat_dist = stats_service.get_category_distribution()
-    prio_dist = stats_service.get_priority_distribution()
-    src_dist = stats_service.get_source_distribution()
-    daily_trends = stats_service.get_daily_opportunity_trends()
-    recent_audits = audit_repo.query_logs(limit=10).get("logs", [])
+    try:
+        summary = dash_service.get_summary_stats()
+    except Exception as e:
+        from src.core.logging import get_logger
+        get_logger(__name__).warning(f"Error getting summary stats in admin_dashboard: {e}")
+        summary = {}
+
+    try:
+        cat_dist = stats_service.get_category_distribution()
+    except Exception:
+        cat_dist = {}
+
+    try:
+        prio_dist = stats_service.get_priority_distribution()
+    except Exception:
+        prio_dist = {}
+
+    try:
+        src_dist = stats_service.get_source_distribution()
+    except Exception:
+        src_dist = {}
+
+    try:
+        daily_trends = stats_service.get_daily_opportunity_trends()
+    except Exception:
+        daily_trends = {"labels": [], "counts": []}
+
+    try:
+        audit_res = audit_repo.query_logs(limit=10)
+        recent_audits = audit_res.get("logs", []) if isinstance(audit_res, dict) else []
+    except Exception as e:
+        from src.core.logging import get_logger
+        get_logger(__name__).warning(f"Error querying audit logs in admin_dashboard: {e}")
+        recent_audits = []
 
     return render_template(
         "admin/admin_dashboard.html",
