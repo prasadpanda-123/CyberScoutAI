@@ -13,9 +13,15 @@ from typing import Optional
 from src.core.constants import DEFAULT_LOG_FORMAT, LOGS_DIR
 
 
+import threading
+
+_logging_local = threading.local()
+
+
 class DatabaseLogHandler(logging.Handler):
     """
-    Custom logging handler persisting structured log records into SQLite AppLogs table.
+    Custom logging handler persisting structured log records into AppLogs table.
+    Includes thread-local re-entrancy guard to prevent recursive log loops.
     """
 
     def __init__(self, level=logging.NOTSET):
@@ -33,6 +39,9 @@ class DatabaseLogHandler(logging.Handler):
         return self._repo
 
     def emit(self, record: logging.LogRecord) -> None:
+        if getattr(_logging_local, "is_logging", False):
+            return
+        _logging_local.is_logging = True
         try:
             if not self.repo:
                 return
@@ -51,6 +60,8 @@ class DatabaseLogHandler(logging.Handler):
             )
         except Exception:
             self.handleError(record)
+        finally:
+            _logging_local.is_logging = False
 
 
 def setup_logging(
