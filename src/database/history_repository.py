@@ -96,7 +96,7 @@ class EmailHistoryRepository:
         """Records an opportunity as sent in an email digest."""
         sql = """
         INSERT INTO EmailHistory (id, opportunity_id, email_run_id, sent_at, clicked)
-        VALUES (?, ?, ?, ?, 0);
+        VALUES (?, ?, ?, ?, FALSE);
         """
         record_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
