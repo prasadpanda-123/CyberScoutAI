@@ -241,9 +241,10 @@ def email_test():
     """POST /api/email/test — Dispatch test HTML email (Sensitive)."""
     try:
         res = api_service.send_test_email()
-        return jsonify(res)
+        status_code = 200 if res.get("success", True) else 400
+        return jsonify(res), status_code
     except Exception as e:
-        return jsonify({"status": "failed", "error": str(e)})
+        return jsonify({"status": "failed", "error": str(e)}), 400
 
 
 @api_bp.route("/scheduler/pause", methods=["POST"])

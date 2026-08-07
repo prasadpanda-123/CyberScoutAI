@@ -167,11 +167,13 @@ def admin_email_test():
     """POST /admin/api/email/test — Dispatch test HTML email."""
     try:
         res = api_service.send_test_email()
+        status_code = 200 if res.get("success", True) else 400
         try:
-            audit_repo.log_event("EMAIL", "TEST_EMAIL", "SUCCESS", source_ip=request.remote_addr, details="Test email dispatched")
+            audit_status = "SUCCESS" if res.get("success", True) else "FAILED"
+            audit_repo.log_event("EMAIL", "TEST_EMAIL", audit_status, source_ip=request.remote_addr, details=res.get("message") or res.get("error", ""))
         except Exception:
             pass
-        return jsonify(res)
+        return jsonify(res), status_code
     except Exception as e:
         try:
             audit_repo.log_event("EMAIL", "TEST_EMAIL", "FAILED", source_ip=request.remote_addr, details=str(e))

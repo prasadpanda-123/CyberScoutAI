@@ -95,6 +95,8 @@ class APIService:
         """Triggers test notification email digest safely."""
         try:
             res = self.email_client.send_daily_digest(send_empty=True)
+            if isinstance(res, dict) and res.get("status") == "failed":
+                return {"success": False, "status": "failed", "error": res.get("error", "Failed to send test email")}
             return {"success": True, "status": "completed", "details": res, "message": "Test email sent successfully."}
         except Exception as e:
             return {"success": False, "status": "failed", "error": str(e)}
