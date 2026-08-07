@@ -120,6 +120,23 @@ class TestSecurityAuth(unittest.TestCase):
         self.assertEqual(res_admin.status_code, 302)
         self.assertIn("/admin/login", res_admin.location)
 
+    def test_direct_unauthenticated_opportunities_access_prevention(self):
+        """EXPLICIT REGRESSION TEST: Unauthenticated GET /opportunities MUST NOT return 200 or render opportunity data."""
+        anon_client = self.app.test_client()
+        res = anon_client.get("/opportunities")
+        self.assertNotEqual(res.status_code, 200, "Unauthenticated GET /opportunities MUST NOT return HTTP 200")
+        self.assertEqual(res.status_code, 302)
+        self.assertIn("/login", res.location)
+        html_data = res.get_data(as_text=True)
+        self.assertNotIn("Opportunities Explorer", html_data)
+        self.assertNotIn("table-responsive", html_data)
+
+    def test_open_redirect_prevention_on_login(self):
+        """Verify login endpoint prevents open redirects to external domains via next parameter."""
+        res = self.client.get("/login?next=https://evil-site.com")
+        self.assertEqual(res.status_code, 200)
+        self.assertNotIn("https://evil-site.com", res.get_data(as_text=True))
+
     def test_authenticated_user_flow_and_logout(self):
         """Verify normal user login, dashboard access, and logout session revocation."""
         ts_id = int(time.time() * 1000)

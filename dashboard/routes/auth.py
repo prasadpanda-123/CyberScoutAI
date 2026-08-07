@@ -47,6 +47,14 @@ def setup():
     return render_template("setup.html")
 
 
+def _is_safe_url(target: str) -> bool:
+    """Verifies target redirect URL is a safe internal relative path."""
+    if not target or not isinstance(target, str):
+        return False
+    target = target.strip()
+    return target.startswith("/") and not target.startswith("//") and not target.startswith("/\\")
+
+
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     """Renders login page and handles user authentication."""
@@ -56,7 +64,8 @@ def login():
     if request.method == "POST":
         identifier = request.form.get("identifier", "").strip()
         password = request.form.get("password", "").strip()
-        next_url = request.form.get("next") or request.args.get("next") or url_for("dashboard_ui.index")
+        raw_next = request.form.get("next") or request.args.get("next")
+        next_url = raw_next if (raw_next and _is_safe_url(raw_next)) else url_for("dashboard_ui.index")
 
         user = user_repo.authenticate(identifier, password)
         if user:
@@ -77,7 +86,9 @@ def login():
         else:
             flash("Invalid username/email or password.", "danger")
 
-    return render_template("login.html", next=request.args.get("next", ""))
+    raw_next_arg = request.args.get("next", "")
+    safe_next_arg = raw_next_arg if _is_safe_url(raw_next_arg) else ""
+    return render_template("login.html", next=safe_next_arg)
 
 
 @auth_bp.route("/register", methods=["GET", "POST"])

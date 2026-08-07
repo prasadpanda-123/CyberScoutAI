@@ -126,25 +126,24 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
 
     @app.route("/robots.txt")
     def robots_txt():
-        """Hardens route discovery by disallowing crawler access to /admin/* endpoints."""
-        content = "User-agent: *\nDisallow: /admin/\nDisallow: /admin/*\nDisallow: /api/admin/\n"
+        """Hardens route discovery by disallowing crawler access to protected and admin endpoints."""
+        content = "User-agent: *\nDisallow: /admin/\nDisallow: /admin/*\nDisallow: /api/\nDisallow: /dashboard\nDisallow: /opportunities\nDisallow: /analytics\n"
         return Response(content, mimetype="text/plain")
 
     @app.route("/sitemap.xml")
     def sitemap_xml():
-        """Public sitemap excluding administrative portal routes."""
+        """Public sitemap containing public landing, login, and registration routes only."""
         xml = """<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>/dashboard</loc></url>
-  <url><loc>/opportunities</loc></url>
-  <url><loc>/analytics</loc></url>
+  <url><loc>/</loc></url>
   <url><loc>/login</loc></url>
+  <url><loc>/register</loc></url>
 </urlset>"""
         return Response(xml, mimetype="application/xml")
 
     @app.after_request
     def apply_security_headers(response):
-        """Applies OWASP Top 10 Security Headers and removes version disclosure."""
+        """Applies OWASP Top 10 Security Headers, anti-caching, and removes version disclosure."""
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
@@ -160,6 +159,12 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
         )
         response.headers.pop("Server", None)
         response.headers.pop("X-Powered-By", None)
+
+        if not request.path.startswith("/static") and request.path not in ("/", "/robots.txt", "/sitemap.xml", "/api/health", "/health"):
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+
         return response
 
     @app.errorhandler(500)
