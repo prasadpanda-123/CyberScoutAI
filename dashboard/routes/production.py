@@ -3,6 +3,7 @@ Phase 12 Production Intelligence Web Dashboard Routes.
 """
 
 from flask import Blueprint, render_template
+from src.auth.decorators import login_required
 from src.database.connection import DatabaseManager
 from src.database.opportunity_repository import OpportunityRepository
 from src.intelligence.production.production_engine import ProductionEngine
@@ -14,6 +15,7 @@ prod_engine = ProductionEngine()
 
 
 @production_bp.route("/production")
+@login_required
 def production_index():
     """GET /production — Production Intelligence Control Center overview."""
     opps = repo.get_active_opportunities(limit=100)
@@ -31,6 +33,7 @@ def production_index():
 
 
 @production_bp.route("/provider-health")
+@login_required
 def provider_health():
     """GET /provider-health — Provider Health & Reliability Rankings."""
     rankings = prod_engine.reliability.get_provider_rankings()
@@ -38,6 +41,7 @@ def provider_health():
 
 
 @production_bp.route("/trends")
+@login_required
 def trends():
     """GET /trends — Trend Analytics & Skill Growth Heatmaps."""
     opps = repo.get_active_opportunities(limit=200)
@@ -46,12 +50,14 @@ def trends():
 
 
 @production_bp.route("/history")
+@login_required
 def history():
     """GET /history — Historical Opportunity Lifecycle Changes."""
     return render_template("history.html")
 
 
 @production_bp.route("/link-validation")
+@login_required
 def link_validation():
     """GET /link-validation — Link Verification Diagnostics Log."""
     opps = repo.get_active_opportunities(limit=100)
@@ -61,6 +67,7 @@ def link_validation():
 
 
 @production_bp.route("/quality-metrics")
+@login_required
 def quality_metrics():
     """GET /quality-metrics — Comprehensive Quality & Telemetry Metrics."""
     return render_template("quality_metrics.html", metrics=prod_engine.metrics.to_dict())

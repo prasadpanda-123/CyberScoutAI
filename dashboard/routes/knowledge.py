@@ -3,11 +3,13 @@ Knowledge Base Route (Page 7).
 """
 
 from flask import Blueprint, render_template
+from src.auth.decorators import login_required
 
 knowledge_bp = Blueprint("knowledge_ui", __name__)
 
 
 @knowledge_bp.route("/knowledge")
+@login_required
 def index():
     """Renders Knowledge Base intelligence page."""
     kb_stats = {

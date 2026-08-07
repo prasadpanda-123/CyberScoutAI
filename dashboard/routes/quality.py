@@ -3,6 +3,7 @@ Quality Intelligence Dashboard Routes for CyberScout AI.
 """
 
 from flask import Blueprint, render_template
+from src.auth.decorators import login_required
 from src.database.connection import DatabaseManager
 from src.database.opportunity_repository import OpportunityRepository
 
@@ -10,6 +11,7 @@ quality_bp = Blueprint("quality_ui", __name__)
 
 
 @quality_bp.route("/quality")
+@login_required
 def quality_dashboard():
     """Renders the Quality Intelligence Dashboard page."""
     db_manager = DatabaseManager()

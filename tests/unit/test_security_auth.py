@@ -82,11 +82,84 @@ class TestSecurityAuth(unittest.TestCase):
 
         # Viewer trying to access Super Admin / Admin config route
         res = self.client.get("/configuration")
-        self.assertEqual(res.status_code, 403)  # HTTP 403 Forbidden
+        self.assertEqual(res.status_code, 403)
 
         # Viewer trying to access Super Admin logs route
         res_logs = self.client.get("/logs")
         self.assertEqual(res_logs.status_code, 403)
+
+        # Viewer trying to access /admin/dashboard
+        res_admin = self.client.get("/admin/dashboard")
+        self.assertEqual(res_admin.status_code, 403)
+
+    def test_anonymous_access_control(self):
+        """Verify anonymous visitors can access public pages but are blocked from protected user & admin pages."""
+        anon_client = self.app.test_client()
+
+        # Public endpoints
+        self.assertEqual(anon_client.get("/").status_code, 200)
+        self.assertEqual(anon_client.get("/login").status_code, 200)
+        self.assertEqual(anon_client.get("/register").status_code, 200)
+        self.assertEqual(anon_client.get("/api/health").status_code, 200)
+
+        # Protected user HTML endpoints redirect to /login
+        for protected_path in ["/dashboard", "/opportunities", "/analytics", "/history", "/knowledge", "/production", "/quality"]:
+            res = anon_client.get(protected_path)
+            self.assertEqual(res.status_code, 302, f"Path {protected_path} should redirect unauthenticated user")
+            self.assertIn("/login", res.location)
+
+        # Protected user API endpoints return 401 JSON
+        for api_path in ["/api/opportunities", "/api/dashboard/summary", "/api/analytics"]:
+            res_api = anon_client.get(api_path)
+            self.assertEqual(res_api.status_code, 401, f"API {api_path} should return 401 for anonymous request")
+            data = res_api.get_json()
+            self.assertEqual(data.get("status"), "failed")
+
+        # Admin pages redirect anonymous visitors to /admin/login
+        res_admin = anon_client.get("/admin/dashboard")
+        self.assertEqual(res_admin.status_code, 302)
+        self.assertIn("/admin/login", res_admin.location)
+
+    def test_authenticated_user_flow_and_logout(self):
+        """Verify normal user login, dashboard access, and logout session revocation."""
+        ts_id = int(time.time() * 1000)
+        email = f"user_{ts_id}@cyberscout.ai"
+        username = f"user_{ts_id}"
+
+        self.user_repo.create_user(username=username, email=email, password="UserPass2026!", role="Viewer")
+
+        user_client = self.app.test_client()
+        login_res = user_client.post("/login", data={"identifier": email, "password": "UserPass2026!"})
+        self.assertEqual(login_res.status_code, 302)
+
+        # Access protected pages
+        self.assertEqual(user_client.get("/dashboard").status_code, 200)
+        self.assertEqual(user_client.get("/opportunities").status_code, 200)
+
+        # Logout
+        user_client.get("/logout")
+        res_after = user_client.get("/dashboard")
+        self.assertEqual(res_after.status_code, 302)
+        self.assertIn("/login", res_after.location)
+
+    def test_registration_role_escalation_prevention(self):
+        """Verify registration endpoint ignores role parameter in POST body and forces 'Viewer' role."""
+        ts_id = int(time.time() * 1000)
+        email = f"hacker_{ts_id}@cyberscout.ai"
+        username = f"hacker_{ts_id}"
+
+        res = self.client.post("/register", data={
+            "username": username,
+            "email": email,
+            "password": "HackerPass123!",
+            "confirm_password": "HackerPass123!",
+            "role": "Super Admin",
+        })
+        self.assertEqual(res.status_code, 302)
+
+        created_user = self.user_repo.get_by_email(email)
+        self.assertIsNotNone(created_user)
+        self.assertEqual(created_user["role"], "Viewer")
 
     def test_first_run_setup_flow_disabled_when_admin_exists(self):
         """Verify GET /setup redirects to /login when administrator accounts exist."""
