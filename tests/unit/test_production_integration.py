@@ -68,7 +68,7 @@ class TestProductionIntegration(unittest.TestCase):
 
         res = client.get("/admin/collectors")
         self.assertEqual(res.status_code, 200)
-        self.assertIn(b"Collectors Overview", res.data)
+        self.assertIn(b"Collectors Management", res.data)
 
     def test_admin_api_db_info_post_returns_200(self):
         """Verify POST /admin/api/db/info returns JSON 200."""
