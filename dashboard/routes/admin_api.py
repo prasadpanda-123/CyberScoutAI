@@ -292,10 +292,10 @@ def admin_clear_old_opportunities():
         return jsonify({"status": "failed", "error": str(e)})
 
 
-@admin_api_bp.route("/db/info", methods=["GET"])
+@admin_api_bp.route("/db/info", methods=["GET", "POST"])
 @admin_required
 def admin_db_info():
-    """GET /admin/api/db/info — Show PostgreSQL host (masked), version, and table counts."""
+    """GET/POST /admin/api/db/info — Show PostgreSQL host (masked), version, and table counts."""
     from src.database.connection import DatabaseManager
     db = DatabaseManager()
     metrics = db.get_health_metrics()

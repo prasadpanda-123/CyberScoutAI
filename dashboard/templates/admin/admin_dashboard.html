@@ -272,7 +272,28 @@
 </div>
 
 <script>
-function executeAdminAction(endpoint, buttonId, originalText, loadingText) {
+async function safeFetchJson(url, options = {}) {
+  try {
+    const res = await fetch(url, options);
+    const contentType = res.headers.get("content-type") || "";
+    let data = {};
+    if (contentType.includes("application/json")) {
+      data = await res.json();
+    } else {
+      const text = await res.text();
+      data = { success: res.ok, status: res.status, message: text || res.statusText };
+    }
+    if (!res.ok) {
+      data.success = false;
+      data.error = data.error || data.message || `HTTP ${res.status}: ${res.statusText}`;
+    }
+    return data;
+  } catch (err) {
+    return { success: false, error: err.message || "Network Error" };
+  }
+}
+
+async function executeAdminAction(endpoint, buttonId, originalText, loadingText) {
   const btn = document.getElementById(buttonId);
   const alertContainer = document.getElementById('adminActionAlert');
   const alertContent = document.getElementById('adminActionAlertContent');
@@ -280,63 +301,52 @@ function executeAdminAction(endpoint, buttonId, originalText, loadingText) {
   btn.disabled = true;
   btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> ${loadingText}`;
 
-  fetch(endpoint, {
+  const data = await safeFetchJson(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({})
-  })
-  .then(r => r.json())
-  .then(data => {
-    alertContainer.classList.remove('d-none', 'alert-danger', 'alert-success', 'alert-info');
-    if (data.job_id && (endpoint === '/api/run' || endpoint === '/admin/api/run')) {
-      alertContainer.classList.add('alert-info');
-      alertContent.innerHTML = `<i class="bi bi-hourglass-split me-2"></i><strong>Scan Initialized:</strong> Job ID ${data.job_id}...`;
-      const poll = setInterval(() => {
-        fetch('/api/jobs/' + data.job_id)
-          .then(res => res.json())
-          .then(job => {
-            if (!job) return;
-            alertContent.innerHTML = `<i class="bi bi-hourglass-split me-2"></i><strong>Scanning (${Math.round(job.progress)}%):</strong> ${job.current_collector} (${job.opportunities_found} found, ${job.elapsed_time}s)`;
-            if (job.status === 'completed') {
-              clearInterval(poll);
-              alertContainer.classList.remove('alert-info');
-              alertContainer.classList.add('alert-success');
-              alertContent.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i><strong>Scan Complete!</strong> Found ${job.opportunities_found} opportunities in ${job.elapsed_time}s.`;
-              btn.disabled = false;
-              btn.innerHTML = originalText;
-              setTimeout(() => location.reload(), 1500);
-            } else if (job.status === 'failed') {
-              clearInterval(poll);
-              alertContainer.classList.remove('alert-info');
-              alertContainer.classList.add('alert-danger');
-              alertContent.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Scan Error:</strong> ${(job.errors || []).join('; ') || 'Failed'}`;
-              btn.disabled = false;
-              btn.innerHTML = originalText;
-            }
-          });
-      }, 2500);
-    } else if (data.success !== false) {
-      alertContainer.classList.add('alert-success');
-      alertContent.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i><strong>Success:</strong> ${data.message || 'Action executed successfully.'}`;
-      if (endpoint === '/api/opportunities/clear-old') {
+  });
+
+  alertContainer.classList.remove('d-none', 'alert-danger', 'alert-success', 'alert-info');
+
+  if (data.job_id && (endpoint === '/api/run' || endpoint === '/admin/api/run')) {
+    alertContainer.classList.add('alert-info');
+    alertContent.innerHTML = `<i class="bi bi-hourglass-split me-2"></i><strong>Scan Initialized:</strong> Job ID ${data.job_id}...`;
+    const poll = setInterval(async () => {
+      const job = await safeFetchJson('/admin/api/jobs/' + data.job_id);
+      if (!job || !job.status) return;
+      alertContent.innerHTML = `<i class="bi bi-hourglass-split me-2"></i><strong>Scanning (${Math.round(job.progress || 0)}%):</strong> ${job.current_collector || 'Running'} (${job.opportunities_found || 0} found, ${job.elapsed_time || 0}s)`;
+      if (job.status === 'completed') {
+        clearInterval(poll);
+        alertContainer.classList.remove('alert-info');
+        alertContainer.classList.add('alert-success');
+        alertContent.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i><strong>Scan Complete!</strong> Found ${job.opportunities_found || 0} opportunities in ${job.elapsed_time || 0}s.`;
+        btn.disabled = false;
+        btn.innerHTML = originalText;
         setTimeout(() => location.reload(), 1500);
+      } else if (job.status === 'failed') {
+        clearInterval(poll);
+        alertContainer.classList.remove('alert-info');
+        alertContainer.classList.add('alert-danger');
+        alertContent.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Scan Error:</strong> ${(job.errors || []).join('; ') || 'Failed'}`;
+        btn.disabled = false;
+        btn.innerHTML = originalText;
       }
-      btn.disabled = false;
-      btn.innerHTML = originalText;
-    } else {
-      alertContainer.classList.add('alert-danger');
-      alertContent.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Failed:</strong> ${data.error || data.message || 'Action failed to complete.'}`;
-      btn.disabled = false;
-      btn.innerHTML = originalText;
+    }, 2500);
+  } else if (data.success !== false && data.status !== 'failed') {
+    alertContainer.classList.add('alert-success');
+    alertContent.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i><strong>Success:</strong> ${data.message || 'Action executed successfully.'}`;
+    if (endpoint === '/admin/api/opportunities/clear-old' || endpoint === '/admin/api/analytics/refresh') {
+      setTimeout(() => location.reload(), 1500);
     }
-  })
-  .catch(err => {
-    alertContainer.classList.remove('d-none', 'alert-success', 'alert-info');
-    alertContainer.classList.add('alert-danger');
-    alertContent.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Network Error:</strong> ${err}`;
     btn.disabled = false;
     btn.innerHTML = originalText;
-  });
+  } else {
+    alertContainer.classList.add('alert-danger');
+    alertContent.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Action Error:</strong> ${data.error || data.message || 'Action failed to complete.'}`;
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
 }
 </script>
 {% endblock %}

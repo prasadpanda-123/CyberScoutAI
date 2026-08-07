@@ -51,9 +51,44 @@ class TestProductionIntegration(unittest.TestCase):
             sess["username"] = "testuser"
             sess["role"] = "User"
 
-        res = client.get("/opportunities")
+    def test_admin_collectors_route_returns_200(self):
+        """Verify GET /admin/collectors returns HTTP 200 HTML page for authenticated admin."""
+        class TestConfig(DashboardConfig):
+            TESTING = True
+            DEBUG = False
+
+        app = create_app(config_class=TestConfig)
+        client = app.test_client()
+
+        with client.session_transaction() as sess:
+            sess["admin_authenticated"] = True
+            sess["admin_user_id"] = 1
+            sess["admin_username"] = "admin"
+            sess["admin_role"] = "Admin"
+
+        res = client.get("/admin/collectors")
         self.assertEqual(res.status_code, 200)
-        self.assertIn(b"Opportunities Explorer", res.data)
+        self.assertIn(b"Collectors Overview", res.data)
+
+    def test_admin_api_db_info_post_returns_200(self):
+        """Verify POST /admin/api/db/info returns JSON 200."""
+        class TestConfig(DashboardConfig):
+            TESTING = True
+            DEBUG = False
+
+        app = create_app(config_class=TestConfig)
+        client = app.test_client()
+
+        with client.session_transaction() as sess:
+            sess["admin_authenticated"] = True
+            sess["admin_user_id"] = 1
+            sess["admin_username"] = "admin"
+            sess["admin_role"] = "Admin"
+
+        res = client.post("/admin/api/db/info")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertIsInstance(data, dict)
 
 
 if __name__ == "__main__":

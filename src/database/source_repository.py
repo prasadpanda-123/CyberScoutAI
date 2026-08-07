@@ -153,8 +153,8 @@ class SourceRepository(BaseRepository[Source], ISourceRepository):
 
     def get_active_sources(self) -> List[Source]:
         """Retrieves all enabled sources from database."""
-        return self.search(where_clause="enabled = 1 AND status = 'active'")
+        return self.search(where_clause="(enabled IS TRUE OR enabled = True)")
 
     def get_sources_by_method(self, method: str) -> List[Source]:
         """Retrieves active sources matching a specific collection method."""
-        return self.search(where_clause="collection_method = ? AND enabled = 1", params=(method,))
+        return self.search(where_clause="collection_method = ? AND (enabled IS TRUE OR enabled = True)", params=(method,))

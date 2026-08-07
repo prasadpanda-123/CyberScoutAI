@@ -38,14 +38,14 @@
             <td class="fw-bold text-light">{{ u.username }}</td>
             <td class="text-info">{{ u.email }}</td>
             <td>
-              {% if u.role == 'Super Admin' %}
+              {% if u.role in ('Super Admin', 'SuperAdmin') %}
               <span class="badge bg-danger">Super Admin</span>
-              {% elif u.role == 'Administrator' %}
-              <span class="badge bg-warning text-dark">Administrator</span>
-              {% elif u.role == 'Operator' %}
+              {% elif u.role in ('Admin', 'Administrator', 'admin') %}
+              <span class="badge bg-warning text-dark">Admin</span>
+              {% elif u.role in ('Operator', 'operator') %}
               <span class="badge bg-info text-dark">Operator</span>
               {% else %}
-              <span class="badge bg-secondary">Viewer</span>
+              <span class="badge bg-secondary">User</span>
               {% endif %}
             </td>
             <td>

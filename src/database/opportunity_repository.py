@@ -317,22 +317,25 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
         cursor = conn.cursor()
         try:
             stats = {}
-            cursor.execute("SELECT COUNT(*) as cnt FROM Opportunities WHERE is_rejected IS NOT TRUE;")
-            stats["accepted_count"] = cursor.fetchone()["cnt"]
-
-            cursor.execute("SELECT COUNT(*) as cnt FROM Opportunities WHERE is_rejected IS TRUE;")
-            stats["rejected_count"] = cursor.fetchone()["cnt"]
-
-            cursor.execute("SELECT AVG(confidence_score) as avg_conf FROM Opportunities WHERE (is_rejected IS NOT TRUE) AND confidence_score > 0;")
+            cursor.execute("SELECT COUNT(*) FROM Opportunities WHERE is_rejected IS NOT TRUE;")
             row = cursor.fetchone()
-            stats["avg_confidence"] = round(row["avg_conf"] or 0.0, 1)
+            stats["accepted_count"] = row[0] if row else 0
 
-            cursor.execute("SELECT AVG(quality_score) as avg_qual FROM Opportunities WHERE (is_rejected IS NOT TRUE) AND quality_score > 0;")
+            cursor.execute("SELECT COUNT(*) FROM Opportunities WHERE is_rejected IS TRUE;")
             row = cursor.fetchone()
-            stats["avg_quality"] = round(row["avg_qual"] or 0.0, 1)
+            stats["rejected_count"] = row[0] if row else 0
 
-            cursor.execute("SELECT rejection_reason, COUNT(*) as cnt FROM Opportunities WHERE is_rejected IS TRUE GROUP BY rejection_reason ORDER BY cnt DESC LIMIT 10;")
-            stats["top_rejection_reasons"] = {r["rejection_reason"]: r["cnt"] for r in cursor.fetchall()}
+            cursor.execute("SELECT AVG(confidence_score) FROM Opportunities WHERE (is_rejected IS NOT TRUE) AND confidence_score > 0;")
+            row = cursor.fetchone()
+            stats["avg_confidence"] = round(float(row[0]) if row and row[0] is not None else 0.0, 1)
+
+            cursor.execute("SELECT AVG(quality_score) FROM Opportunities WHERE (is_rejected IS NOT TRUE) AND quality_score > 0;")
+            row = cursor.fetchone()
+            stats["avg_quality"] = round(float(row[0]) if row and row[0] is not None else 0.0, 1)
+
+            cursor.execute("SELECT rejection_reason, COUNT(*) FROM Opportunities WHERE is_rejected IS TRUE GROUP BY rejection_reason ORDER BY COUNT(*) DESC LIMIT 10;")
+            rows = cursor.fetchall()
+            stats["top_rejection_reasons"] = {r[0]: r[1] for r in rows} if rows else {}
 
             return stats
         finally:
@@ -350,7 +353,9 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
 
     def delete_old_records(self, days: int = 30) -> int:
         """Deletes opportunities discovered more than specified days ago."""
-        sql = "DELETE FROM Opportunities WHERE discovered_date < CURRENT_DATE - (INTERVAL '1 day' * %s);"
+        from datetime import datetime, timedelta, timezone
+        cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+        sql = "DELETE FROM Opportunities WHERE discovered_date < ?;"
         with self.db_manager.transaction() as cursor:
-            cursor.execute(sql, (days,))
-            return cursor.rowcount
+            cursor.execute(sql, (cutoff_date,))
+            return cursor.rowcount if hasattr(cursor, "rowcount") and cursor.rowcount is not None else 0

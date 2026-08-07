@@ -54,6 +54,17 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
         logger.warning("Database unreachable on boot. CyberScout AI starting in Degraded Mode.")
     app.config.from_object(config_class)
 
+    # Register Database Log Handler for structured app log persistence
+    try:
+        from src.core.logging import DatabaseLogHandler
+        import logging
+        db_handler = DatabaseLogHandler()
+        db_handler.setLevel(logging.INFO)
+        app.logger.addHandler(db_handler)
+        logging.getLogger().addHandler(db_handler)
+    except Exception as e:
+        logger.warning(f"Could not register DatabaseLogHandler: {e}")
+
     # Secure Session Cookies
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"

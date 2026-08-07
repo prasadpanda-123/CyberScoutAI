@@ -140,7 +140,10 @@ class DashboardService:
             return {
                 "total_opportunities": total_opps,
                 "today_opportunities": today_opps,
+                "active_sources": active_sources_cnt,
                 "active_collectors": active_sources_cnt,
+                "scheduler_status": "Running",
+                "last_run_status": "Running",
                 "database_size_mb": 0.0,
                 "total_scans": total_scans,
                 "successful_scans": successful_scans,
@@ -162,9 +165,12 @@ class DashboardService:
             }
         except Exception as e:
             return {
-                "total_opportunities": 0,
-                "today_opportunities": 0,
-                "active_collectors": 0,
+                "total_opportunities": "Unavailable",
+                "today_opportunities": "Unavailable",
+                "active_sources": "Unavailable",
+                "active_collectors": "Unavailable",
+                "scheduler_status": "Unavailable",
+                "last_run_status": "Unavailable",
                 "database_size_mb": 0.0,
                 "total_scans": 0,
                 "successful_scans": 0,
@@ -238,9 +244,9 @@ class DashboardService:
             for s in sources:
                 s_dict = s if isinstance(s, dict) else (s.to_dict() if hasattr(s, "to_dict") else {})
                 source_id = s_dict.get("id", "unknown")
-                
-                # Fetch collection count for source
-                cursor.execute("SELECT COUNT(*) FROM Opportunities WHERE source_id = ? AND is_rejected = 0", (source_id,))
+
+                # Fetch collection count for source (PostgreSQL boolean compatible)
+                cursor.execute("SELECT COUNT(*) FROM Opportunities WHERE source_id = ? AND (is_rejected IS NOT TRUE)", (source_id,))
                 found_cnt = cursor.fetchone()[0]
 
                 # Fetch last scan time
