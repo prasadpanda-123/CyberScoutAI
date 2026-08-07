@@ -49,7 +49,7 @@ jobs:
       - name: Run System Diagnostics & Health Check
         env:
           TESTING: "true"
-          SECRET_DB_URL: ${{ secrets.TEST_DATABASE_URL }}
+          SECRET_DB_URL: "${{ secrets.TEST_DATABASE_URL }}"
         run: |
           export TEST_DATABASE_URL="${SECRET_DB_URL:-postgresql://postgres:postgres@localhost:5432/cyberscout_test}"
           export DATABASE_URL="$TEST_DATABASE_URL"
@@ -61,7 +61,7 @@ jobs:
       - name: Execute Automated Unit Test Suite
         env:
           TESTING: "true"
-          SECRET_DB_URL: ${{ secrets.TEST_DATABASE_URL }}
+          SECRET_DB_URL: "${{ secrets.TEST_DATABASE_URL }}"
         run: |
           export TEST_DATABASE_URL="${SECRET_DB_URL:-postgresql://postgres:postgres@localhost:5432/cyberscout_test}"
           export DATABASE_URL="$TEST_DATABASE_URL"
