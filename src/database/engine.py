@@ -92,6 +92,9 @@ def get_masked_db_host(custom_url: Optional[str] = None) -> str:
         return "*****"
 
 
+from sqlalchemy.pool import StaticPool
+
+
 def create_db_engine(custom_url: Optional[str] = None) -> Engine:
     """
     Factory creating a SQLAlchemy Engine configured for PostgreSQL (or in-memory SQLite during isolated pytest).
@@ -104,6 +107,7 @@ def create_db_engine(custom_url: Optional[str] = None) -> Engine:
         return create_engine(
             connection_url,
             connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
             future=True,
         )
 
