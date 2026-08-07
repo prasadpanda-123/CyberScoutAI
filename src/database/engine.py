@@ -32,18 +32,14 @@ def get_db_url(custom_url: Optional[str] = None) -> str:
     if not raw_url:
         raw_url = os.getenv("SUPABASE_DATABASE_URL", "").strip() or os.getenv("DB_URL", "").strip()
 
-    # For isolated unit testing without active remote database network connectivity
-    if "PYTEST_CURRENT_TEST" in os.environ and not custom_url:
-        if not raw_url or "yhwwzgovadlcharndivu" in raw_url or "example" in raw_url:
-            return "sqlite:///file:testdb?mode=memory&cache=shared&uri=true"
-
     if not raw_url:
-        if "PYTEST_CURRENT_TEST" in os.environ:
+        if "PYTEST_CURRENT_TEST" in os.environ or "CI" in os.environ or os.getenv("GITHUB_ACTIONS"):
             return "sqlite:///file:testdb?mode=memory&cache=shared&uri=true"
-        raise DatabaseConnectionError(
-            "CRITICAL: DATABASE_URL environment variable is missing. "
-            "CyberScout AI requires a valid PostgreSQL connection URL (e.g., Supabase / Render PostgreSQL)."
-        )
+        from src.core.constants import DATA_DIR
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        sqlite_path = DATA_DIR / "cyberscout.db"
+        logger.info(f"DATABASE_URL not set. Falling back to local SQLite database at '{sqlite_path}'.")
+        return f"sqlite:///{sqlite_path.as_posix()}"
 
     # Convert legacy postgres:// to postgresql:// if present (Render/Heroku convention)
     if raw_url.startswith("postgres://"):

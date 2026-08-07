@@ -95,14 +95,13 @@ class TestCollectionFramework(unittest.TestCase):
         norm = normalize_url("/relative/path", base_url="https://example.com")
         self.assertEqual(norm, "https://example.com/relative/path")
 
-    @patch("urllib.request.urlopen")
-    def test_http_client_mocked(self, mock_urlopen):
+    @patch("requests.Session.get")
+    def test_http_client_mocked(self, mock_get):
         mock_response = MagicMock()
-        mock_response.getcode.return_value = 200
-        mock_response.read.return_value = b'{"status": "ok"}'
-        mock_response.headers = {}
-        mock_response.__enter__.return_value = mock_response
-        mock_urlopen.return_value = mock_response
+        mock_response.status_code = 200
+        mock_response.text = '{"status": "ok"}'
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
 
         client = HTTPClient(cache=CollectorCache(db_path=self.db_path))
         status, text = client.get("https://example.com/api", use_cache=False)

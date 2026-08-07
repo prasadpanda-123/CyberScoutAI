@@ -88,7 +88,7 @@ class ScanJobManager:
             return
         self._jobs: Dict[str, ScanJob] = {}
         self._active_job_id: Optional[str] = None
-        self._job_lock = threading.Lock()
+        self._job_lock = threading.RLock()
         self._initialized = True
 
     def is_scan_active(self) -> bool:
