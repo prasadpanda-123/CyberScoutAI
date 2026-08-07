@@ -161,8 +161,11 @@ class TestSecurityAuth(unittest.TestCase):
         login_res = user_client.post("/login", data={"identifier": email, "password": "UserPass2026!"})
         self.assertEqual(login_res.status_code, 302)
 
-        # Access protected pages
-        self.assertEqual(user_client.get("/dashboard").status_code, 200)
+        # Access protected pages & verify sidebar links
+        dash_res = user_client.get("/dashboard")
+        self.assertEqual(dash_res.status_code, 200)
+        dash_html = dash_res.get_data(as_text=True)
+        self.assertIn('href="/dashboard"', dash_html, "Sidebar Dashboard item must link to /dashboard")
         self.assertEqual(user_client.get("/opportunities").status_code, 200)
 
         # Logout
