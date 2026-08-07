@@ -169,7 +169,10 @@ class TestSecurityAuth(unittest.TestCase):
         self.assertEqual(user_client.get("/opportunities").status_code, 200)
 
         # Logout
-        user_client.get("/logout")
+        logout_res = user_client.get("/logout")
+        self.assertEqual(logout_res.status_code, 302)
+        self.assertTrue(logout_res.location.endswith("/"), "Logout MUST redirect directly to landing page '/' and NOT /login")
+
         res_after = user_client.get("/dashboard")
         self.assertEqual(res_after.status_code, 302)
         self.assertTrue(res_after.location.endswith("/"))

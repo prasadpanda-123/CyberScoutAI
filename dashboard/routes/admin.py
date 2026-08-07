@@ -270,7 +270,7 @@ def admin_logout():
     session.pop("admin_role", None)
 
     flash("Administrator session terminated.", "info")
-    return redirect(url_for("admin_ui.admin_login"))
+    return redirect(url_for("dashboard_ui.landing"))
 
 
 @admin_bp.route("/dashboard")

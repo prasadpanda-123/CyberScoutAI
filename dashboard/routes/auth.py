@@ -123,10 +123,10 @@ def register():
 
 @auth_bp.route("/logout")
 def logout():
-    """Clears active session and redirects to login."""
+    """Clears active session and redirects to public landing page '/'."""
     session.clear()
     flash("You have been logged out.", "info")
-    return redirect(url_for("auth_ui.login"))
+    return redirect(url_for("dashboard_ui.landing"))
 
 
 @auth_bp.route("/forgot-password", methods=["GET", "POST"])
