@@ -9,8 +9,8 @@
     </button>
 
     {% if current_user.is_authenticated %}
-      <span class="small me-3"><i class="bi bi-person-circle me-1 text-info"></i> {{ current_user.username }} <span class="badge bg-secondary font-monospace ms-1">{{ current_user.role }}</span></span>
-      <a href="/logout" class="btn btn-outline-danger btn-sm" title="Sign Out"><i class="bi bi-box-arrow-right"></i></a>
+      <span class="small me-3"><i class="bi bi-person-circle me-1 text-info"></i> {{ current_user.username }}</span>
+      <a href="/logout" class="btn btn-outline-danger btn-sm" title="Sign Out"><i class="bi bi-box-arrow-right me-1"></i> Logout</a>
     {% else %}
       <a href="/login" class="btn btn-primary btn-sm me-2">Sign In</a>
       <a href="/register" class="btn btn-outline-success btn-sm">Register</a>

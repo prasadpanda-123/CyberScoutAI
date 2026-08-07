@@ -81,7 +81,7 @@ def login():
             session["email"] = user["email"]
             session["role"] = user["role"]
 
-            flash(f"Welcome back, {user['username']}! Logged in as {user['role']}.", "success")
+            flash(f"Welcome back, {user['username']}!", "success")
             return redirect(next_url)
         else:
             flash("Invalid username/email or password.", "danger")
