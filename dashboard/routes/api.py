@@ -221,7 +221,7 @@ def trigger_run():
     except ScanInProgressError as err:
         return jsonify({"success": False, "error": str(err), "status": "running"}), 409
     except Exception as e:
-        return jsonify({"success": False, "status": "failed", "error": str(e)}), 500
+        return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
 
 
 @api_bp.route("/jobs/<job_id>", methods=["GET"])

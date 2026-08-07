@@ -143,8 +143,11 @@ def admin_trigger_run():
     except ScanInProgressError as err:
         return jsonify({"success": False, "error": str(err), "status": "running"}), 409
     except Exception as e:
-        audit_repo.log_event("COLLECTORS", "TRIGGER_RUN", "FAILED", source_ip=request.remote_addr, details=str(e))
-        return jsonify({"success": False, "status": "failed", "error": str(e)}), 500
+        try:
+            audit_repo.log_event("COLLECTORS", "TRIGGER_RUN", "FAILED", source_ip=request.remote_addr, details=str(e))
+        except Exception:
+            pass
+        return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
 
 
 @admin_api_bp.route("/jobs/<job_id>", methods=["GET"])
