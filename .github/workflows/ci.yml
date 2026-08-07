@@ -16,6 +16,21 @@ jobs:
       matrix:
         python-version: ['3.12']
 
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: cyberscout_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -34,8 +49,8 @@ jobs:
       - name: Run System Diagnostics & Health Check
         env:
           TESTING: "true"
-          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
-          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/cyberscout_test' }}
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/cyberscout_test' }}
         run: |
           python main.py --version
           python main.py --config-check
@@ -45,7 +60,7 @@ jobs:
       - name: Execute Automated Unit Test Suite
         env:
           TESTING: "true"
-          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
-          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/cyberscout_test' }}
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/cyberscout_test' }}
         run: |
           python -m unittest discover -s tests/unit -v
