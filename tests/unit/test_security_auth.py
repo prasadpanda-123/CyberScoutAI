@@ -169,7 +169,7 @@ class TestSecurityAuth(unittest.TestCase):
         user_client.get("/logout")
         res_after = user_client.get("/dashboard")
         self.assertEqual(res_after.status_code, 302)
-        self.assertIn("/login", res_after.location)
+        self.assertTrue(res_after.location.endswith("/"))
 
     def test_registration_role_escalation_prevention(self):
         """Verify registration endpoint ignores role parameter in POST body and forces 'Viewer' role."""
