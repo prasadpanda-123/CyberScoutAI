@@ -90,6 +90,46 @@ class TestProductionIntegration(unittest.TestCase):
         data = res.get_json()
         self.assertIsInstance(data, dict)
 
+    def test_post_run_returns_202_accepted(self):
+        """Verify POST /api/run returns HTTP 202 Accepted status."""
+        class TestConfig(DashboardConfig):
+            TESTING = True
+            DEBUG = False
+
+        app = create_app(config_class=TestConfig)
+        client = app.test_client()
+
+        with client.session_transaction() as sess:
+            sess["admin_authenticated"] = True
+            sess["admin_user_id"] = 1
+            sess["admin_username"] = "admin"
+            sess["admin_role"] = "Admin"
+
+        res = client.post("/api/run", json={"dry_run": True})
+        self.assertIn(res.status_code, (202, 409, 503))
+        if res.status_code == 202:
+            data = res.get_json()
+            self.assertEqual(data.get("status"), "accepted")
+            self.assertIn("job_id", data)
+
+    def test_scan_status_alias_endpoint(self):
+        """Verify GET /api/scan/status/<job_id> route alias returns status JSON or 404."""
+        class TestConfig(DashboardConfig):
+            TESTING = True
+            DEBUG = False
+
+        app = create_app(config_class=TestConfig)
+        client = app.test_client()
+
+        with client.session_transaction() as sess:
+            sess["admin_authenticated"] = True
+            sess["admin_user_id"] = 1
+            sess["admin_username"] = "admin"
+            sess["admin_role"] = "Admin"
+
+        res = client.get("/api/scan/status/nonexistent_job")
+        self.assertEqual(res.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

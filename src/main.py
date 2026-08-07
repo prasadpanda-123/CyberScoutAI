@@ -484,15 +484,14 @@ def main(args_list: list | None = None) -> int:
     if args.db_check:
         monitor = HealthMonitor()
         result = monitor.check_database()
-        if result.status:
-            print("✓ PostgreSQL connected")
-            print("✓ SELECT 1 successful")
-            print("✓ Database health check passed")
-            print("✓ Connection remains open")
-            return 0
-        else:
-            print(json.dumps(result.to_dict(), indent=2))
-            return 1
+        out = {
+            "component": "database",
+            "status": result.status,
+            "message": result.message,
+            **result.details
+        }
+        print(json.dumps(out, indent=2))
+        return 0 if result.status else 1
 
     if args.env_status:
         print(get_env_status_report())

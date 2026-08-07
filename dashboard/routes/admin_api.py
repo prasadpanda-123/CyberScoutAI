@@ -127,14 +127,19 @@ def admin_trigger_run():
     if not db_mgr.ping():
         from src.core.logging import get_logger
         get_logger(__name__).error("Scan aborted: Database unavailable")
-        return jsonify({"success": False, "error": "Database unavailable"}), 503
+        return jsonify({"success": False, "error": "Database unavailable", "status": "failed"}), 503
     try:
         dry_run = False
         if request.is_json and request.json:
             dry_run = bool(request.json.get("dry_run", False))
         res = api_service.trigger_scan(dry_run=dry_run)
         audit_repo.log_event("COLLECTORS", "TRIGGER_RUN", "SUCCESS", source_ip=request.remote_addr, details=f"Scan job launched (job_id={res.get('job_id')})")
-        return jsonify(res), 200
+        return jsonify({
+            "status": "accepted",
+            "success": True,
+            "job_id": res.get("job_id"),
+            "message": "Scan started successfully",
+        }), 202
     except ScanInProgressError as err:
         return jsonify({"success": False, "error": str(err), "status": "running"}), 409
     except Exception as e:
@@ -143,9 +148,10 @@ def admin_trigger_run():
 
 
 @admin_api_bp.route("/jobs/<job_id>", methods=["GET"])
+@admin_api_bp.route("/scan/status/<job_id>", methods=["GET"])
 @admin_required
 def admin_get_job_status(job_id: str):
-    """GET /admin/api/jobs/<job_id> — Return scan job status telemetry."""
+    """GET /admin/api/jobs/<job_id> & GET /admin/api/scan/status/<job_id> — Return scan job status telemetry."""
     job = api_service.get_job_status(job_id)
     if not job:
         return jsonify({"error": "Job not found", "job_id": job_id}), 404

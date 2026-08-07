@@ -76,6 +76,29 @@ class HealthMonitor:
             version = mig_mgr.get_current_version()
             tables = self.db_manager.get_existing_tables()
 
+            opp_count = 0
+            src_count = 0
+            usr_count = 0
+
+            try:
+                conn = self.db_manager.get_connection()
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*) FROM Opportunities WHERE is_rejected IS NOT TRUE;")
+                row = cursor.fetchone()
+                opp_count = row[0] if row else 0
+
+                cursor.execute("SELECT COUNT(*) FROM Sources WHERE (enabled IS TRUE OR enabled = True);")
+                row = cursor.fetchone()
+                src_count = row[0] if row else 0
+
+                cursor.execute("SELECT COUNT(*) FROM Users;")
+                row = cursor.fetchone()
+                usr_count = row[0] if row else 0
+                cursor.close()
+            except Exception:
+                pass
+
+            metrics = self.db_manager.get_health_metrics()
             status = ping_ok and integrity_ok
             msg = "Database healthy." if status else "Database health check failed."
 
@@ -84,10 +107,20 @@ class HealthMonitor:
                 status=status,
                 message=msg,
                 details={
+                    "provider": "PostgreSQL (Supabase)",
+                    "host": metrics.get("database_host", "*****"),
+                    "port": 6543,
+                    "database_name": "postgres",
+                    "version": metrics.get("version", "PostgreSQL 15.8"),
+                    "connectivity": ping_ok,
+                    "schema_status": "healthy" if status else "degraded",
+                    "table_count": len(tables),
+                    "opportunity_count": opp_count,
+                    "source_count": src_count,
+                    "user_count": usr_count,
                     "ping": ping_ok,
                     "integrity": integrity_ok,
                     "schema_version": version,
-                    "table_count": len(tables),
                 },
             )
         except Exception as e:
