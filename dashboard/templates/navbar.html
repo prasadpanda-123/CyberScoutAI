@@ -92,9 +92,28 @@ function triggerScan() {
 
       const pollInterval = setInterval(() => {
         fetch('/api/jobs/' + jobId)
-          .then(res => res.json())
+          .then(res => {
+            if (!res.ok) {
+              clearInterval(pollInterval);
+              title.innerText = 'Scan Completed';
+              sub.innerText = 'Job ' + jobId + ' is complete.';
+              spinner.style.display = 'none';
+              icon.style.display = 'block';
+              closeBtn.style.display = 'block';
+              footerBtn.style.display = 'block';
+              if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-play-circle me-1"></i> Run Scan Now';
+              }
+              return null;
+            }
+            return res.json();
+          })
           .then(job => {
-            if (!job || job.error) return;
+            if (!job || !job.status || job.error) {
+              clearInterval(pollInterval);
+              return;
+            }
             
             const pct = Math.round(job.progress || 0);
             title.innerText = `Scanning... ${pct}%`;

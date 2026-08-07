@@ -67,7 +67,9 @@ class AuditLogRepository:
             }
         except Exception as e:
             conn.rollback()
-            raise ValueError(f"Failed to record audit log: {e}")
+            from src.core.logging import get_logger
+            get_logger(__name__).warning(f"Could not record audit log: {e}")
+            return {"status": "failed", "error": str(e)}
         finally:
             cursor.close()
 

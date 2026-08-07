@@ -164,11 +164,17 @@ def admin_email_test():
     """POST /admin/api/email/test — Dispatch test HTML email."""
     try:
         res = api_service.send_test_email()
-        audit_repo.log_event("EMAIL", "TEST_EMAIL", "SUCCESS", source_ip=request.remote_addr, details="Test email dispatched")
+        try:
+            audit_repo.log_event("EMAIL", "TEST_EMAIL", "SUCCESS", source_ip=request.remote_addr, details="Test email dispatched")
+        except Exception:
+            pass
         return jsonify(res)
     except Exception as e:
-        audit_repo.log_event("EMAIL", "TEST_EMAIL", "FAILED", source_ip=request.remote_addr, details=str(e))
-        return jsonify({"status": "failed", "error": str(e)})
+        try:
+            audit_repo.log_event("EMAIL", "TEST_EMAIL", "FAILED", source_ip=request.remote_addr, details=str(e))
+        except Exception:
+            pass
+        return jsonify({"status": "failed", "error": str(e)}), 400
 
 
 @admin_api_bp.route("/scheduler/pause", methods=["POST"])

@@ -314,7 +314,17 @@ async function executeAdminAction(endpoint, buttonId, originalText, loadingText)
     alertContent.innerHTML = `<i class="bi bi-hourglass-split me-2"></i><strong>Scan Initialized:</strong> Job ID ${data.job_id}...`;
     const poll = setInterval(async () => {
       const job = await safeFetchJson('/admin/api/jobs/' + data.job_id);
-      if (!job || !job.status) return;
+      if (!job || !job.status || job.error) {
+        clearInterval(poll);
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        if (job && job.error) {
+          alertContainer.classList.remove('alert-info');
+          alertContainer.classList.add('alert-warning');
+          alertContent.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Job Notice:</strong> ${job.error}`;
+        }
+        return;
+      }
       alertContent.innerHTML = `<i class="bi bi-hourglass-split me-2"></i><strong>Scanning (${Math.round(job.progress || 0)}%):</strong> ${job.current_collector || 'Running'} (${job.opportunities_found || 0} found, ${job.elapsed_time || 0}s)`;
       if (job.status === 'completed') {
         clearInterval(poll);

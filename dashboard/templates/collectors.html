@@ -47,9 +47,20 @@ function runCollectors() {
         const jobId = data.job_id;
         const poll = setInterval(() => {
           fetch('/api/jobs/' + jobId)
-            .then(r => r.json())
+            .then(r => {
+              if (!r.ok) {
+                clearInterval(poll);
+                alertBox.className = 'alert alert-warning mb-4';
+                alertBox.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> Job ${jobId} is no longer active.`;
+                return null;
+              }
+              return r.json();
+            })
             .then(job => {
-              if (!job) return;
+              if (!job || !job.status || job.error) {
+                clearInterval(poll);
+                return;
+              }
               alertBox.className = 'alert alert-info mb-4';
               alertBox.innerHTML = `<i class="bi bi-hourglass-split me-2"></i> Collector Scan: <strong>${Math.round(job.progress)}%</strong> [${job.status.toUpperCase()}] - ${job.current_collector} (${job.opportunities_found} found)`;
               if (job.status === 'completed') {
