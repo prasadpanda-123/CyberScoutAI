@@ -288,6 +288,10 @@ class DatabaseManager:
             except Exception as e:
                 logger.warning(f"Error disposing database engine: {e}")
 
+    def reset_pool(self) -> None:
+        """Alias for close_connection to reset database connections and engine pool."""
+        self.close_connection()
+
     @contextmanager
     def transaction(self) -> Generator[Any, None, None]:
         """

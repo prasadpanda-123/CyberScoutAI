@@ -87,7 +87,7 @@ class SearchPlanner:
             # 3. Map queries to sources to create SearchTasks
             for src in active_sources:
                 sid = src["id"]
-                s_method = src.get("collection_method", src.get("type", "rss"))
+                s_method: str = str(src.get("collection_method") or src.get("type") or "rss")
                 collector = src.get("preferred_collector")
                 
                 # Strict Collector Routing

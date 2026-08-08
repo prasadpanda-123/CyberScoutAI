@@ -28,6 +28,10 @@ class TestReportingSystem(unittest.TestCase):
         res = self.report_mgr.generate_reports([], date_str="2026_08_05")
         self.assertEqual(res.rows_written, 0)
         self.assertEqual(len(res.attachment_paths), 2)
+        self.assertIsNotNone(res.csv_path)
+        self.assertIsNotNone(res.docx_path)
+        assert res.csv_path is not None
+        assert res.docx_path is not None
 
         # Check CSV
         with open(res.csv_path, "r", encoding="utf-8-sig") as f:
@@ -47,7 +51,7 @@ class TestReportingSystem(unittest.TestCase):
             provider="OWASP Foundation",
             category="internship",
             description="Web security research internship analyzing OWASP Top 10 vulnerabilities.",
-            score=90.0,
+            score=90,
             confidence_score=95.0,
             quality_score=92.0,
         )
@@ -55,6 +59,10 @@ class TestReportingSystem(unittest.TestCase):
         res = self.report_mgr.generate_reports([opp], date_str="2026_08_05")
         self.assertEqual(res.rows_written, 1)
         self.assertEqual(len(res.attachment_paths), 2)
+        self.assertIsNotNone(res.csv_path)
+        self.assertIsNotNone(res.docx_path)
+        assert res.csv_path is not None
+        assert res.docx_path is not None
 
         # Check CSV content
         with open(res.csv_path, "r", encoding="utf-8-sig") as f:
@@ -101,6 +109,8 @@ class TestReportingSystem(unittest.TestCase):
 
         res = self.report_mgr.generate_reports([opp], date_str="2026_08_05")
         self.assertEqual(res.rows_written, 1)
+        self.assertIsNotNone(res.csv_path)
+        assert res.csv_path is not None
 
         # CSV utf-8-sig verification
         with open(res.csv_path, "r", encoding="utf-8-sig") as f:
@@ -120,6 +130,10 @@ class TestReportingSystem(unittest.TestCase):
 
         res = self.report_mgr.generate_reports([opp], date_str="2026_08_05")
         self.assertEqual(res.rows_written, 1)
+        self.assertIsNotNone(res.docx_path)
+        self.assertIsNotNone(res.csv_path)
+        assert res.docx_path is not None
+        assert res.csv_path is not None
         self.assertTrue(res.docx_path.exists())
         self.assertTrue(res.csv_path.exists())
 

@@ -7,6 +7,7 @@ Uses python-docx to generate executive-ready Word document reports.
 from pathlib import Path
 from typing import Dict, List
 import docx
+from docx.document import Document as DocxDocument
 from docx.enum.table import WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt, RGBColor
@@ -188,7 +189,7 @@ class DOCXReportGenerator:
         logger.info(f"Generated DOCX report '{filepath.name}' ({file_size_kb} KB).")
         return filepath
 
-    def _render_opportunity_block(self, doc: docx.Document, opp: Opportunity) -> None:
+    def _render_opportunity_block(self, doc: DocxDocument, opp: Opportunity) -> None:
         """Renders styled detail block for a single Opportunity entity."""
         title = opp.title or "Untitled Opportunity"
         organization = opp.provider or opp.company or "Unknown Organization"
@@ -256,7 +257,7 @@ class DOCXReportGenerator:
             p_val = cell_val.paragraphs[0]
             p_val.paragraph_format.space_before = Pt(2)
             p_val.paragraph_format.space_after = Pt(2)
-            r_v = p_val.add_run(str(val))
+            r_v = p_val.add_run(val)
             r_v.font.name = ReportStyles.FONT_FAMILY_SECONDARY
             r_v.font.size = Pt(9)
             if label == "Original Link":

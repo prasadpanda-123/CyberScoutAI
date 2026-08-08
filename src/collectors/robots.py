@@ -66,7 +66,7 @@ class RobotsChecker:
                     rp.read()
                 except Exception:
                     # Default allow if robots.txt unreachable
-                    rp.allow_all = True
+                    rp.parse([])
             self.parsers[domain] = rp
 
         rp = self.parsers[domain]
