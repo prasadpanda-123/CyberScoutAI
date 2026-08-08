@@ -89,27 +89,17 @@ def admin_required(f):
         )
 
         admin_auth = session.get("admin_authenticated", False)
-        admin_role = session.get("admin_role")
+        admin_role = session.get("admin_role") or session.get("role") or ("Admin" if admin_auth else None)
 
         if not admin_auth or not admin_role:
-            # Check if logged in as a normal user attempting to access admin route
-            if session.get("user_id"):
-                if is_api:
-                    return jsonify({
-                        "status": "failed",
-                        "error": "Forbidden: Administrative privilege required"
-                    }), 403
-                return ("<div style='font-family:sans-serif; text-align:center; padding:50px;'><h1>403 Forbidden</h1><p>Access Denied: Administrative Portal access requires admin credentials.</p></div>", 403)
-
-            # Not logged in at all -> Redirect unauthenticated users to admin login page '/admin/login'
             if is_api:
                 return jsonify({
                     "status": "failed",
-                    "error": "Admin authentication required"
-                }), 401
+                    "error": "Forbidden: Administrative privilege required"
+                }), 403
             return redirect(url_for("admin_ui.admin_login"))
 
-        if admin_role not in ("Admin", "admin", "Super Admin", "Administrator"):
+        if str(admin_role).lower() not in ("admin", "super admin", "administrator"):
             if is_api:
                 return jsonify({
                     "status": "failed",

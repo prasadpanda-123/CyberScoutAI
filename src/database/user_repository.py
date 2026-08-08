@@ -55,8 +55,9 @@ class UserRepository:
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
         sql = """
-        INSERT INTO Users (username, email, password_hash, role, is_active, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO "Users" (username, email, password_hash, role, is_active, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        RETURNING id
         """
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
@@ -72,8 +73,9 @@ class UserRepository:
                     ts,
                 ),
             )
+            row = cursor.fetchone()
             conn.commit()
-            user_id = cursor.lastrowid
+            user_id = row[0] if row else None
             return {
                 "id": user_id,
                 "username": username.strip(),

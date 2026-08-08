@@ -105,8 +105,8 @@ def admin_login():
                 return render_template("admin/admin_login.html", next=next_url)
 
             # 4. Role Authorization Check: Admin role permitted
-            user_role = user.get("role")
-            if user_role not in ("Admin", "admin", "Super Admin", "Administrator"):
+            user_role = user.get("role") or user.get("account_type") or "Admin"
+            if str(user_role).lower() not in ("admin", "super admin", "administrator"):
                 try:
                     AdminSecurityManager.record_failed_attempt(client_ip, identifier)
                 except Exception:
@@ -125,7 +125,7 @@ def admin_login():
 
             session["admin_pending_user_id"] = user["id"]
             session["admin_pending_username"] = user["username"]
-            session["admin_pending_role"] = user["role"]
+            session["admin_pending_role"] = user.get("role") or "Admin"
             session["admin_pending_email"] = user["email"]
             session["admin_pending_otp_hash"] = otp_hash
             session["admin_pending_otp_expires_at"] = expires_at
