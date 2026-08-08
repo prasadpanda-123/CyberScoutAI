@@ -50,6 +50,16 @@ def client(monkeypatch):
     with app.test_client() as client:
         yield client
 
+    # Teardown: Clean up transient integration test users
+    try:
+        conn = db_mgr.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM \"Users\" WHERE email IN ('superadmin@cyberscout.ai', 'normaluser@cyberscout.ai', 'crafted_admin@cyberscout.ai');")
+        conn.commit()
+        cursor.close()
+    except Exception:
+        pass
+
 
 def test_anonymous_access_to_admin_pages_redirects(client):
     """Phase 6: Anonymous visitors to leaked admin URLs must receive a 302 Redirect to /admin/login."""

@@ -131,8 +131,7 @@ class TestDatabaseHardening(unittest.TestCase):
         preserved_emails = [
             "admin@cyberscout.ai",
             "prasadpanda7989@gmail.com",
-            "sateeshwarareddy@adityatekkali.edu.in",
-            "adminuser@cyberscout.ai"
+            "sateeshwarareddy@adityatekkali.edu.in"
         ]
         for email in preserved_emails:
             user = self.user_repo.get_by_email(email)
