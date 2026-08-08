@@ -200,37 +200,41 @@ class DashboardService:
         self,
         category: Optional[str] = None,
         search_query: Optional[str] = None,
-        limit: int = 50,
+        limit: int = 20,
         offset: int = 0,
-    ) -> List[Dict[str, Any]]:
-        """Queries database opportunities with pagination, filtering, and search."""
+        return_total: bool = False,
+    ) -> Any:
+        """Queries database opportunities using PostgreSQL server-side LIMIT/OFFSET pagination and SQL search."""
         try:
-            raw_opps = self.opp_repo.get_active_opportunities(
+            cat_filter = category if category and category.lower() != "all" else None
+            search_filter = search_query.strip() if search_query and search_query.strip() else None
+
+            raw_opps = self.opp_repo.get_paginated_opportunities(
                 limit=limit,
-                category=category if category and category.lower() != "all" else None,
+                offset=offset,
+                category=cat_filter,
+                search_query=search_filter,
             )
+            total_cnt = self.opp_repo.count_paginated_opportunities(
+                category=cat_filter,
+                search_query=search_filter,
+            )
+
             results = []
             for opp in raw_opps:
                 opp_dict = opp if isinstance(opp, dict) else (opp.to_dict() if hasattr(opp, "to_dict") else {})
                 if not opp_dict and hasattr(opp, "__dict__"):
                     opp_dict = opp.__dict__
-
-                if opp_dict.get("is_rejected"):
-                    continue
-
-                if search_query:
-                    q = search_query.lower()
-                    title = str(opp_dict.get("title", "")).lower()
-                    desc = str(opp_dict.get("description", "")).lower()
-                    company = str(opp_dict.get("company", "")).lower()
-                    if q not in title and q not in desc and q not in company:
-                        continue
-
                 results.append(opp_dict)
+
+            if return_total:
+                return {"items": results, "total_count": total_cnt}
             return results
         except Exception as e:
             from src.core.logging import get_logger
             get_logger(__name__).error(f"Error querying active opportunities: {e}")
+            if return_total:
+                return {"items": [], "total_count": 0}
             return []
 
     def get_collectors_status(self) -> List[Dict[str, Any]]:

@@ -287,19 +287,49 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
     def get_active_opportunities(
         self, limit: int = 50, category: Optional[str] = None
     ) -> List[Opportunity]:
-        if category:
-            return self.search(
-                where_clause="status = ? AND (is_rejected IS NOT TRUE) AND (expired = 0 OR expired IS NULL) AND (archived = 0 OR archived IS NULL) AND LOWER(category) = LOWER(?)",
-                params=(Status.ACTIVE.value, category),
-                order_by="score DESC, discovered_date DESC",
-                limit=limit,
-            )
+        return self.get_paginated_opportunities(limit=limit, offset=0, category=category)
+
+    def _build_active_where(
+        self, category: Optional[str] = None, search_query: Optional[str] = None
+    ) -> tuple[str, tuple[Any, ...]]:
+        where_clause = "status = ? AND (is_rejected IS NOT TRUE) AND (expired = 0 OR expired IS NULL) AND (archived = 0 OR archived IS NULL)"
+        params: List[Any] = [Status.ACTIVE.value]
+
+        if category and category.lower() != "all":
+            where_clause += " AND LOWER(category) = LOWER(?)"
+            params.append(category.strip())
+
+        if search_query and search_query.strip():
+            q_term = f"%{search_query.strip().lower()}%"
+            where_clause += " AND (LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(company) LIKE ? OR LOWER(provider) LIKE ?)"
+            params.extend([q_term, q_term, q_term, q_term])
+
+        return where_clause, tuple(params)
+
+    def count_paginated_opportunities(
+        self, category: Optional[str] = None, search_query: Optional[str] = None
+    ) -> int:
+        """Counts active opportunities matching category and search filter."""
+        where_clause, params = self._build_active_where(category=category, search_query=search_query)
+        return self.count(where_clause=where_clause, params=params)
+
+    def get_paginated_opportunities(
+        self,
+        limit: int = 20,
+        offset: int = 0,
+        category: Optional[str] = None,
+        search_query: Optional[str] = None,
+    ) -> List[Opportunity]:
+        """Queries active opportunities using PostgreSQL server-side pagination (LIMIT/OFFSET)."""
+        where_clause, params = self._build_active_where(category=category, search_query=search_query)
         return self.search(
-            where_clause="status = ? AND (is_rejected IS NOT TRUE) AND (expired = 0 OR expired IS NULL) AND (archived = 0 OR archived IS NULL)",
-            params=(Status.ACTIVE.value,),
+            where_clause=where_clause,
+            params=params,
             order_by="score DESC, discovered_date DESC",
             limit=limit,
+            offset=offset,
         )
+
 
     def get_rejected_opportunities(
         self, limit: int = 100

@@ -1,16 +1,21 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h2 class="fw-bold mb-0"><i class="bi bi-briefcase text-primary me-2"></i> Opportunities Explorer</h2>
+  <div>
+    <h2 class="fw-bold mb-0"><i class="bi bi-briefcase text-primary me-2"></i> Opportunities Explorer</h2>
+    <span class="text-secondary small">Filter, search, and discover cybersecurity opportunities</span>
+  </div>
 </div>
 
 <!-- Filters -->
 <div class="card p-3 mb-4">
-  <form method="GET" action="/opportunities" class="row g-3">
-    <div class="col-md-5">
-      <input type="text" name="q" class="form-control" placeholder="Search titles or keywords..." value="{{ search_query }}">
-    </div>
+  <form method="GET" action="/opportunities" class="row g-3 align-items-center">
     <div class="col-md-4">
+      <label class="form-label text-secondary small mb-1">Search Keywords</label>
+      <input type="text" name="q" class="form-control" placeholder="Search titles, providers, keywords..." value="{{ search_query }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label text-secondary small mb-1">Category</label>
       <select name="category" class="form-select">
         <option value="all">All Categories</option>
         <option value="internship" {% if selected_category == 'internship' %}selected{% endif %}>Internship</option>
@@ -20,14 +25,22 @@
         <option value="job" {% if selected_category == 'job' %}selected{% endif %}>Job / Hiring</option>
       </select>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
+      <label class="form-label text-secondary small mb-1">Per Page</label>
+      <select name="per_page" class="form-select" onchange="this.form.submit()">
+        <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
+        <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+        <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+      </select>
+    </div>
+    <div class="col-md-3 d-flex align-items-end" style="margin-top: auto;">
       <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search me-1"></i> Search & Filter</button>
     </div>
   </form>
 </div>
 
 <!-- Opportunities Table -->
-<div class="card p-3">
+<div class="card p-3 mb-4">
   <div class="table-responsive">
     <table class="table table-striped table-hover align-middle mb-0">
       <thead>
@@ -42,14 +55,26 @@
       </thead>
       <tbody>
         {% for opp in opportunities %}
+        {% set cat_key = (opp.category|default('other'))|lower %}
         <tr>
           <td class="fw-semibold">
             <a href="{{ opp.url }}" target="_blank" class="text-primary text-decoration-none">{{ opp.title }}</a>
+            {% if opp.provider %}
+              <div class="text-secondary small font-monospace">{{ opp.provider }}</div>
+            {% endif %}
           </td>
-          <td><span class="badge bg-secondary">{{ opp.category }}</span></td>
-          <td class="text-muted">{{ opp.source_id }}</td>
-          <td><span class="badge bg-primary">Score: {{ opp.score|default(80) }}</span></td>
-          <td class="text-muted small">{{ opp.discovered_date|default('2026-08-04') }}</td>
+          <td>
+            <span class="badge {% if cat_key in ['ctf', 'internship', 'course', 'certification', 'job'] %}badge-category-{{ cat_key }}{% else %}badge-category-default{% endif %}">
+              {{ (opp.category|default('Other'))|capitalize }}
+            </span>
+          </td>
+          <td class="text-secondary small">{{ opp.source_id }}</td>
+          <td>
+            <span class="badge {% if (opp.score|default(80)) >= 80 %}badge-p2{% elif (opp.score|default(80)) >= 60 %}badge-p1{% else %}badge-p3{% endif %}">
+              Score: {{ opp.score|default(80) }}
+            </span>
+          </td>
+          <td class="text-secondary small">{{ opp.discovered_date|default('N/A') }}</td>
           <td>
             <a href="{{ opp.url }}" target="_blank" class="btn btn-outline-primary btn-sm"><i class="bi bi-box-arrow-up-right"></i> Open</a>
           </td>
@@ -58,7 +83,8 @@
         <tr>
           <td colspan="6" class="text-center text-muted py-5">
             <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-            No opportunities found matching your search criteria.
+            <div>No opportunities found</div>
+            <div class="small text-secondary mt-1">Try changing your search query or category filter.</div>
           </td>
         </tr>
         {% endfor %}
@@ -66,4 +92,39 @@
     </table>
   </div>
 </div>
+
+<!-- Pagination Controls Footer -->
+{% if total_count > 0 %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+  <div class="text-secondary small">
+    Showing <span class="fw-bold text-primary">{{ "{:,}".format(start_item) }}–{{ "{:,}".format(end_item) }}</span> of <span class="fw-bold text-primary">{{ "{:,}".format(total_count) }}</span> opportunities
+  </div>
+  
+  <nav aria-label="Opportunities Table Pagination">
+    <ul class="pagination pagination-sm mb-0">
+      <!-- Previous Button -->
+      <li class="page-item {% if not has_prev %}disabled{% endif %}">
+        <a class="page-link" href="/opportunities?page={{ page - 1 }}&per_page={{ per_page }}&category={{ selected_category }}&q={{ search_query }}" aria-label="Previous">
+          <i class="bi bi-chevron-left"></i> Previous
+        </a>
+      </li>
+
+      <!-- Page Numbers -->
+      {% for p_num in page_numbers %}
+      <li class="page-item {% if p_num == page %}active{% endif %}">
+        <a class="page-link" href="/opportunities?page={{ p_num }}&per_page={{ per_page }}&category={{ selected_category }}&q={{ search_query }}">{{ p_num }}</a>
+      </li>
+      {% endfor %}
+
+      <!-- Next Button -->
+      <li class="page-item {% if not has_next %}disabled{% endif %}">
+        <a class="page-link" href="/opportunities?page={{ page + 1 }}&per_page={{ per_page }}&category={{ selected_category }}&q={{ search_query }}" aria-label="Next">
+          Next <i class="bi bi-chevron-right"></i>
+        </a>
+      </li>
+    </ul>
+  </nav>
+</div>
+{% endif %}
 {% endblock %}
+

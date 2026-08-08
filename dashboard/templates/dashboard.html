@@ -2,28 +2,28 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
-    <h2 class="fw-bold mb-0"><i class="bi bi-speedometer2 text-primary me-2"></i> Executive Control Center</h2>
-    <span class="text-muted small">Real-time application telemetry & database intelligence</span>
+    <h2 class="fw-bold mb-0"><i class="bi bi-speedometer2 text-primary me-2"></i> Executive Overview</h2>
+    <span class="text-secondary small">Real-time cybersecurity intelligence telemetry & metrics</span>
   </div>
   <div>
-    <button class="btn btn-sm btn-outline-primary me-2" onclick="location.reload();"><i class="bi bi-arrow-clockwise me-1"></i> Refresh</button>
-    <a href="/reports" class="btn btn-sm btn-success"><i class="bi bi-file-earmark-arrow-down me-1"></i> Reports Center</a>
+    <button class="btn btn-sm btn-outline-secondary me-2" onclick="location.reload();"><i class="bi bi-arrow-clockwise me-1"></i> Refresh</button>
+    <a href="/reports" class="btn btn-sm btn-primary"><i class="bi bi-file-earmark-arrow-down me-1"></i> Reports Center</a>
   </div>
 </div>
 
-<!-- Clean Operational KPI Cards Banner -->
+<!-- Compact Operational KPI Cards Banner -->
 <div class="row g-3 mb-4">
   <div class="col-md-3">
-    <div class="card p-3 shadow-sm border-start border-4 {% if summary.database_status == 'Connected' %}border-success{% else %}border-danger{% endif %}">
+    <div class="card p-3 shadow-sm border-start border-4 {% if summary.database_status == 'Connected' %}border-success{% else %}border-danger{% endif %} h-100">
       <div class="d-flex justify-content-between align-items-center mb-1">
-        <span class="text-muted small fw-bold">System Telemetry</span>
+        <span class="text-secondary small fw-bold">System Status</span>
         <span class="badge {% if summary.database_status == 'Connected' %}bg-success{% else %}bg-danger{% endif %}">
-          {% if summary.database_status == 'Connected' %}🟢 Operational{% else %}🔴 Service Offline{% endif %}
+          {% if summary.database_status == 'Connected' %}Operational{% else %}Offline{% endif %}
         </span>
       </div>
       <div class="fs-4 fw-bold text-primary">CyberScout AI</div>
-      <div class="text-muted small mt-1">
-        <i class="bi bi-activity me-1"></i> Health Status: Normal
+      <div class="text-secondary small mt-1">
+        <i class="bi bi-activity me-1 text-success"></i> Health Status: Normal
         {% if summary.database_latency_ms >= 0 %}
           <span class="ms-1 text-success">({{ summary.database_latency_ms }}ms)</span>
         {% endif %}
@@ -32,24 +32,26 @@
   </div>
 
   <div class="col-md-3">
-    <div class="card p-3 shadow-sm">
-      <div class="text-muted small">Total Opportunities</div>
-      <div class="fs-2 fw-bold text-info">{{ summary.total_opportunities }}</div>
-      <div class="text-muted small"><i class="bi bi-shield-check me-1"></i> Active Scanned Items</div>
+    <div class="card p-3 shadow-sm h-100">
+      <div class="text-secondary small fw-medium">Total Opportunities</div>
+      <div class="fs-2 fw-bold text-primary my-1">{{ summary.total_opportunities }}</div>
+      <div class="text-secondary small"><i class="bi bi-shield-check me-1 text-info"></i> Active Scanned Items</div>
     </div>
   </div>
+
   <div class="col-md-3">
-    <div class="card p-3 shadow-sm">
-      <div class="text-muted small">Discovered Today</div>
-      <div class="fs-2 fw-bold text-success">{{ summary.today_opportunities }}</div>
+    <div class="card p-3 shadow-sm h-100">
+      <div class="text-secondary small fw-medium">Discovered Today</div>
+      <div class="fs-2 fw-bold text-success my-1">{{ summary.today_opportunities }}</div>
       <div class="text-success small"><i class="bi bi-calendar-check me-1"></i> Today's Intelligence</div>
     </div>
   </div>
+
   <div class="col-md-3">
-    <div class="card p-3 shadow-sm">
-      <div class="text-muted small">Active Sources</div>
-      <div class="fs-2 fw-bold text-primary">{{ summary.active_collectors }}</div>
-      <div class="text-primary small"><i class="bi bi-broadcast me-1"></i> Intelligence Sources</div>
+    <div class="card p-3 shadow-sm h-100">
+      <div class="text-secondary small fw-medium">Active Sources</div>
+      <div class="fs-2 fw-bold text-info my-1">{{ summary.active_collectors }}</div>
+      <div class="text-info small"><i class="bi bi-broadcast me-1"></i> Intelligence Sources</div>
     </div>
   </div>
 </div>
@@ -58,13 +60,13 @@
 <div class="row g-4">
   <div class="col-md-8">
     <div class="card p-3">
-      <div class="card-header border-0 bg-transparent ps-0 fw-bold">Daily Opportunity Collection Trend</div>
+      <div class="card-header border-0 bg-transparent ps-0 fw-bold fs-6">Daily Opportunity Collection Trend</div>
       <canvas id="dailyTrendChart" height="150"></canvas>
     </div>
   </div>
   <div class="col-md-4">
     <div class="card p-3">
-      <div class="card-header border-0 bg-transparent ps-0 fw-bold">Category Distribution</div>
+      <div class="card-header border-0 bg-transparent ps-0 fw-bold fs-6">Category Distribution</div>
       <canvas id="categoryChart" height="250"></canvas>
     </div>
   </div>
@@ -73,8 +75,11 @@
 
 {% block scripts %}
 <script>
-const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-const textColor = isLight ? '#0F172A' : '#F8FAFC';
+function getThemeTextColor() {
+  return document.documentElement.getAttribute('data-theme') === 'light' ? '#0F172A' : '#F8FAFC';
+}
+
+const textColor = getThemeTextColor();
 
 const ctx1 = document.getElementById('dailyTrendChart').getContext('2d');
 new Chart(ctx1, {
@@ -91,6 +96,7 @@ new Chart(ctx1, {
     }]
   },
   options: {
+    responsive: true,
     plugins: { legend: { labels: { color: textColor } } },
     scales: { x: { ticks: { color: textColor } }, y: { ticks: { color: textColor } } }
   }
@@ -106,7 +112,10 @@ new Chart(ctx2, {
       backgroundColor: ['#0284C7', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#64748B']
     }]
   },
-  options: { plugins: { legend: { labels: { color: textColor } } } }
+  options: {
+    responsive: true,
+    plugins: { legend: { labels: { color: textColor } } }
+  }
 });
 </script>
 {% endblock %}
