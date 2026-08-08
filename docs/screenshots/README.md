@@ -12,7 +12,7 @@ This directory contains visual previews and screenshots of the CyberScout AI Web
 
 ## 2. Opportunities Explorer (`/opportunities`)
 ![Opportunities Screenshot Placeholder](opportunities_explorer.png)
-*Multi-criteria opportunity filterable table with search, category filters, and CSV/JSON export actions.*
+*Multi-criteria opportunity filterable table with search and category filters.*
 
 ---
 

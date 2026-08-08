@@ -85,7 +85,7 @@ def admin_get_audit_logs():
 def admin_export_logs():
     """GET /admin/api/logs/export — Export logs in JSON format."""
     data = api_service.get_logs(limit=1000)
-    json_bytes = json.dumps(data.get("logs", []), indent=2).encode("utf-8")
+    json_bytes = json.dumps(data.get("logs", []), indent=2, default=str).encode("utf-8")
     audit_repo.log_event("LOGS", "EXPORT_LOGS", "SUCCESS", source_ip=request.remote_addr, details="Exported app logs JSON")
     return Response(
         json_bytes,

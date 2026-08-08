@@ -180,7 +180,7 @@ def get_logs():
 def export_logs():
     """GET /api/logs/export — Export logs in JSON format (Sensitive)."""
     data = api_service.get_logs(limit=1000)
-    json_bytes = json.dumps(data.get("logs", []), indent=2).encode("utf-8")
+    json_bytes = json.dumps(data.get("logs", []), indent=2, default=str).encode("utf-8")
     return Response(
         json_bytes,
         mimetype="application/json",

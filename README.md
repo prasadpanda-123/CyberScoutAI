@@ -51,7 +51,7 @@ Explore visual previews in our [Screenshots Gallery](docs/screenshots/README.md)
 | Control Center View | Description |
 |---|---|
 | **Executive Dashboard** | Real-time KPI statistics, opportunity collection trends, category distribution |
-| **Opportunities Explorer** | Multi-criteria search table with CSV/JSON exports |
+| **Opportunities Explorer** | Multi-criteria search table with category filters and keyword search |
 | **Analytics & Trends** | Growth timeline metrics, provider comparison, keyword frequencies |
 | **Collector Management** | Real-time collector status cards and manual trigger execution |
 | **System Health Grid** | Visual health diagnostics matching `python main.py --health` |
