@@ -104,7 +104,7 @@ def admin_required(f):
             # Not logged in at all -> Redirect unauthenticated users to admin login page '/admin/login'
             if is_api:
                 return jsonify({
-                    "status": "unauthorized",
+                    "status": "failed",
                     "error": "Admin authentication required"
                 }), 401
             return redirect(url_for("admin_ui.admin_login"))

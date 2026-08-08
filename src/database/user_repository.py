@@ -18,7 +18,7 @@ class UserRepository:
     Repository for managing user accounts in the Users table.
     """
 
-    VALID_ROLES = {"Admin", "User", "admin", "user", "Operator", "Viewer", "Super Admin"}
+    VALID_ROLES = {"Admin", "User", "admin", "user", "Operator", "Viewer", "Super Admin", "Administrator"}
 
     def __init__(self, db_manager: Optional[DatabaseManager] = None):
         self.db_manager = db_manager or DatabaseManager()
@@ -34,7 +34,22 @@ class UserRepository:
         """
         Creates a new user with password hashed using PBKDF2 SHA-256.
         """
-        clean_role = role.strip()
+        if not email or not isinstance(email, str) or not email.strip():
+            raise ValueError("Email cannot be empty or null.")
+        
+        clean_email = email.strip().lower()
+        if "@" not in clean_email or "." not in clean_email.split("@")[-1]:
+            raise ValueError(f"Invalid email format: {email}")
+
+        if not password or not isinstance(password, str) or not password.strip():
+            raise ValueError("Password cannot be empty or null.")
+
+        if not username or not isinstance(username, str) or not username.strip():
+            raise ValueError("Username cannot be empty or null.")
+
+        clean_role = role.strip() if role else "User"
+        if clean_role not in self.VALID_ROLES:
+            raise ValueError(f"Invalid role '{clean_role}'. Must be one of {sorted(self.VALID_ROLES)}")
 
         password_hash = generate_password_hash(password, method="pbkdf2:sha256")
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
@@ -50,7 +65,7 @@ class UserRepository:
                 sql,
                 (
                     username.strip(),
-                    email.strip().lower(),
+                    clean_email,
                     password_hash,
                     clean_role,
                     1 if is_active else 0,
@@ -61,8 +76,8 @@ class UserRepository:
             user_id = cursor.lastrowid
             return {
                 "id": user_id,
-                "username": username,
-                "email": email.lower(),
+                "username": username.strip(),
+                "email": clean_email,
                 "role": clean_role,
                 "is_active": is_active,
                 "created_at": ts,

@@ -1,6 +1,9 @@
 import os
 import pytest
+from dotenv import load_dotenv
 from src.core.exceptions import ConfigurationError
+
+load_dotenv()
 
 test_db_url = os.getenv("TEST_DATABASE_URL", "").strip() or os.getenv("DATABASE_URL", "").strip()
 
