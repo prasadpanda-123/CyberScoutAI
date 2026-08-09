@@ -91,13 +91,7 @@ def admin_required(f):
         admin_auth = session.get("admin_authenticated", False)
         admin_role = session.get("admin_role") or session.get("role") or ("Admin" if admin_auth else None)
 
-        if not admin_auth or not admin_role:
-            if is_api:
-                return jsonify({
-                    "status": "failed",
-                    "error": "Forbidden: Administrative privilege required"
-                }), 403
-            return redirect(url_for("admin_ui.admin_login"))
+            return ("<div style='font-family:sans-serif; text-align:center; padding:50px;'><h1>403 Forbidden</h1><p>Administrative privilege required.</p></div>", 403)
 
         if str(admin_role).lower() not in ("admin", "super admin", "administrator"):
             if is_api:

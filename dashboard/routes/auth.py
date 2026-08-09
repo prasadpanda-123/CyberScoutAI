@@ -42,7 +42,7 @@ def setup():
                 flash(f"First-run setup complete! Super Admin '{username}' created successfully.", "success")
                 return redirect(url_for("dashboard_ui.index"))
             except Exception as e:
-                flash(f"Setup error: {e}", "danger")
+                flash("Setup error occurred during account creation.", "danger")
 
     return render_template("setup.html")
 

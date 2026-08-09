@@ -31,10 +31,11 @@ class AuditLogRepository:
         """
         Records a new administrative audit event in the AuditLogs table.
         """
-        ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        ts = datetime.now(timezone.utc).isoformat()
         sql = """
-        INSERT INTO AuditLogs (timestamp, user_id, username, event_type, action, source_ip, status, details)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO "AuditLogs" (timestamp, user_id, username, event_type, action, source_ip, status, details)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING id
         """
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
@@ -52,8 +53,9 @@ class AuditLogRepository:
                     details or "",
                 ),
             )
+            row = cursor.fetchone()
             conn.commit()
-            log_id = cursor.lastrowid
+            log_id = row[0] if row else None
             return {
                 "id": log_id,
                 "timestamp": ts,
@@ -68,7 +70,8 @@ class AuditLogRepository:
         except Exception as e:
             conn.rollback()
             from src.core.logging import get_logger
-            get_logger(__name__).warning(f"Could not record audit log: {e}")
+            get_logger(__name__).error(f"Could not record audit log: {e}")
+            # Return a failure dict to keep caller happy
             return {"status": "failed", "error": str(e)}
         finally:
             cursor.close()
