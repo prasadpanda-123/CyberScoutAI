@@ -132,3 +132,85 @@ def is_valid_url(url: str) -> bool:
         return True
     except (ValueError, Exception):
         return False
+
+
+TRACKING_PARAMS = {
+    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+    "fbclid", "gclid", "msclkid", "_ga", "_ke", "mc_cid", "mc_eid", "ref", "source"
+}
+
+
+def normalize_url(url: str) -> str:
+    """
+    Normalizes a URL into a canonical string representation for accurate deduplication.
+    Rules:
+    - Normalizes protocol scheme to lowercase (http/https).
+    - Lowercases hostname and strips 'www.' prefix for canonical domain matching.
+    - Strips default ports (:80 for http, :443 for https).
+    - Removes trailing slashes on paths (/ctf/ -> /ctf).
+    - Removes URL fragments (#section, #overview).
+    - Strips tracking & campaign query parameters while preserving resource parameters (?id=123).
+    - Safely unquotes unnecessary URL percent-encodings.
+    """
+    if not url or not isinstance(url, str):
+        return ""
+
+    cleaned = url.strip()
+    if not cleaned:
+        return ""
+
+    if not re.match(r"^https?://", cleaned, re.IGNORECASE):
+        cleaned = f"https://{cleaned}"
+
+    try:
+        parsed = urllib.parse.urlparse(cleaned)
+    except Exception:
+        return cleaned.lower().rstrip("/")
+
+    scheme = parsed.scheme.lower()
+    netloc = parsed.netloc.lower()
+
+    # Strip default ports
+    if netloc.endswith(":80") and scheme == "http":
+        netloc = netloc[:-3]
+    elif netloc.endswith(":443") and scheme == "https":
+        netloc = netloc[:-4]
+
+    # Strip userinfo if present
+    if "@" in netloc:
+        netloc = netloc.rsplit("@", 1)[1]
+
+    # Strip www. prefix for canonical host matching
+    host = netloc
+    if host.startswith("www."):
+        host = host[4:]
+
+    # Apply official domain mapping if present
+    if host in OFFICIAL_DOMAIN_MAP:
+        host = OFFICIAL_DOMAIN_MAP[host]
+
+    # Clean path (strip trailing slash for non-root paths)
+    path = urllib.parse.unquote(parsed.path)
+    if path and path != "/":
+        path = path.rstrip("/")
+
+    # Strip tracking parameters from query string
+    query_params = []
+    if parsed.query:
+        for key, val in urllib.parse.parse_qsl(parsed.query, keep_blank_values=True):
+            if key.lower() not in TRACKING_PARAMS:
+                query_params.append((key, val))
+
+    query_str = urllib.parse.urlencode(sorted(query_params)) if query_params else ""
+
+    # Reconstruct canonical URL (ignoring fragment)
+    canonical = urllib.parse.urlunparse((
+        scheme,
+        host,
+        path or "/",
+        "",
+        query_str,
+        ""  # Fragment stripped
+    ))
+
+    return canonical

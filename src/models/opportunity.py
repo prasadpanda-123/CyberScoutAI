@@ -77,8 +77,9 @@ class Opportunity:
         Returns:
             64-character hexadecimal SHA-256 string.
         """
-        clean_url = self.url.strip().rstrip("/").lower()
-        return hashlib.sha256(clean_url.encode("utf-8")).hexdigest()
+        from src.utils.url_utils import normalize_url
+        canonical_url = normalize_url(self.url)
+        return hashlib.sha256(canonical_url.encode("utf-8")).hexdigest()
 
     def to_dict(self) -> Dict[str, Any]:
         """Converts Opportunity instance to a dictionary."""

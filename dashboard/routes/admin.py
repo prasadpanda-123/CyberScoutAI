@@ -17,6 +17,7 @@ from src.auth.decorators import admin_required
 from src.core.constants import CONFIG_DIR, REPORTS_DIR
 from src.core.rss_diagnostics import RSSDiagnosticsManager
 from src.core.version import get_version_info
+from src.database.admin_repository import AdminRepository
 from src.database.audit_log_repository import AuditLogRepository
 from src.database.log_repository import LogRepository
 from src.database.user_repository import UserRepository
@@ -24,6 +25,7 @@ from src.database.user_repository import UserRepository
 admin_bp = Blueprint("admin_ui", __name__, url_prefix="/admin")
 
 user_repo = UserRepository()
+admin_repo = AdminRepository()
 audit_repo = AuditLogRepository()
 log_repo = LogRepository()
 dash_service = DashboardService()
@@ -46,7 +48,7 @@ def ensure_csrf_token():
 def admin_login():
     """
     Dedicated Admin Login Portal.
-    Only allows users with role 'Super Admin' or 'Administrator' to authenticate.
+    Only allows users with role  'Administrator' to authenticate.
     """
     try:
         # If already authenticated as admin, redirect to admin dashboard
@@ -84,12 +86,16 @@ def admin_login():
                     pass
                 return render_template("admin/admin_login.html", next=next_url)
 
-            # 3. Authenticate User
+            # 3. Authenticate Administrator against Admins table
             try:
-                user = user_repo.authenticate(identifier, password)
+                user = admin_repo.authenticate(identifier, password)
+                if not user:
+                    legacy_user = user_repo.authenticate(identifier, password)
+                    if legacy_user and str(legacy_user.get("role")).lower() in ("admin", "super admin", "administrator"):
+                        user = legacy_user
             except Exception as e:
                 from src.core.logging import get_logger
-                get_logger(__name__).error(f"User authentication error: {e}")
+                get_logger(__name__).error(f"Administrator authentication error: {e}")
                 user = None
 
             if not user:
@@ -118,19 +124,21 @@ def admin_login():
                     pass
                 return render_template("admin/admin_login.html", next=next_url)
 
-            # 5. Password Verified -> Generate 6-digit OTP & Store Pending MFA State
+            # 5. Password Verified -> Generate 6-digit OTP & Store Pending MFA State in Server Memory
             otp_code = AdminSecurityManager.generate_otp_code()
             otp_hash = AdminSecurityManager.hash_otp_code(otp_code)
             expires_at = int(time.time()) + 300  # 5 minutes validity
 
-            session["admin_pending_user_id"] = user["id"]
-            session["admin_pending_username"] = user["username"]
-            session["admin_pending_role"] = user.get("role") or "Admin"
-            session["admin_pending_email"] = user["email"]
-            session["admin_pending_otp_hash"] = otp_hash
-            session["admin_pending_otp_expires_at"] = expires_at
-            session["admin_pending_otp_attempts"] = 0
-            session["admin_pending_next"] = next_url
+            pending_token = AdminSecurityManager.store_pending_mfa(
+                user_id=user["id"],
+                username=user["username"],
+                email=user["email"],
+                role=user.get("role") or "Admin",
+                otp_hash=otp_hash,
+                expires_at=expires_at,
+                next_url=next_url,
+            )
+            session["admin_pending_token"] = pending_token
 
             # Transmit OTP Code via Production Email Service
             try:
@@ -179,25 +187,41 @@ def admin_verify_otp():
     if session.get("admin_authenticated"):
         return redirect(url_for("admin_ui.admin_dashboard"))
 
-    user_id = session.get("admin_pending_user_id")
-    username = session.get("admin_pending_username")
-    role = session.get("admin_pending_role")
-    otp_hash = session.get("admin_pending_otp_hash")
-    expires_at = session.get("admin_pending_otp_expires_at", 0)
-    next_url = session.get("admin_pending_next") or url_for("admin_ui.admin_dashboard")
+    pending_token = session.get("admin_pending_token")
+    mfa_state = AdminSecurityManager.get_pending_mfa(pending_token)
 
-    if not user_id or not otp_hash:
+    if not mfa_state:
+        # Fallback for legacy session structures
+        if session.get("admin_pending_user_id") and session.get("admin_pending_otp_hash"):
+            mfa_state = {
+                "user_id": session.get("admin_pending_user_id"),
+                "username": session.get("admin_pending_username"),
+                "role": session.get("admin_pending_role", "Admin"),
+                "email": session.get("admin_pending_email"),
+                "otp_hash": session.get("admin_pending_otp_hash"),
+                "expires_at": session.get("admin_pending_otp_expires_at", 0),
+                "attempts": session.get("admin_pending_otp_attempts", 0),
+                "next_url": session.get("admin_pending_next", url_for("admin_ui.admin_dashboard")),
+            }
+
+    if not mfa_state:
         flash("No pending authentication session. Please log in.", "warning")
         return redirect(url_for("admin_ui.admin_login"))
 
+    user_id = mfa_state["user_id"]
+    username = mfa_state["username"]
+    role = mfa_state["role"]
+    otp_hash = mfa_state["otp_hash"]
+    expires_at = mfa_state["expires_at"]
+    next_url = mfa_state.get("next_url") or url_for("admin_ui.admin_dashboard")
+
     client_ip = request.remote_addr or "127.0.0.1"
-    import time
     now = int(time.time())
 
     # Check 5-minute expiration window
     if now > expires_at:
-        session.pop("admin_pending_user_id", None)
-        session.pop("admin_pending_otp_hash", None)
+        AdminSecurityManager.clear_pending_mfa(pending_token)
+        session.pop("admin_pending_token", None)
         audit_repo.log_event("MFA", "OTP_EXPIRED", "FAILED", user_id=user_id, username=username, source_ip=client_ip, details="OTP code expired")
         flash("Verification code has expired (valid for 5 minutes). Please log in again.", "danger")
         return redirect(url_for("admin_ui.admin_login"))
@@ -211,12 +235,11 @@ def admin_verify_otp():
             return render_template("admin/admin_verify_otp.html", username=username)
 
         # Track verification attempts
-        attempts = session.get("admin_pending_otp_attempts", 0) + 1
-        session["admin_pending_otp_attempts"] = attempts
+        attempts = AdminSecurityManager.increment_pending_mfa_attempts(pending_token)
 
         if attempts > 5:
-            session.pop("admin_pending_user_id", None)
-            session.pop("admin_pending_otp_hash", None)
+            AdminSecurityManager.clear_pending_mfa(pending_token)
+            session.pop("admin_pending_token", None)
             AdminSecurityManager.record_failed_attempt(client_ip, username)
             audit_repo.log_event("MFA", "OTP_LOCKOUT", "FAILED", user_id=user_id, username=username, source_ip=client_ip, details="Exceeded 5 OTP attempts")
             flash("Maximum OTP verification attempts exceeded. Please log in again.", "danger")
@@ -224,14 +247,7 @@ def admin_verify_otp():
 
         if AdminSecurityManager.verify_otp_code(otp_code, otp_hash):
             # Single-use OTP: Clear pending MFA state
-            session.pop("admin_pending_user_id", None)
-            session.pop("admin_pending_username", None)
-            session.pop("admin_pending_role", None)
-            session.pop("admin_pending_email", None)
-            session.pop("admin_pending_otp_hash", None)
-            session.pop("admin_pending_otp_expires_at", None)
-            session.pop("admin_pending_otp_attempts", None)
-            session.pop("admin_pending_next", None)
+            AdminSecurityManager.clear_pending_mfa(pending_token)
 
             # Issue full administrator session
             AdminSecurityManager.reset_failed_attempts(client_ip, username)

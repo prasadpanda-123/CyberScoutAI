@@ -121,16 +121,56 @@ class AdminSecurityManager:
         import hashlib
         return hashlib.sha256(otp_code.encode("utf-8")).hexdigest()
 
+    # Server-managed store for pending MFA OTP sessions: key=pending_token -> dict of MFA state
+    _pending_mfa_sessions: Dict[str, dict] = {}
+
     @classmethod
-    def verify_otp_code(cls, submitted_code: str, target_hash: str) -> bool:
+    def store_pending_mfa(
+        cls,
+        user_id: int,
+        username: str,
+        email: str,
+        role: str,
+        otp_hash: str,
+        expires_at: int,
+        next_url: str = "",
+    ) -> str:
         """
-        Validates submitted 6-digit OTP code against target stored hash.
+        Stores pending MFA OTP state in server memory and returns an opaque random pending token.
+        Prevents sensitive OTP hashes from leaking into client-side session cookies.
         """
-        if not submitted_code or not target_hash:
-            return False
-        clean_code = submitted_code.strip()
-        if len(clean_code) != 6 or not clean_code.isdigit():
-            return False
-        computed_hash = cls.hash_otp_code(clean_code)
-        return secrets.compare_digest(computed_hash, target_hash)
+        pending_token = secrets.token_hex(32)
+        cls._pending_mfa_sessions[pending_token] = {
+            "user_id": user_id,
+            "username": username,
+            "email": email,
+            "role": role,
+            "otp_hash": otp_hash,
+            "expires_at": expires_at,
+            "attempts": 0,
+            "next_url": next_url,
+        }
+        return pending_token
+
+    @classmethod
+    def get_pending_mfa(cls, pending_token: Optional[str]) -> Optional[dict]:
+        """Retrieves pending MFA OTP state for a given pending token."""
+        if not pending_token or not isinstance(pending_token, str):
+            return None
+        return cls._pending_mfa_sessions.get(pending_token)
+
+    @classmethod
+    def increment_pending_mfa_attempts(cls, pending_token: str) -> int:
+        """Increments attempt count for target pending MFA session."""
+        mfa_state = cls.get_pending_mfa(pending_token)
+        if mfa_state is not None:
+            mfa_state["attempts"] = mfa_state.get("attempts", 0) + 1
+            return mfa_state["attempts"]
+        return 0
+
+    @classmethod
+    def clear_pending_mfa(cls, pending_token: Optional[str]) -> None:
+        """Removes pending MFA OTP state upon verification or expiration."""
+        if pending_token and isinstance(pending_token, str):
+            cls._pending_mfa_sessions.pop(pending_token, None)
 

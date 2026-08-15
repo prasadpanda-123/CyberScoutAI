@@ -1,8 +1,8 @@
 """
-User Repository for CyberScout AI Authentication and RBAC System.
+Admin Repository for CyberScout AI Administrator Authentication and Management.
 
-Handles database persistence for user registration, authentication,
-role management, and password updates.
+Handles database persistence for administrative accounts in the Admins table.
+Completely isolated from standard user registration and normal user authentication.
 """
 
 from datetime import datetime, timezone
@@ -11,32 +11,35 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from src.database.connection import DatabaseManager
 from src.database.base_repository import row_to_dict
+from src.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
-class UserRepository:
+class AdminRepository:
     """
-    Repository for managing user accounts in the Users table.
+    Repository for managing administrator accounts in the Admins table.
     """
 
-    VALID_ROLES = {"Admin", "User", "admin", "user", "Operator", "Viewer", "Super Admin", "Administrator"}
+    VALID_ROLES = {"Admin", "admin", "Super Admin", "Administrator"}
 
     def __init__(self, db_manager: Optional[DatabaseManager] = None):
         self.db_manager = db_manager or DatabaseManager()
 
-    def create_user(
+    def create_admin(
         self,
         username: str,
         email: str,
         password: str,
-        role: str = "User",
+        role: str = "Admin",
         is_active: bool = True,
     ) -> Dict[str, Any]:
         """
-        Creates a new user with password hashed using PBKDF2 SHA-256.
+        Creates a new administrator account in the Admins table with PBKDF2 SHA-256 password hashing.
         """
         if not email or not isinstance(email, str) or not email.strip():
             raise ValueError("Email cannot be empty or null.")
-        
+
         clean_email = email.strip().lower()
         if "@" not in clean_email or "." not in clean_email.split("@")[-1]:
             raise ValueError(f"Invalid email format: {email}")
@@ -47,15 +50,15 @@ class UserRepository:
         if not username or not isinstance(username, str) or not username.strip():
             raise ValueError("Username cannot be empty or null.")
 
-        clean_role = role.strip() if role else "User"
+        clean_role = role.strip() if role else "Admin"
         if clean_role not in self.VALID_ROLES:
-            raise ValueError(f"Invalid role '{clean_role}'. Must be one of {sorted(self.VALID_ROLES)}")
+            raise ValueError(f"Invalid administrator role '{clean_role}'. Must be one of {sorted(self.VALID_ROLES)}")
 
         password_hash = generate_password_hash(password, method="pbkdf2:sha256")
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
         sql = """
-        INSERT INTO "Users" (username, email, password_hash, role, is_active, created_at)
+        INSERT INTO "Admins" (username, email, password_hash, role, is_active, created_at)
         VALUES (%s, %s, %s, %s, %s, %s)
         RETURNING id
         """
@@ -75,9 +78,10 @@ class UserRepository:
             )
             row = cursor.fetchone()
             conn.commit()
-            user_id = row[0] if row else None
+            admin_id = row[0] if row else None
+            logger.info(f"Created administrator account '{username.strip()}' in Admins table.")
             return {
-                "id": user_id,
+                "id": admin_id,
                 "username": username.strip(),
                 "email": clean_email,
                 "role": clean_role,
@@ -86,17 +90,17 @@ class UserRepository:
             }
         except Exception as e:
             conn.rollback()
-            raise ValueError(f"Username or Email already exists: {e}")
+            raise ValueError(f"Administrator Username or Email already exists: {e}")
         finally:
             cursor.close()
 
     def authenticate(self, identifier: str, password: str) -> Optional[Dict[str, Any]]:
         """
-        Authenticates a user by email or username and password.
-        Returns user dictionary if authentication succeeds and user is active.
+        Authenticates an administrator by email or username and password against the Admins table ONLY.
+        Returns administrator dictionary if authentication succeeds and administrator is active.
         """
         clean_id = identifier.strip().lower()
-        sql = "SELECT id, username, email, password_hash, role, is_active FROM Users WHERE LOWER(email) = ? OR LOWER(username) = ?"
+        sql = 'SELECT id, username, email, password_hash, role, is_active FROM "Admins" WHERE LOWER(email) = ? OR LOWER(username) = ?'
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
@@ -111,7 +115,7 @@ class UserRepository:
                 return None
 
             if check_password_hash(row_d.get("password_hash", ""), password):
-                user_dict = {
+                admin_dict = {
                     "id": row_d.get("id"),
                     "username": row_d.get("username"),
                     "email": row_d.get("email"),
@@ -119,18 +123,18 @@ class UserRepository:
                     "is_active": bool(row_d.get("is_active")),
                 }
                 self.update_last_login(row_d["id"])
-                return user_dict
+                return admin_dict
             return None
         finally:
             cursor.close()
 
-    def get_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
-        """Retrieves user details by user_id."""
-        sql = "SELECT id, username, email, role, is_active, created_at, last_login FROM Users WHERE id = ?"
+    def get_by_id(self, admin_id: int) -> Optional[Dict[str, Any]]:
+        """Retrieves administrator details by admin_id."""
+        sql = 'SELECT id, username, email, role, is_active, created_at, last_login FROM "Admins" WHERE id = ?'
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute(sql, (user_id,))
+            cursor.execute(sql, (admin_id,))
             row = cursor.fetchone()
             if row:
                 return row_to_dict(row, cursor.description)
@@ -139,8 +143,8 @@ class UserRepository:
             cursor.close()
 
     def get_by_email(self, email: str) -> Optional[Dict[str, Any]]:
-        """Retrieves user details by email."""
-        sql = "SELECT id, username, email, role, is_active FROM Users WHERE LOWER(email) = ?"
+        """Retrieves administrator details by email."""
+        sql = 'SELECT id, username, email, role, is_active FROM "Admins" WHERE LOWER(email) = ?'
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
@@ -152,52 +156,25 @@ class UserRepository:
         finally:
             cursor.close()
 
-    def update_last_login(self, user_id: int) -> None:
-        """Updates last_login timestamp for target user_id."""
+    def update_last_login(self, admin_id: int) -> None:
+        """Updates last_login timestamp for target admin_id in Admins table."""
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        sql = "UPDATE Users SET last_login = ? WHERE id = ?"
+        sql = 'UPDATE "Admins" SET last_login = ? WHERE id = ?'
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute(sql, (ts, user_id))
+            cursor.execute(sql, (ts, admin_id))
             conn.commit()
         finally:
             cursor.close()
 
-    def list_users(self) -> List[Dict[str, Any]]:
-        """Lists all registered users."""
-        sql = "SELECT id, username, email, role, is_active, created_at, last_login FROM Users ORDER BY id ASC"
-        conn = self.db_manager.get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute(sql)
-            rows = cursor.fetchall()
-            return [row_to_dict(r, cursor.description) for r in rows]
-        finally:
-            cursor.close()
-
-    def has_users(self) -> bool:
-        """Returns True if at least one user exists in the database."""
-        conn = self.db_manager.get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("SELECT COUNT(*) FROM Users")
-            res = cursor.fetchone()
-            return res[0] > 0 if res else False
-        finally:
-            cursor.close()
-
     def has_admin(self) -> bool:
-        """Returns True if at least one admin or super admin user exists."""
+        """Returns True if at least one admin user exists in the Admins table."""
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute('SELECT COUNT(*) FROM "Admins"')
             res = cursor.fetchone()
-            if res and res[0] > 0:
-                return True
-            cursor.execute("SELECT COUNT(*) FROM Users WHERE role IN ('Admin', 'Super Admin')")
-            res_users = cursor.fetchone()
-            return res_users[0] > 0 if res_users else False
+            return res[0] > 0 if res else False
         finally:
             cursor.close()

@@ -37,10 +37,20 @@ class NormalizerProcessor(BaseProcessor):
             return opportunity
 
         # Normalize dates
+        from src.processors.date_parser import extract_dates_from_text
         if opportunity.published_date:
             opportunity.published_date = parse_and_format_date(opportunity.published_date)
         if opportunity.deadline:
             opportunity.deadline = parse_and_format_date(opportunity.deadline)
+
+        # Contextual date extraction from text if fields are missing
+        if not opportunity.published_date or not opportunity.deadline:
+            full_text = f"{opportunity.title}\n{opportunity.description or ''}"
+            extracted = extract_dates_from_text(full_text)
+            if not opportunity.published_date and extracted.get("published_date"):
+                opportunity.published_date = extracted["published_date"]
+            if not opportunity.deadline and extracted.get("deadline"):
+                opportunity.deadline = extracted["deadline"]
 
         # Normalize provider
         opportunity.provider = normalize_provider_name(opportunity.provider)

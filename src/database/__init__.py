@@ -2,6 +2,7 @@
 Database & Knowledge Base Package for CyberScout AI.
 """
 
+from src.database.admin_repository import AdminRepository
 from src.database.analytics import AnalyticsEngine
 from src.database.archive import ArchiveManager
 from src.database.base_repository import BaseRepository
@@ -30,10 +31,13 @@ from src.database.source_repository import SourceRepository
 from src.database.stats_repository import PreferencesRepository, StatisticsRepository
 from src.database.statistics_manager import StatisticsManager
 from src.database.trend_engine import TrendEngine
+from src.database.user_repository import UserRepository
 
 __all__ = [
     "DatabaseManager",
     "BaseRepository",
+    "UserRepository",
+    "AdminRepository",
     "OpportunityRepository",
     "SourceRepository",
     "KeywordRepository",

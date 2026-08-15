@@ -66,9 +66,13 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
     except Exception as e:
         logger.warning(f"Could not register DatabaseLogHandler: {e}")
 
-    # Secure Session Cookies
+    # Secure Session Cookie Configuration (Phase 3 Hardening)
+    from datetime import timedelta
+    app.config["SESSION_COOKIE_NAME"] = "cyberscout_session"
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["SESSION_COOKIE_SECURE"] = not app.config.get("DEBUG", False) and not app.config.get("TESTING", False)
+    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=1)
 
     # Register Blueprints
     app.register_blueprint(admin_bp)

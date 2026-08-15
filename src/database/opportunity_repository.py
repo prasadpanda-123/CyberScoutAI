@@ -6,7 +6,7 @@ updates for Opportunity objects in PostgreSQL.
 """
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from src.database.base_repository import BaseRepository
 from src.database.connection import DatabaseManager
@@ -184,6 +184,12 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
         ON CONFLICT(id) DO UPDATE SET
             title = excluded.title,
             description = excluded.description,
+            category = excluded.category,
+            provider = excluded.provider,
+            company = excluded.company,
+            location = excluded.location,
+            deadline = excluded.deadline,
+            published_date = excluded.published_date,
             score = excluded.score,
             score_breakdown = excluded.score_breakdown,
             confidence_score = excluded.confidence_score,
@@ -195,6 +201,7 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
             keyword_score = excluded.keyword_score,
             spam_score = excluded.spam_score,
             status = excluded.status,
+            duplicate_of_id = excluded.duplicate_of_id,
             last_seen = excluded.last_seen;
         """
         values = (
@@ -243,6 +250,12 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
         ON CONFLICT(id) DO UPDATE SET
             title = excluded.title,
             description = excluded.description,
+            category = excluded.category,
+            provider = excluded.provider,
+            company = excluded.company,
+            location = excluded.location,
+            deadline = excluded.deadline,
+            published_date = excluded.published_date,
             score = excluded.score,
             score_breakdown = excluded.score_breakdown,
             confidence_score = excluded.confidence_score,
@@ -254,6 +267,7 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
             keyword_score = excluded.keyword_score,
             spam_score = excluded.spam_score,
             status = excluded.status,
+            duplicate_of_id = excluded.duplicate_of_id,
             last_seen = excluded.last_seen;
         """
         seq = []
@@ -389,3 +403,129 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
         with self.db_manager.transaction() as cursor:
             cursor.execute(sql, (cutoff_date,))
             return cursor.rowcount if hasattr(cursor, "rowcount") and cursor.rowcount is not None else 0
+
+    def save_opportunity_with_deduplication(self, opp: Opportunity) -> Tuple[str, bool]:
+        """
+        Pre-insert duplicate detection & field merging.
+
+        Returns:
+            Tuple of (opportunity_id, is_duplicate_boolean).
+        """
+        url_hash = opp.generate_url_hash()
+        existing = self.get_by_url_hash(url_hash)
+
+        if existing:
+            # Merge fields from new item into existing survivor
+            if not existing.deadline and opp.deadline:
+                existing.deadline = opp.deadline
+            if not existing.published_date and opp.published_date:
+                existing.published_date = opp.published_date
+            if not existing.description and opp.description:
+                existing.description = opp.description
+            if not existing.provider and opp.provider:
+                existing.provider = opp.provider
+            if not existing.company and opp.company:
+                existing.company = opp.company
+            if not existing.location and opp.location:
+                existing.location = opp.location
+            if opp.score > (existing.score or 0):
+                existing.score = opp.score
+            if opp.last_seen:
+                existing.last_seen = opp.last_seen
+
+            self.upsert(existing)
+            logger.info(f"Duplicate opportunity merged: '{opp.title}' -> canonical ID '{existing.id}'")
+            return existing.id, True
+
+        saved_id = self.upsert(opp)
+        return saved_id, False
+
+    def cleanup_database_duplicates(self) -> Dict[str, int]:
+        """
+        Scans existing Opportunities table for duplicate url_hash groups, merges missing fields,
+        and marks redundant records with status='duplicate'.
+        """
+        stats = {"duplicate_groups_found": 0, "records_merged": 0, "duplicates_cleaned": 0}
+        dup_groups = []
+        with self.db_manager.transaction() as cursor:
+            cursor.execute("SELECT url_hash, COUNT(*) FROM Opportunities GROUP BY url_hash HAVING COUNT(*) > 1;")
+            dup_groups = cursor.fetchall()
+            stats["duplicate_groups_found"] = len(dup_groups)
+
+        if not dup_groups:
+            return stats
+
+        with self.db_manager.transaction() as cursor:
+            for group in dup_groups:
+                url_hash = group[0]
+                cursor.execute(
+                    "SELECT id, title, url, source_id, category, description, deadline, published_date, company, provider, location, score, status, duplicate_of_id "
+                    "FROM Opportunities WHERE url_hash = %s;",
+                    (url_hash,)
+                )
+                rows = cursor.fetchall()
+                if len(rows) <= 1:
+                    continue
+
+                records = []
+                for row in rows:
+                    rec = Opportunity(
+                        id=row[0],
+                        title=row[1],
+                        url=row[2],
+                        source_id=row[3],
+                        category=row[4],
+                        description=row[5],
+                        deadline=row[6],
+                        published_date=row[7],
+                        company=row[8],
+                        provider=row[9],
+                        location=row[10],
+                        score=row[11],
+                        status=row[12],
+                        duplicate_of_id=row[13],
+                    )
+                    records.append(rec)
+
+                def calc_completeness(item: Opportunity) -> int:
+                    score = 0
+                    if item.deadline: score += 10
+                    if item.published_date: score += 5
+                    if item.description: score += 5
+                    if item.company: score += 2
+                    if item.provider: score += 2
+                    score += item.score or 0
+                    return score
+
+                records.sort(key=calc_completeness, reverse=True)
+                survivor = records[0]
+
+                for dup in records[1:]:
+                    if not survivor.deadline and dup.deadline:
+                        survivor.deadline = dup.deadline
+                    if not survivor.published_date and dup.published_date:
+                        survivor.published_date = dup.published_date
+                    if not survivor.description and dup.description:
+                        survivor.description = dup.description
+                    if not survivor.provider and dup.provider:
+                        survivor.provider = dup.provider
+                    if not survivor.company and dup.company:
+                        survivor.company = dup.company
+                    if not survivor.location and dup.location:
+                        survivor.location = dup.location
+                    if (dup.score or 0) > (survivor.score or 0):
+                        survivor.score = dup.score
+
+                    cursor.execute(
+                        "UPDATE Opportunities SET status = %s, duplicate_of_id = %s WHERE id = %s;",
+                        (Status.DUPLICATE.value, survivor.id, dup.id)
+                    )
+                    stats["duplicates_cleaned"] += 1
+
+                cursor.execute(
+                    "UPDATE Opportunities SET deadline = %s, published_date = %s, description = %s, provider = %s, company = %s, location = %s, score = %s WHERE id = %s;",
+                    (survivor.deadline, survivor.published_date, survivor.description, survivor.provider, survivor.company, survivor.location, survivor.score, survivor.id)
+                )
+                stats["records_merged"] += 1
+
+        return stats

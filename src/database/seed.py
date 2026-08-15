@@ -75,20 +75,20 @@ class SeedManager:
         return count
 
     def seed_users(self) -> int:
-        """Seeds default Admin user ('admin@cyberscout.ai') idempotently without modifying or deleting existing admins."""
-        from src.database.user_repository import UserRepository
-        user_repo = UserRepository(self.db_manager)
+        """Seeds default Admin user ('admin@cyberscout.ai') into Admins table idempotently."""
+        from src.database.admin_repository import AdminRepository
+        admin_repo = AdminRepository(self.db_manager)
 
-        # Seed primary Admin user if not present
-        existing_admin = user_repo.get_by_email("admin@cyberscout.ai")
+        # Seed primary Admin account into Admins table if not present
+        existing_admin = admin_repo.get_by_email("admin@cyberscout.ai")
         if not existing_admin:
-            user_repo.create_user(
+            admin_repo.create_admin(
                 username="admin",
                 email="admin@cyberscout.ai",
                 password="Admin@CyberScout2026!",
                 role="Admin",
             )
-            logger.info("Seeded primary Admin user ('admin@cyberscout.ai').")
+            logger.info("Seeded primary Admin account ('admin@cyberscout.ai') into Admins table.")
             return 1
         return 0
 
