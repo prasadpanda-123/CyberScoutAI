@@ -10,9 +10,12 @@ dash_service = DashboardService()
 @opportunities_bp.route("/opportunities")
 @login_required
 def index():
-    """Renders Opportunities table view with server-side pagination and filters."""
+    """Renders Opportunities table view with server-side pagination, sorting, and filters."""
     category = request.args.get("category", "all")
     search_q = request.args.get("q", "")
+    deadline_f = request.args.get("deadline", "all")
+    sort_by = request.args.get("sort", "relevance")
+    view_mode = request.args.get("view", "all")
 
     # Sanitize page parameter
     try:
@@ -36,6 +39,8 @@ def index():
         res = dash_service.get_opportunities(
             category=category,
             search_query=search_q,
+            deadline_filter=deadline_f if deadline_f != "all" else None,
+            sort_by=sort_by,
             limit=per_page,
             offset=offset,
             return_total=True,
@@ -58,6 +63,8 @@ def index():
             res = dash_service.get_opportunities(
                 category=category,
                 search_query=search_q,
+                deadline_filter=deadline_f if deadline_f != "all" else None,
+                sort_by=sort_by,
                 limit=per_page,
                 offset=offset,
                 return_total=True,
@@ -80,6 +87,9 @@ def index():
         opportunities=opps,
         selected_category=category,
         search_query=search_q,
+        selected_deadline=deadline_f,
+        selected_sort=sort_by,
+        view_mode=view_mode,
         page=page,
         per_page=per_page,
         total_count=total_count,

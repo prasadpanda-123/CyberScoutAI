@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin Portal - Configuration</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#ffdcc0",
+                        "on-surface": "#dae2fd",
+                        "on-tertiary-container": "#412200",
+                        "on-background": "#dae2fd",
+                        "on-error": "#690005",
+                        "inverse-surface": "#dae2fd",
+                        "surface-container-lowest": "#060e20",
+                        "on-error-container": "#ffdad6",
+                        "inverse-primary": "#006398",
+                        "secondary-fixed-dim": "#7bd0ff",
+                        "surface-container-low": "#131b2e",
+                        "danger": "#EF4444",
+                        "tertiary-container": "#d07d1c",
+                        "admin-accent": "#EF4444",
+                        "tertiary": "#ffb875",
+                        "on-primary-fixed-variant": "#004b73",
+                        "on-primary": "#003351",
+                        "surface-container-high": "#222a3d",
+                        "on-primary-fixed": "#001d31",
+                        "bg-card-hover": "#1E293B",
+                        "primary-fixed-dim": "#93ccff",
+                        "surface-bright": "#31394d",
+                        "surface-container-highest": "#2d3449",
+                        "inverse-on-surface": "#283044",
+                        "primary-fixed": "#cce5ff",
+                        "surface-container": "#171f33",
+                        "secondary": "#7bd0ff",
+                        "primary": "#93ccff",
+                        "error": "#ffb4ab",
+                        "info": "#06B6D4",
+                        "on-secondary": "#00354a",
+                        "background": "#0b1326",
+                        "surface-dim": "#0b1326",
+                        "text-primary": "#F8FAFC",
+                        "on-tertiary": "#4b2800",
+                        "surface": "#0b1326",
+                        "text-muted": "#64748B",
+                        "border-subtle": "#1E293B",
+                        "on-secondary-fixed-variant": "#004c69",
+                        "surface-variant": "#2d3449",
+                        "bg-surface": "#0B0F19",
+                        "on-tertiary-fixed": "#2d1600",
+                        "on-tertiary-fixed-variant": "#6b3b00",
+                        "secondary-fixed": "#c4e7ff",
+                        "on-primary-container": "#002c47",
+                        "surface-tint": "#93ccff",
+                        "on-secondary-fixed": "#001e2c",
+                        "primary-container": "#3198dc",
+                        "warning": "#F59E0B",
+                        "outline-variant": "#3f4850",
+                        "success": "#10B981",
+                        "on-surface-variant": "#bfc7d2",
+                        "error-container": "#93000a",
+                        "tertiary-fixed-dim": "#ffb875",
+                        "secondary-container": "#00a6e0",
+                        "outline": "#89929b",
+                        "text-secondary": "#94A3B8",
+                        "bg-body": "#070B14",
+                        "on-secondary-container": "#00374d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-md": "16px",
+                        "stack-sm": "8px",
+                        "margin-desktop": "32px",
+                        "sidebar-collapsed": "64px",
+                        "margin-mobile": "16px",
+                        "sidebar-width": "280px",
+                        "stack-lg": "32px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "display-kpi": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "mono-code": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-sm": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "display-kpi": ["48px", {"lineHeight": "48px", "letterSpacing": "-0.04em", "fontWeight": "700"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg": ["30px", {"lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "mono-code": ["13px", {"lineHeight": "20px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .syntax-key { color: #93ccff; }
+        .syntax-string { color: #10B981; }
+        .syntax-number { color: #F59E0B; }
+        .syntax-comment { color: #64748B; font-style: italic; }
+        .syntax-sensitive { color: #EF4444; background: rgba(239, 68, 68, 0.1); padding: 0 4px; border-radius: 2px; border: 1px solid rgba(239, 68, 68, 0.3); }
+        
+        .code-line { display: flex; padding-left: 16px; border-left: 2px solid transparent; transition: all 0.2s; }
+        .code-line:hover { background: rgba(239, 68, 68, 0.05); border-left-color: #EF4444; }
+        .line-number { color: #3f4850; min-width: 40px; text-align: right; margin-right: 16px; user-select: none; }
+        
+        /* Custom Scrollbar for Code View */
+        .custom-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #0b1326; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #2d3449; }
+    </style>
+</head>
+<body class="bg-body text-text-primary font-body-md min-h-screen flex selection:bg-admin-accent/30 selection:text-white">
+<!-- Admin SideNavBar -->
+<nav class="bg-surface dark:bg-surface text-admin-accent dark:text-admin-accent fixed left-0 top-0 h-full w-sidebar-width border-r border-admin-accent/20 flex flex-col py-gutter px-stack-md z-50">
+<!-- Header -->
+<div class="mb-stack-lg flex items-center gap-4">
+<div class="w-10 h-10 rounded bg-admin-accent/20 flex items-center justify-center border border-admin-accent/30 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+<span class="material-symbols-outlined text-admin-accent" style="font-variation-settings: 'FILL' 1;">admin_panel_settings</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-admin-accent dark:text-admin-accent">Admin Portal</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant">System Core</p>
+</div>
+</div>
+<!-- Navigation Tabs -->
+<div class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-admin-accent transition-colors">admin_panel_settings</span>
+<span class="font-headline-sm text-headline-sm">Admin Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-admin-accent transition-colors">settings_input_component</span>
+<span class="font-headline-sm text-headline-sm">Collectors</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-admin-accent transition-colors">schedule</span>
+<span class="font-headline-sm text-headline-sm">Scheduler</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-admin-accent transition-colors">terminal</span>
+<span class="font-headline-sm text-headline-sm">Security Logs</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-admin-accent transition-colors">group</span>
+<span class="font-headline-sm text-headline-sm">Users</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-admin-accent font-bold border-l-2 border-admin-accent bg-admin-accent/10 scale-95 duration-150 ease-in-out shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]" href="#">
+<span class="material-symbols-outlined text-admin-accent" style="font-variation-settings: 'FILL' 1;">tune</span>
+<span class="font-headline-sm text-headline-sm">Configuration</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-admin-accent transition-colors">analytics</span>
+<span class="font-headline-sm text-headline-sm">Diagnostics</span>
+</a>
+</div>
+<!-- Footer -->
+<div class="mt-auto pt-stack-md border-t border-admin-accent/20">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-admin-accent transition-colors">logout</span>
+<span class="font-headline-sm text-headline-sm">Exit Admin</span>
+</a>
+</div>
+</nav>
+<!-- Main Canvas -->
+<main class="ml-sidebar-width flex-1 flex flex-col min-h-screen max-w-[1600px] w-full bg-body shadow-[inset_0_0_100px_rgba(239,68,68,0.02)]">
+<!-- Header -->
+<header class="h-24 flex items-center justify-between px-margin-desktop border-b border-border-subtle bg-surface/50 backdrop-blur-md sticky top-0 z-30">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface flex items-center gap-3">
+<span class="material-symbols-outlined text-admin-accent text-[32px]">tune</span>
+                    System Configuration
+                </h2>
+<p class="text-text-muted mt-1 font-body-md flex items-center gap-2">
+<span class="inline-block w-2 h-2 rounded-full bg-success shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span>
+                    Live Production Environment • Read-Only Mode
+                </p>
+</div>
+<div class="flex items-center gap-stack-md">
+<!-- Search -->
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-text-muted text-[20px] group-focus-within:text-admin-accent transition-colors">search</span>
+</div>
+<input class="bg-surface border border-border-subtle text-text-primary font-body-md rounded-lg pl-10 pr-4 py-2 w-64 focus:outline-none focus:border-admin-accent focus:ring-1 focus:ring-admin-accent/50 shadow-[0_0_0_0_rgba(239,68,68,0)] focus:shadow-[0_0_15px_rgba(239,68,68,0.15)] transition-all placeholder:text-text-muted" placeholder="Search config..." type="text"/>
+<div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+<span class="font-mono-code text-mono-code text-text-muted bg-surface-variant px-1.5 rounded text-[10px]">⌘K</span>
+</div>
+</div>
+<button class="flex items-center gap-2 bg-admin-accent text-white px-6 py-2.5 rounded-lg font-headline-sm text-headline-sm hover:scale-[0.98] hover:shadow-[0_0_20px_rgba(239,68,68,0.3)] transition-all">
+<span class="material-symbols-outlined text-[20px]">edit_note</span>
+                    Request Edit
+                </button>
+</div>
+</header>
+<!-- Content Area -->
+<div class="p-margin-desktop flex-1 flex gap-gutter">
+<!-- File Explorer Sidebar -->
+<div class="w-64 flex flex-col gap-stack-sm bg-surface rounded-xl border border-border-subtle overflow-hidden">
+<div class="p-4 border-b border-border-subtle bg-surface-container-low">
+<h3 class="font-label-caps text-label-caps text-text-muted">Configuration Files</h3>
+</div>
+<div class="p-2 flex-1 overflow-y-auto custom-scroll">
+<button class="w-full flex items-center gap-3 px-3 py-2 rounded-md bg-admin-accent/10 border border-admin-accent/30 text-admin-accent font-headline-sm text-headline-sm mb-1 text-left">
+<span class="material-symbols-outlined text-[18px]">description</span>
+                        sources.yaml
+                    </button>
+<button class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-text-secondary hover:bg-surface-variant hover:text-on-surface font-headline-sm text-headline-sm mb-1 transition-colors text-left group">
+<span class="material-symbols-outlined text-[18px] group-hover:text-text-primary transition-colors">description</span>
+                        keywords.yaml
+                    </button>
+<button class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-text-secondary hover:bg-surface-variant hover:text-on-surface font-headline-sm text-headline-sm mb-1 transition-colors text-left group">
+<span class="material-symbols-outlined text-[18px] group-hover:text-text-primary transition-colors">lock</span>
+                        secrets.yaml
+                    </button>
+<button class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-text-secondary hover:bg-surface-variant hover:text-on-surface font-headline-sm text-headline-sm mb-1 transition-colors text-left group">
+<span class="material-symbols-outlined text-[18px] group-hover:text-text-primary transition-colors">description</span>
+                        retention_policies.yaml
+                    </button>
+</div>
+</div>
+<!-- Code Viewer Canvas -->
+<div class="flex-1 bg-surface-container-low rounded-xl border border-admin-accent/20 flex flex-col overflow-hidden shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)]">
+<!-- Viewer Toolbar -->
+<div class="h-12 border-b border-border-subtle flex items-center justify-between px-4 bg-surface-container">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-admin-accent text-[18px]">description</span>
+<span class="font-mono-code text-mono-code text-on-surface">/opt/cyberscout/config/sources.yaml</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider bg-admin-accent/10 text-admin-accent border border-admin-accent/30 ml-2">READ ONLY</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="text-text-muted hover:text-on-surface p-1.5 rounded hover:bg-surface-variant transition-colors" title="Copy to Clipboard">
+<span class="material-symbols-outlined text-[18px]">content_copy</span>
+</button>
+<button class="text-text-muted hover:text-on-surface p-1.5 rounded hover:bg-surface-variant transition-colors" title="Expand View">
+<span class="material-symbols-outlined text-[18px]">fullscreen</span>
+</button>
+</div>
+</div>
+<!-- Code Container -->
+<div class="flex-1 overflow-auto custom-scroll p-4 bg-[#0a0f18] font-mono-code text-mono-code leading-relaxed relative group/code">
+<!-- Line 1 -->
+<div class="code-line">
+<div class="line-number">1</div>
+<div class="w-full">
+<span class="syntax-comment"># Global Collector Sources Configuration</span>
+</div>
+</div>
+<!-- Line 2 -->
+<div class="code-line">
+<div class="line-number">2</div>
+<div class="w-full">
+<span class="syntax-comment"># Last modified: 2023-10-24T08:14:00Z</span>
+</div>
+</div>
+<!-- Line 3 -->
+<div class="code-line">
+<div class="line-number">3</div>
+<div class="w-full"></div>
+</div>
+<!-- Line 4 -->
+<div class="code-line">
+<div class="line-number">4</div>
+<div class="w-full">
+<span class="syntax-key">version:</span> <span class="syntax-string">'2.4'</span>
+</div>
+</div>
+<!-- Line 5 -->
+<div class="code-line">
+<div class="line-number">5</div>
+<div class="w-full">
+<span class="syntax-key">global_settings:</span>
+</div>
+</div>
+<!-- Line 6 -->
+<div class="code-line">
+<div class="line-number">6</div>
+<div class="w-full pl-4">
+<span class="syntax-key">poll_interval_seconds:</span> <span class="syntax-number">300</span>
+</div>
+</div>
+<!-- Line 7 -->
+<div class="code-line">
+<div class="line-number">7</div>
+<div class="w-full pl-4">
+<span class="syntax-key">retry_limit:</span> <span class="syntax-number">5</span>
+</div>
+</div>
+<!-- Line 8 -->
+<div class="code-line">
+<div class="line-number">8</div>
+<div class="w-full"></div>
+</div>
+<!-- Line 9 -->
+<div class="code-line">
+<div class="line-number">9</div>
+<div class="w-full">
+<span class="syntax-key">sources:</span>
+</div>
+</div>
+<!-- Line 10 -->
+<div class="code-line">
+<div class="line-number">10</div>
+<div class="w-full pl-4">
+<span class="syntax-key">- id:</span> <span class="syntax-string">'src_darkweb_alpha'</span>
+</div>
+</div>
+<!-- Line 11 -->
+<div class="code-line">
+<div class="line-number">11</div>
+<div class="w-full pl-6">
+<span class="syntax-key">type:</span> <span class="syntax-string">'tor_relay'</span>
+</div>
+</div>
+<!-- Line 12 -->
+<div class="code-line">
+<div class="line-number">12</div>
+<div class="w-full pl-6">
+<span class="syntax-key">enabled:</span> <span class="syntax-number">true</span>
+</div>
+</div>
+<!-- Line 13 -->
+<div class="code-line">
+<div class="line-number">13</div>
+<div class="w-full pl-6 flex items-center justify-between group/sensitive">
+<div>
+<span class="syntax-key">auth_token:</span> <span class="syntax-sensitive cursor-pointer" title="Click to reveal">••••••••••••••••••••••••••••••••</span>
+</div>
+<button class="opacity-0 group-hover/sensitive:opacity-100 transition-opacity text-admin-accent hover:bg-admin-accent/10 px-2 py-0.5 rounded text-[11px] flex items-center gap-1 border border-admin-accent/30">
+<span class="material-symbols-outlined text-[14px]">visibility</span> Reveal
+                            </button>
+</div>
+</div>
+<!-- Line 14 -->
+<div class="code-line">
+<div class="line-number">14</div>
+<div class="w-full pl-6">
+<span class="syntax-key">endpoint:</span> <span class="syntax-string">'http://x7q...onion/api/v1/stream'</span>
+</div>
+</div>
+<!-- Line 15 -->
+<div class="code-line">
+<div class="line-number">15</div>
+<div class="w-full"></div>
+</div>
+<!-- Line 16 -->
+<div class="code-line">
+<div class="line-number">16</div>
+<div class="w-full pl-4">
+<span class="syntax-key">- id:</span> <span class="syntax-string">'src_osint_twitter'</span>
+</div>
+</div>
+<!-- Line 17 -->
+<div class="code-line">
+<div class="line-number">17</div>
+<div class="w-full pl-6">
+<span class="syntax-key">type:</span> <span class="syntax-string">'api_rest'</span>
+</div>
+</div>
+<!-- Line 18 -->
+<div class="code-line">
+<div class="line-number">18</div>
+<div class="w-full pl-6 flex items-center justify-between group/sensitive">
+<div>
+<span class="syntax-key">api_key:</span> <span class="syntax-sensitive cursor-pointer" title="Click to reveal">••••••••••••••••</span>
+</div>
+<button class="opacity-0 group-hover/sensitive:opacity-100 transition-opacity text-admin-accent hover:bg-admin-accent/10 px-2 py-0.5 rounded text-[11px] flex items-center gap-1 border border-admin-accent/30">
+<span class="material-symbols-outlined text-[14px]">visibility</span> Reveal
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

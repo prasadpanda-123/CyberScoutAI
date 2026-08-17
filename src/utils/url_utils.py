@@ -136,7 +136,9 @@ def is_valid_url(url: str) -> bool:
 
 TRACKING_PARAMS = {
     "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
-    "fbclid", "gclid", "msclkid", "_ga", "_ke", "mc_cid", "mc_eid", "ref", "source"
+    "utm_name", "utm_cid", "utm_reader", "fbclid", "gclid", "msclkid",
+    "_ga", "_ke", "mc_cid", "mc_eid", "ref", "ref_src", "source", "feature",
+    "trk", "igshid", "ncid"
 }
 
 
@@ -144,13 +146,13 @@ def normalize_url(url: str) -> str:
     """
     Normalizes a URL into a canonical string representation for accurate deduplication.
     Rules:
-    - Normalizes protocol scheme to lowercase (http/https).
+    - Normalizes protocol scheme to lowercase https (treating http and https as equivalent web protocols).
     - Lowercases hostname and strips 'www.' prefix for canonical domain matching.
     - Strips default ports (:80 for http, :443 for https).
-    - Removes trailing slashes on paths (/ctf/ -> /ctf).
+    - Removes trailing slashes on paths (/ctf/ -> /ctf) while preserving root (/).
     - Removes URL fragments (#section, #overview).
-    - Strips tracking & campaign query parameters while preserving resource parameters (?id=123).
-    - Safely unquotes unnecessary URL percent-encodings.
+    - Strips tracking & campaign query parameters while preserving resource parameters (?id=123, ?page=2).
+    - Safely unquotes unnecessary URL percent-encodings and sorts query parameters deterministically.
     """
     if not url or not isinstance(url, str):
         return ""
@@ -168,12 +170,15 @@ def normalize_url(url: str) -> str:
         return cleaned.lower().rstrip("/")
 
     scheme = parsed.scheme.lower()
+    if scheme in ("http", "https"):
+        scheme = "https"
+
     netloc = parsed.netloc.lower()
 
     # Strip default ports
-    if netloc.endswith(":80") and scheme == "http":
+    if netloc.endswith(":80"):
         netloc = netloc[:-3]
-    elif netloc.endswith(":443") and scheme == "https":
+    elif netloc.endswith(":443"):
         netloc = netloc[:-4]
 
     # Strip userinfo if present

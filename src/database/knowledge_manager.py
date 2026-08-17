@@ -88,6 +88,23 @@ class KnowledgeManager:
             existing = existing_map.get(uh)
             if existing:
                 opp.id = existing.id
+                # Preserve existing high-value fields if incoming is missing
+                if not opp.deadline and existing.deadline:
+                    opp.deadline = existing.deadline
+                if not opp.published_date and existing.published_date:
+                    opp.published_date = existing.published_date
+                if not opp.description and existing.description:
+                    opp.description = existing.description
+                if (not opp.category or opp.category == "other") and existing.category and existing.category != "other":
+                    opp.category = existing.category
+                if not opp.provider and existing.provider:
+                    opp.provider = existing.provider
+                if not opp.company and existing.company:
+                    opp.company = existing.company
+                if not opp.location and existing.location:
+                    opp.location = existing.location
+                if (existing.score or 0) > (opp.score or 0):
+                    opp.score = existing.score
             to_upsert.append(opp)
 
         return self.opp_repo.upsert_batch(to_upsert)

@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from src.core.constants import PROJECT_ROOT, REPORTS_DIR
 from src.core.health import HealthMonitor
+from src.database.base_repository import row_to_dict
 from src.database.connection import DatabaseManager
 from src.database.log_repository import LogRepository
 from src.database.opportunity_repository import OpportunityRepository
@@ -71,17 +72,27 @@ class DashboardService:
         cursor = conn.cursor()
 
         try:
-            # 1. Opportunity Counts
-            cursor.execute("SELECT COUNT(*) FROM Opportunities WHERE is_rejected = False OR is_rejected IS NULL")
-            total_opps_row = cursor.fetchone()
-            total_opps = total_opps_row[0] if total_opps_row else 0
+            from datetime import timedelta
+            soon_str = (datetime.now(timezone.utc) + timedelta(days=14)).strftime("%Y-%m-%d")
 
-            cursor.execute("SELECT COUNT(*) FROM Opportunities WHERE (is_rejected = False OR is_rejected IS NULL) AND discovered_date = ?", (today_str,))
-            today_opps_row = cursor.fetchone()
-            today_opps = today_opps_row[0] if today_opps_row else 0
+            # 1. Opportunity Counts - Consolidated Single-Pass Query
+            cursor.execute(
+                """
+                SELECT 
+                    COUNT(*) as total_opps,
+                    COALESCE(SUM(CASE WHEN discovered_date = ? THEN 1 ELSE 0 END), 0) as today_opps,
+                    COALESCE(SUM(CASE WHEN deadline IS NOT NULL AND deadline >= ? AND deadline <= ? THEN 1 ELSE 0 END), 0) as closing_soon_count
+                FROM Opportunities
+                WHERE is_rejected IS NOT TRUE
+                """,
+                (today_str, today_str, soon_str)
+            )
+            agg_row = cursor.fetchone()
+            total_opps = int(agg_row[0]) if agg_row and agg_row[0] is not None else 0
+            today_opps = int(agg_row[1]) if agg_row and agg_row[1] is not None else 0
+            closing_soon_count = int(agg_row[2]) if agg_row and agg_row[2] is not None else 0
 
-            cursor.execute("SELECT category, COUNT(*) as cnt FROM Opportunities WHERE is_rejected = False OR is_rejected IS NULL GROUP BY category")
-            from src.database.base_repository import row_to_dict
+            cursor.execute("SELECT category, COUNT(*) as cnt FROM Opportunities WHERE is_rejected IS NOT TRUE GROUP BY category")
             category_counts = {r["category"]: r["cnt"] for r in [row_to_dict(r, cursor.description) for r in cursor.fetchall()]}
 
             # 2. Search & Scan Pipeline Execution Stats
@@ -140,6 +151,7 @@ class DashboardService:
             return {
                 "total_opportunities": total_opps,
                 "today_opportunities": today_opps,
+                "closing_soon_count": closing_soon_count,
                 "active_sources": active_sources_cnt,
                 "active_collectors": active_sources_cnt,
                 "scheduler_status": "Running",
@@ -167,6 +179,7 @@ class DashboardService:
             return {
                 "total_opportunities": "Unavailable",
                 "today_opportunities": "Unavailable",
+                "closing_soon_count": 0,
                 "active_sources": "Unavailable",
                 "active_collectors": "Unavailable",
                 "scheduler_status": "Unavailable",
@@ -193,6 +206,7 @@ class DashboardService:
         finally:
             try:
                 cursor.close()
+                conn.rollback()
             except Exception:
                 pass
 
@@ -200,6 +214,8 @@ class DashboardService:
         self,
         category: Optional[str] = None,
         search_query: Optional[str] = None,
+        deadline_filter: Optional[str] = None,
+        sort_by: Optional[str] = None,
         limit: int = 20,
         offset: int = 0,
         return_total: bool = False,
@@ -214,10 +230,13 @@ class DashboardService:
                 offset=offset,
                 category=cat_filter,
                 search_query=search_filter,
+                deadline_filter=deadline_filter,
+                sort_by=sort_by,
             )
             total_cnt = self.opp_repo.count_paginated_opportunities(
                 category=cat_filter,
                 search_query=search_filter,
+                deadline_filter=deadline_filter,
             )
 
             results = []

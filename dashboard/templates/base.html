@@ -1,68 +1,399 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html class="dark" lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CyberScout AI — Web Dashboard & Control Center</title>
-  <!-- Google Fonts Inter -->
+  <title>{% block title %}CyberScout AI — Opportunity Intelligence{% endblock %}</title>
+  
+  <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Bootstrap 5 CSS & Icons -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Custom Design System & Accessible Theme -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN with Stitch Design System Tokens -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface-bright": "#31394d",
+            "on-secondary": "#00354a",
+            "bg-card-hover": "#1E293B",
+            "outline": "#89929b",
+            "surface-container-lowest": "#060e20",
+            "text-muted": "#64748B",
+            "on-secondary-container": "#00374d",
+            "on-tertiary": "#4b2800",
+            "error-container": "#93000a",
+            "inverse-surface": "#dae2fd",
+            "primary": "#93ccff",
+            "surface-container": "#171f33",
+            "info": "#06B6D4",
+            "primary-fixed": "#cce5ff",
+            "on-primary-fixed": "#001d31",
+            "on-error-container": "#ffdad6",
+            "on-tertiary-container": "#412200",
+            "outline-variant": "#3f4850",
+            "surface-container-high": "#222a3d",
+            "danger": "#EF4444",
+            "primary-container": "#3198dc",
+            "surface-container-highest": "#2d3449",
+            "border-subtle": "#1E293B",
+            "surface-variant": "#2d3449",
+            "surface": "#0b1326",
+            "on-primary-container": "#002c47",
+            "warning": "#F59E0B",
+            "on-surface-variant": "#bfc7d2",
+            "on-background": "#dae2fd",
+            "text-secondary": "#94A3B8",
+            "primary-fixed-dim": "#93ccff",
+            "on-surface": "#dae2fd",
+            "secondary-fixed-dim": "#7bd0ff",
+            "error": "#ffb4ab",
+            "surface-dim": "#0b1326",
+            "bg-surface": "#0B0F19",
+            "secondary-fixed": "#c4e7ff",
+            "surface-container-low": "#131b2e",
+            "bg-body": "#070B14",
+            "text-primary": "#F8FAFC",
+            "success": "#10B981",
+            "admin-accent": "#EF4444"
+          },
+          fontFamily: {
+            "sans": ["Inter", "system-ui", "sans-serif"],
+            "mono": ["JetBrains Mono", "monospace"]
+          },
+          spacing: {
+            "sidebar-width": "260px"
+          }
+        }
+      }
+    }
+  </script>
+  
   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
-
-  <!-- Immediate Theme Initialization Script -->
   <script>
     (function() {
       const savedTheme = localStorage.getItem('cyberscout-theme') || 'dark';
       document.documentElement.setAttribute('data-theme', savedTheme);
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
+      }
+      if (localStorage.getItem('cyberscout_sidebar_collapsed') === 'true') {
+        document.documentElement.classList.add('sidebar-collapsed-init');
+      }
     })();
   </script>
+  {% block extra_head %}{% endblock %}
 </head>
-<body>
-  {% include 'navbar.html' %}
-  <div class="container-fluid">
-    <div class="row">
-      <div class="col-md-2 d-none d-md-block p-0">
-        {% include 'sidebar.html' %}
+<body class="bg-bg-body text-text-primary antialiased min-h-screen flex flex-col selection:bg-primary-container selection:text-on-primary-container">
+
+  <!-- Mobile Overlay -->
+  <div id="mobileOverlay" class="fixed inset-0 bg-black/60 z-40 hidden md:hidden" onclick="toggleMobileSidebar()"></div>
+
+  <!-- Floating Sidebar Open Button (Notion-style) -->
+  <button type="button" id="sidebarExpandBtn" onclick="handleSidebarOpen()" class="sidebar-expand-btn fixed top-3.5 left-3.5 z-40" title="Open sidebar (Ctrl+\)">
+    <svg class="w-4 h-4 text-text-secondary hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  </button>
+
+  <!-- Stitch SideNavBar (Desktop & Mobile Drawer) -->
+  <aside id="sidebar" class="fixed left-0 top-0 h-full w-[260px] bg-surface border-r border-border-subtle flex flex-col py-5 px-3 z-50 transition-transform duration-300 md:translate-x-0 -translate-x-full">
+    <!-- Brand Header with Notion Collapse Button -->
+    <div class="flex items-center justify-between gap-2 mb-6 px-2">
+      <a href="/dashboard" class="flex items-center gap-3 text-decoration-none">
+        <div class="h-9 w-9 rounded-lg bg-primary-container/20 flex items-center justify-center border border-primary/30 shrink-0">
+          <span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">security</span>
+        </div>
+        <div>
+          <h1 class="text-[15px] font-bold text-primary tracking-tight leading-none">CyberScout AI</h1>
+          <p class="text-[11px] font-semibold text-text-muted uppercase tracking-wider mt-0.5">Intelligence</p>
+        </div>
+      </a>
+      <div class="flex items-center">
+        <!-- Notion Retract Button (Desktop) -->
+        <button type="button" id="sidebarCollapseBtn" onclick="toggleDesktopSidebar()" class="sidebar-collapse-btn" title="Close sidebar (Ctrl+\)">
+          <svg class="w-4 h-4 text-text-muted hover:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+          </svg>
+        </button>
+        <!-- Mobile Drawer Close Button -->
+        <button type="button" class="md:hidden p-1.5 text-text-muted hover:text-text-primary ml-1" onclick="toggleMobileSidebar()">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
       </div>
-      <main class="col-md-10 ms-sm-auto p-4">
-        {% block content %}{% endblock %}
-        {% include 'footer.html' %}
-      </main>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="flex-1 flex flex-col gap-1.5 overflow-y-auto">
+      <div class="px-2 mb-1 text-[11px] font-semibold text-text-muted uppercase tracking-wider">Workspace</div>
+      
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors {% if active_page == 'dashboard' %}text-primary font-bold bg-surface-container-high border-l-2 border-primary{% else %}text-on-surface-variant hover:bg-bg-card-hover hover:text-on-surface{% endif %}" href="/dashboard">
+        <span class="material-symbols-outlined text-[20px]" {% if active_page == 'dashboard' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>dashboard</span>
+        <span class="text-sm">Overview</span>
+      </a>
+
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors {% if active_page == 'opportunities' and not (request.args.get('view') == 'saved') %}text-primary font-bold bg-surface-container-high border-l-2 border-primary{% else %}text-on-surface-variant hover:bg-bg-card-hover hover:text-on-surface{% endif %}" href="/opportunities">
+        <span class="material-symbols-outlined text-[20px]" {% if active_page == 'opportunities' and not (request.args.get('view') == 'saved') %}style="font-variation-settings: 'FILL' 1;"{% endif %}>travel_explore</span>
+        <span class="text-sm">Opportunities</span>
+      </a>
+
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors {% if request.args.get('view') == 'saved' %}text-warning font-bold bg-surface-container-high border-l-2 border-warning{% else %}text-on-surface-variant hover:bg-bg-card-hover hover:text-on-surface{% endif %}" href="/opportunities?view=saved">
+        <span class="material-symbols-outlined text-[20px] text-warning" style="font-variation-settings: 'FILL' 1;">bookmark</span>
+        <span class="text-sm">Saved Items</span>
+        <span id="navSavedBadge" class="ml-auto text-[11px] font-mono font-bold bg-surface-container-highest text-warning px-2 py-0.5 rounded-full">0</span>
+      </a>
+
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors {% if active_page == 'notifications' %}text-primary font-bold bg-surface-container-high border-l-2 border-primary{% else %}text-on-surface-variant hover:bg-bg-card-hover hover:text-on-surface{% endif %}" href="/notifications">
+        <span class="material-symbols-outlined text-[20px]" {% if active_page == 'notifications' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>notifications</span>
+        <span class="text-sm">Notifications</span>
+      </a>
+
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors {% if active_page == 'reports' %}text-primary font-bold bg-surface-container-high border-l-2 border-primary{% else %}text-on-surface-variant hover:bg-bg-card-hover hover:text-on-surface{% endif %}" href="/reports">
+        <span class="material-symbols-outlined text-[20px]" {% if active_page == 'reports' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>description</span>
+        <span class="text-sm">Reports</span>
+      </a>
+
+      {% if session.get('role') in ['Admin', 'Super Admin', 'Administrator'] or session.get('admin_authenticated') %}
+      <div class="mt-4 pt-3 border-t border-border-subtle px-2 mb-1 text-[11px] font-semibold text-danger uppercase tracking-wider">Administration</div>
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-danger hover:bg-danger/10 transition-colors font-medium text-sm" href="/admin/dashboard">
+        <span class="material-symbols-outlined text-[20px] text-danger" style="font-variation-settings: 'FILL' 1;">admin_panel_settings</span>
+        <span>Admin Command</span>
+      </a>
+      {% endif %}
+    </nav>
+
+    <!-- Footer Profile Link -->
+    <div class="mt-auto pt-3 border-t border-border-subtle">
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors {% if active_page == 'profile' %}text-primary font-bold bg-surface-container-high border-l-2 border-primary{% else %}text-on-surface-variant hover:bg-bg-card-hover hover:text-on-surface{% endif %}" href="/profile">
+        <div class="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs border border-primary/20 shrink-0">
+          {{ current_user.username[0]|upper }}
+        </div>
+        <div class="overflow-hidden text-left flex-1">
+          <div class="text-sm font-semibold text-text-primary truncate">{{ current_user.username }}</div>
+        </div>
+        <span class="material-symbols-outlined text-text-muted text-[18px]">chevron_right</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Canvas -->
+  <div id="mainWrapper" class="flex-1 md:ml-[260px] flex flex-col min-h-screen transition-all duration-300">
+    <!-- Main Content Area -->
+    <main class="flex-1 p-4 md:p-8 max-w-[1600px] w-full mx-auto pt-6 md:pt-8">
+      <!-- Flash Alert Container -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="mb-6 space-y-2">
+            {% for category, message in messages %}
+              <div class="p-3.5 rounded-lg border text-sm flex items-center justify-between {% if category == 'success' %}bg-success/10 border-success/30 text-success{% elif category in ['danger', 'error'] %}bg-danger/10 border-danger/30 text-danger{% elif category == 'warning' %}bg-warning/10 border-warning/30 text-warning{% else %}bg-info/10 border-info/30 text-info{% endif %}">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[18px]">
+                    {% if category == 'success' %}check_circle{% elif category in ['danger', 'error'] %}error{% elif category == 'warning' %}warning{% else %}info{% endif %}
+                  </span>
+                  <span>{{ message }}</span>
+                </div>
+                <button type="button" onclick="this.parentElement.remove()" class="text-current opacity-70 hover:opacity-100">
+                  <span class="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-border-subtle py-4 px-4 md:px-8 text-xs text-text-muted flex flex-col sm:flex-row justify-between items-center gap-2 bg-surface/50">
+      <div>© 2026 CyberScout AI — Automated Cybersecurity Opportunity Intelligence</div>
+      <div class="flex items-center gap-4">
+        <span class="font-mono">v{{ app_info.version|default('2.2.0') }}</span>
+        <span>•</span>
+        <span class="text-success flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-success"></span> Online</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Scan Modal -->
+  <div id="scanModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-surface border border-border-subtle rounded-xl max-w-md w-full p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-border-subtle">
+        <div class="flex items-center gap-2 text-primary font-bold text-sm">
+          <span class="material-symbols-outlined text-primary">memory</span>
+          <span>Pipeline Scan Execution</span>
+        </div>
+        <button type="button" id="scanModalCloseBtn" onclick="closeScanModal()" class="text-text-muted hover:text-text-primary hidden">
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      </div>
+      <div class="text-center py-4">
+        <div id="scanSpinner" class="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+        <div id="scanSuccessIcon" class="hidden mb-3 text-success text-4xl">
+          <span class="material-symbols-outlined text-success text-5xl">check_circle</span>
+        </div>
+        <h3 id="scanStatusTitle" class="text-base font-bold text-text-primary mb-1">Starting Scan...</h3>
+        <p id="scanStatusSub" class="text-xs text-text-muted">Initializing search planner and collectors...</p>
+      </div>
+      <div class="pt-4 border-t border-border-subtle text-center">
+        <button type="button" id="scanModalFooterBtn" onclick="location.reload()" class="hidden bg-surface-container hover:bg-surface-container-high text-text-primary text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+          Close & Refresh
+        </button>
+      </div>
     </div>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
   <script>
-    function toggleTheme() {
-      const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', newTheme);
-      localStorage.setItem('cyberscout-theme', newTheme);
-      updateThemeIcon(newTheme);
+    function isDesktop() {
+      return window.innerWidth >= 768;
     }
 
-    function updateThemeIcon(theme) {
-      const btnIcon = document.getElementById('themeToggleIcon');
-      if (btnIcon) {
-        if (theme === 'light') {
-          btnIcon.className = 'bi bi-moon-stars-fill text-warning';
-        } else {
-          btnIcon.className = 'bi bi-sun-fill text-warning';
-        }
+    function toggleDesktopSidebar() {
+      const isCollapsed = document.body.classList.toggle('sidebar-collapsed');
+      localStorage.setItem('cyberscout_sidebar_collapsed', isCollapsed ? 'true' : 'false');
+    }
+
+    function handleSidebarOpen() {
+      if (isDesktop()) {
+        toggleDesktopSidebar();
+      } else {
+        toggleMobileSidebar();
       }
     }
 
+    function toggleMobileSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('mobileOverlay');
+      const isClosed = sidebar.classList.contains('-translate-x-full');
+      if (isClosed) {
+        sidebar.classList.remove('-translate-x-full');
+        overlay.classList.remove('hidden');
+      } else {
+        sidebar.classList.add('-translate-x-full');
+        overlay.classList.add('hidden');
+      }
+    }
+
+    // Initialize sidebar state on DOM load
     document.addEventListener('DOMContentLoaded', () => {
-      const activeTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-      updateThemeIcon(activeTheme);
+      const isCollapsed = localStorage.getItem('cyberscout_sidebar_collapsed') === 'true';
+      if (isCollapsed && isDesktop()) {
+        document.body.classList.add('sidebar-collapsed');
+      }
+      document.documentElement.classList.remove('sidebar-collapsed-init');
     });
+
+    // Notion Keyboard Shortcut (Ctrl+\ or Cmd+\)
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
+        e.preventDefault();
+        toggleDesktopSidebar();
+      }
+    });
+
+    // Hydrate Bookmarks Count in Sidebar
+    (function() {
+      try {
+        const b = JSON.parse(localStorage.getItem('cyberscout_bookmarks') || '[]');
+        const badge = document.getElementById('navSavedBadge');
+        if (badge) badge.innerText = b.length;
+      } catch(e) {}
+    })();
+
+    function closeScanModal() {
+      document.getElementById('scanModal').classList.add('hidden');
+    }
+
+    function triggerScan() {
+      const modal = document.getElementById('scanModal');
+      const title = document.getElementById('scanStatusTitle');
+      const sub = document.getElementById('scanStatusSub');
+      const spinner = document.getElementById('scanSpinner');
+      const icon = document.getElementById('scanSuccessIcon');
+      const closeBtn = document.getElementById('scanModalCloseBtn');
+      const footerBtn = document.getElementById('scanModalFooterBtn');
+      const btn = document.getElementById('runScanBtn');
+
+      modal.classList.remove('hidden');
+      spinner.classList.remove('hidden');
+      icon.classList.add('hidden');
+      closeBtn.classList.add('hidden');
+      footerBtn.classList.add('hidden');
+      title.innerText = 'Initializing Pipeline...';
+      sub.innerText = 'Connecting to collectors...';
+
+      fetch('/api/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dry_run: false })
+      })
+      .then(async r => {
+        const data = await r.json();
+        if (r.status === 409) throw new Error(data.error || 'Scan already running');
+        if (!data.job_id) throw new Error(data.error || 'Failed to start scan');
+        return data;
+      })
+      .then(data => {
+        const jobId = data.job_id;
+        title.innerText = 'Scan in Progress...';
+        sub.innerText = 'Job ID: ' + jobId;
+
+        const poller = setInterval(async () => {
+          try {
+            const res = await fetch('/api/jobs/' + jobId);
+            if (!res.ok) {
+              clearInterval(poller);
+              spinner.classList.add('hidden');
+              icon.classList.remove('hidden');
+              closeBtn.classList.remove('hidden');
+              footerBtn.classList.remove('hidden');
+              title.innerText = 'Scan Complete';
+              sub.innerText = 'Completed scan process.';
+              return;
+            }
+            const job = await res.json();
+            if (job.status === 'completed') {
+              clearInterval(poller);
+              spinner.classList.add('hidden');
+              icon.classList.remove('hidden');
+              closeBtn.classList.remove('hidden');
+              footerBtn.classList.remove('hidden');
+              title.innerText = 'Scan Completed!';
+              sub.innerText = `Discovered ${job.opportunities_found || 0} opportunities in ${job.elapsed_time || 0}s`;
+              setTimeout(() => location.reload(), 1500);
+            } else if (job.status === 'failed') {
+              clearInterval(poller);
+              spinner.classList.add('hidden');
+              closeBtn.classList.remove('hidden');
+              footerBtn.classList.remove('hidden');
+              title.innerText = 'Scan Issue';
+              sub.innerText = (job.errors || []).join('; ') || 'Pipeline execution failed';
+            } else {
+              const pct = Math.round(job.progress || 0);
+              title.innerText = `Scanning... ${pct}%`;
+              sub.innerText = `${job.current_collector || 'Active'} (${job.opportunities_found || 0} found)`;
+            }
+          } catch(err) {
+            clearInterval(poller);
+          }
+        }, 2500);
+      })
+      .catch(err => {
+        spinner.classList.add('hidden');
+        closeBtn.classList.remove('hidden');
+        footerBtn.classList.remove('hidden');
+        title.innerText = 'Notice';
+        sub.innerText = err.message || 'Error occurred';
+      });
+    }
   </script>
-  {% block scripts %}{% endblock %}
+  {% block extra_scripts %}{% endblock %}
 </body>
 </html>

@@ -6,6 +6,7 @@ from src.utils.date_utils import get_today_iso, get_utc_now, get_utc_now_iso, pa
 from src.utils.file_utils import read_json_file, write_json_file
 from src.utils.path_utils import ensure_dir, get_relative_path, is_safe_path
 from src.utils.string_utils import clean_text, generate_url_hash, truncate_string
+from src.utils.ip_utils import get_client_ip, is_valid_ip, normalize_ip
 from src.utils.validation_utils import (
     is_valid_category,
     is_valid_date,
@@ -34,4 +35,7 @@ __all__ = [
     "is_valid_date",
     "is_valid_category",
     "validate_required_fields",
+    "get_client_ip",
+    "is_valid_ip",
+    "normalize_ip",
 ]

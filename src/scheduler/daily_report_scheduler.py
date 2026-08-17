@@ -161,6 +161,15 @@ class DailyReportScheduler:
             logger.info(f"[Scheduler] Decision       : Report already sent today ({today_str}). Skipping.")
             return {"status": "skipped", "reason": "Already sent today", "last_email_sent": last_sent}
 
+        # Concurrency protection
+        try:
+            from src.automation.job_manager import scan_job_manager
+            if scan_job_manager.is_scan_active():
+                logger.warning("[Scheduler] Another scan job is currently in progress. Skipping scheduled trigger.")
+                return {"status": "skipped", "reason": "Another scan is already in progress"}
+        except Exception:
+            pass
+
         if not dry_run and not self.db_manager.ping():
             logger.error("[Scheduler] Scan aborted: Database unavailable")
             logger.error("[Scheduler] Email cancelled because database transaction failed.")
@@ -173,7 +182,22 @@ class DailyReportScheduler:
         pipe_result = self.pipeline_runner.run_pipeline(dry_run=dry_run, send_email=False)
         logger.info(f"[Scheduler] Pipeline Finished. Items collected: {pipe_result.get('items_collected', 0)}, Ranked: {pipe_result.get('items_ranked', 0)}")
 
-        # Step 2: Email Generation & Dispatch
+        # Step 2: STRICT PERSISTENCE VERIFICATION BEFORE EMAIL
+        persistence_ok = pipe_result.get("persistence_success", True) if not dry_run else True
+        pipeline_status_ok = pipe_result.get("status") == "success"
+
+        if not dry_run and (not persistence_ok or not pipeline_status_ok):
+            logger.error("[Scheduler] Database persistence failed or scan errored. Email notification cancelled.")
+            duration = round(time.time() - start_mono, 2)
+            return {
+                "status": "failed",
+                "reason": "Database persistence failed",
+                "email_status": "cancelled",
+                "pipeline_result": pipe_result,
+                "execution_duration_sec": duration,
+            }
+
+        # Step 3: Email Generation & Dispatch (Only after successful persistence)
         email_result = {"status": "skipped"}
         if not dry_run:
             logger.info("[Scheduler] Generating and dispatching email report...")
@@ -181,7 +205,7 @@ class DailyReportScheduler:
 
         email_status = email_result.get("status")
 
-        # Step 3: Update Scheduler Persistence State
+        # Step 4: Update Scheduler Persistence State
         if not dry_run:
             if email_status == "success":
                 self.scheduler_repo.update_last_email_sent(today_str, pipeline_run_time=now_iso)
@@ -191,7 +215,7 @@ class DailyReportScheduler:
                 self.scheduler_repo.update_last_email_sent(today_str, pipeline_run_time=now_iso)
                 logger.info("[Scheduler] Email Skipped (0 items, send_empty=False). Database Updated.")
             else:
-                logger.error(f"[Scheduler] Email Delivery Failed ({email_result.get('error')}). last_email_sent NOT updated.")
+                logger.error(f"[Scheduler] Email Delivery Failed ({email_result.get('error')}). Persisted scan data preserved. last_email_sent NOT updated.")
 
         duration = round(time.time() - start_mono, 2)
         logger.info(f"[Scheduler] Daily Report Workflow Complete in {duration}s. Status: {email_status}")

@@ -304,7 +304,10 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
         return self.get_paginated_opportunities(limit=limit, offset=0, category=category)
 
     def _build_active_where(
-        self, category: Optional[str] = None, search_query: Optional[str] = None
+        self,
+        category: Optional[str] = None,
+        search_query: Optional[str] = None,
+        deadline_filter: Optional[str] = None,
     ) -> tuple[str, tuple[Any, ...]]:
         where_clause = "status = ? AND (is_rejected IS NOT TRUE) AND (expired = 0 OR expired IS NULL) AND (archived = 0 OR archived IS NULL)"
         params: List[Any] = [Status.ACTIVE.value]
@@ -318,13 +321,36 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
             where_clause += " AND (LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(company) LIKE ? OR LOWER(provider) LIKE ?)"
             params.extend([q_term, q_term, q_term, q_term])
 
+        if deadline_filter:
+            today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            if deadline_filter == "closing_soon":
+                from datetime import timedelta
+                soon_str = (datetime.now(timezone.utc) + timedelta(days=14)).strftime("%Y-%m-%d")
+                where_clause += " AND (deadline IS NOT NULL AND deadline != '' AND deadline >= ? AND deadline <= ?)"
+                params.extend([today_str, soon_str])
+            elif deadline_filter == "no_deadline":
+                where_clause += " AND (deadline IS NULL OR deadline = '')"
+            elif deadline_filter == "passed":
+                where_clause += " AND (deadline IS NOT NULL AND deadline != '' AND deadline < ?)"
+                params.append(today_str)
+            elif deadline_filter == "active":
+                where_clause += " AND (deadline IS NULL OR deadline = '' OR deadline >= ?)"
+                params.append(today_str)
+
         return where_clause, tuple(params)
 
     def count_paginated_opportunities(
-        self, category: Optional[str] = None, search_query: Optional[str] = None
+        self,
+        category: Optional[str] = None,
+        search_query: Optional[str] = None,
+        deadline_filter: Optional[str] = None,
     ) -> int:
-        """Counts active opportunities matching category and search filter."""
-        where_clause, params = self._build_active_where(category=category, search_query=search_query)
+        """Counts active opportunities matching category, search, and deadline filters."""
+        where_clause, params = self._build_active_where(
+            category=category,
+            search_query=search_query,
+            deadline_filter=deadline_filter,
+        )
         return self.count(where_clause=where_clause, params=params)
 
     def get_paginated_opportunities(
@@ -333,13 +359,28 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
         offset: int = 0,
         category: Optional[str] = None,
         search_query: Optional[str] = None,
+        deadline_filter: Optional[str] = None,
+        sort_by: Optional[str] = None,
     ) -> List[Opportunity]:
-        """Queries active opportunities using PostgreSQL server-side pagination (LIMIT/OFFSET)."""
-        where_clause, params = self._build_active_where(category=category, search_query=search_query)
+        """Queries active opportunities using PostgreSQL server-side pagination with flexible sorting."""
+        where_clause, params = self._build_active_where(
+            category=category,
+            search_query=search_query,
+            deadline_filter=deadline_filter,
+        )
+
+        order_by = "score DESC, discovered_date DESC"
+        if sort_by == "newest":
+            order_by = "discovered_date DESC, score DESC"
+        elif sort_by == "deadline_soonest":
+            order_by = "CASE WHEN deadline IS NOT NULL AND deadline != '' THEN deadline ELSE '9999-12-31' END ASC, score DESC"
+        elif sort_by == "score" or sort_by == "relevance":
+            order_by = "score DESC, discovered_date DESC"
+
         return self.search(
             where_clause=where_clause,
             params=params,
-            order_by="score DESC, discovered_date DESC",
+            order_by=order_by,
             limit=limit,
             offset=offset,
         )
@@ -406,7 +447,7 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
 
     def save_opportunity_with_deduplication(self, opp: Opportunity) -> Tuple[str, bool]:
         """
-        Pre-insert duplicate detection & field merging.
+        Pre-insert duplicate detection & field merging based on canonical URL.
 
         Returns:
             Tuple of (opportunity_id, is_duplicate_boolean).
@@ -415,12 +456,14 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
         existing = self.get_by_url_hash(url_hash)
 
         if existing:
-            # Merge fields from new item into existing survivor
+            # Merge missing / higher-quality fields into existing survivor
             if not existing.deadline and opp.deadline:
+                existing.deadline = opp.deadline
+            elif existing.deadline and opp.deadline and opp.deadline != existing.deadline:
                 existing.deadline = opp.deadline
             if not existing.published_date and opp.published_date:
                 existing.published_date = opp.published_date
-            if not existing.description and opp.description:
+            if (not existing.description or len(opp.description or "") > len(existing.description or "")) and opp.description:
                 existing.description = opp.description
             if not existing.provider and opp.provider:
                 existing.provider = opp.provider
@@ -428,7 +471,9 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
                 existing.company = opp.company
             if not existing.location and opp.location:
                 existing.location = opp.location
-            if opp.score > (existing.score or 0):
+            if (existing.category == "other" or not existing.category) and opp.category and opp.category != "other":
+                existing.category = opp.category
+            if (opp.score or 0) > (existing.score or 0):
                 existing.score = opp.score
             if opp.last_seen:
                 existing.last_seen = opp.last_seen
@@ -440,72 +485,103 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
         saved_id = self.upsert(opp)
         return saved_id, False
 
-    def cleanup_database_duplicates(self) -> Dict[str, int]:
+    def cleanup_database_duplicates(self) -> Dict[str, Any]:
         """
         Scans existing Opportunities table for duplicate url_hash groups, merges missing fields,
-        and marks redundant records with status='duplicate'.
+        repoints foreign key references, and marks redundant records with status='duplicate'.
+
+        Survivor Strategy:
+        1. Most complete record (deadline, published_date, description, company, provider, score, category)
+        2. Most recent record (discovered_date / last_seen)
+        3. Stable deterministic ID (alphanumeric) as final tie-breaker
         """
-        stats = {"duplicate_groups_found": 0, "records_merged": 0, "duplicates_cleaned": 0}
-        dup_groups = []
-        with self.db_manager.transaction() as cursor:
-            cursor.execute("SELECT url_hash, COUNT(*) FROM Opportunities GROUP BY url_hash HAVING COUNT(*) > 1;")
-            dup_groups = cursor.fetchall()
-            stats["duplicate_groups_found"] = len(dup_groups)
-
-        if not dup_groups:
-            return stats
+        stats: Dict[str, Any] = {
+            "total_opportunities": 0,
+            "unique_canonical_urls": 0,
+            "duplicate_groups_found": 0,
+            "records_merged": 0,
+            "duplicates_cleaned": 0,
+        }
 
         with self.db_manager.transaction() as cursor:
-            for group in dup_groups:
-                url_hash = group[0]
-                cursor.execute(
-                    "SELECT id, title, url, source_id, category, description, deadline, published_date, company, provider, location, score, status, duplicate_of_id "
-                    "FROM Opportunities WHERE url_hash = %s;",
-                    (url_hash,)
+            cursor.execute("SELECT COUNT(*) FROM Opportunities;")
+            row = cursor.fetchone()
+            stats["total_opportunities"] = row[0] if row else 0
+
+            cursor.execute("SELECT COUNT(DISTINCT url_hash) FROM Opportunities;")
+            row = cursor.fetchone()
+            stats["unique_canonical_urls"] = row[0] if row else 0
+
+            # Single batch fetch of all rows belonging to duplicate url_hash groups
+            cursor.execute(
+                "SELECT id, title, url, source_id, category, description, deadline, published_date, "
+                "discovered_date, company, provider, location, score, status, duplicate_of_id, last_seen, url_hash "
+                "FROM Opportunities WHERE url_hash IN ("
+                "    SELECT url_hash FROM Opportunities GROUP BY url_hash HAVING COUNT(*) > 1"
+                ");"
+            )
+            rows = cursor.fetchall()
+
+            if not rows:
+                return stats
+
+            # Group rows by url_hash in memory
+            from collections import defaultdict
+            groups = defaultdict(list)
+            for row in rows:
+                uh = row[16]
+                rec = Opportunity(
+                    id=str(row[0]),
+                    title=str(row[1] or ""),
+                    url=str(row[2] or ""),
+                    source_id=str(row[3] or ""),
+                    category=str(row[4] or "other"),
+                    description=str(row[5]) if row[5] is not None else None,
+                    deadline=str(row[6]) if row[6] is not None else None,
+                    published_date=str(row[7]) if row[7] is not None else None,
+                    discovered_date=str(row[8] or ""),
+                    company=str(row[9]) if row[9] is not None else None,
+                    provider=str(row[10]) if row[10] is not None else None,
+                    location=str(row[11]) if row[11] is not None else None,
+                    score=int(row[12] or 0),
+                    status=str(row[13] or "active"),
+                    duplicate_of_id=str(row[14]) if row[14] is not None else None,
+                    last_seen=str(row[15]) if row[15] is not None else None,
                 )
-                rows = cursor.fetchall()
-                if len(rows) <= 1:
+                groups[uh].append(rec)
+
+            stats["duplicate_groups_found"] = len(groups)
+
+            def sort_key(item: Opportunity):
+                completeness = 0
+                if item.deadline: completeness += 10
+                if item.published_date: completeness += 5
+                if item.description and len(item.description.strip()) > 20: completeness += 8
+                if item.category and item.category != "other": completeness += 4
+                if item.company: completeness += 3
+                if item.provider: completeness += 3
+                completeness += (item.score or 0)
+                recency = str(item.last_seen or item.discovered_date or "")
+                return (completeness, recency, item.id)
+
+            dup_updates = []
+            survivor_updates = []
+            email_history_updates = []
+
+            for uh, records in groups.items():
+                if len(records) <= 1:
                     continue
 
-                records = []
-                for row in rows:
-                    rec = Opportunity(
-                        id=row[0],
-                        title=row[1],
-                        url=row[2],
-                        source_id=row[3],
-                        category=row[4],
-                        description=row[5],
-                        deadline=row[6],
-                        published_date=row[7],
-                        company=row[8],
-                        provider=row[9],
-                        location=row[10],
-                        score=row[11],
-                        status=row[12],
-                        duplicate_of_id=row[13],
-                    )
-                    records.append(rec)
-
-                def calc_completeness(item: Opportunity) -> int:
-                    score = 0
-                    if item.deadline: score += 10
-                    if item.published_date: score += 5
-                    if item.description: score += 5
-                    if item.company: score += 2
-                    if item.provider: score += 2
-                    score += item.score or 0
-                    return score
-
-                records.sort(key=calc_completeness, reverse=True)
+                records.sort(key=sort_key, reverse=True)
                 survivor = records[0]
 
                 for dup in records[1:]:
+                    # Merge metadata into survivor
                     if not survivor.deadline and dup.deadline:
                         survivor.deadline = dup.deadline
                     if not survivor.published_date and dup.published_date:
                         survivor.published_date = dup.published_date
-                    if not survivor.description and dup.description:
+                    if (not survivor.description or len(dup.description or "") > len(survivor.description or "")) and dup.description:
                         survivor.description = dup.description
                     if not survivor.provider and dup.provider:
                         survivor.provider = dup.provider
@@ -513,19 +589,42 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
                         survivor.company = dup.company
                     if not survivor.location and dup.location:
                         survivor.location = dup.location
+                    if (survivor.category == "other" or not survivor.category) and dup.category and dup.category != "other":
+                        survivor.category = dup.category
                     if (dup.score or 0) > (survivor.score or 0):
                         survivor.score = dup.score
 
-                    cursor.execute(
-                        "UPDATE Opportunities SET status = %s, duplicate_of_id = %s WHERE id = %s;",
-                        (Status.DUPLICATE.value, survivor.id, dup.id)
-                    )
+                    email_history_updates.append((survivor.id, dup.id))
+                    dup_updates.append((Status.DUPLICATE.value, survivor.id, dup.id))
                     stats["duplicates_cleaned"] += 1
 
-                cursor.execute(
-                    "UPDATE Opportunities SET deadline = %s, published_date = %s, description = %s, provider = %s, company = %s, location = %s, score = %s WHERE id = %s;",
-                    (survivor.deadline, survivor.published_date, survivor.description, survivor.provider, survivor.company, survivor.location, survivor.score, survivor.id)
-                )
+                survivor_updates.append((
+                    survivor.deadline, survivor.published_date, survivor.description,
+                    survivor.provider, survivor.company, survivor.location, survivor.category,
+                    survivor.score, Status.ACTIVE.value, survivor.id
+                ))
                 stats["records_merged"] += 1
+
+            if email_history_updates:
+                try:
+                    cursor.executemany(
+                        "UPDATE EmailHistory SET opportunity_id = ? WHERE opportunity_id = ?;",
+                        email_history_updates
+                    )
+                except Exception:
+                    pass
+
+            if dup_updates:
+                cursor.executemany(
+                    "UPDATE Opportunities SET status = ?, duplicate_of_id = ? WHERE id = ?;",
+                    dup_updates
+                )
+
+            if survivor_updates:
+                cursor.executemany(
+                    "UPDATE Opportunities SET deadline = ?, published_date = ?, description = ?, "
+                    "provider = ?, company = ?, location = ?, category = ?, score = ?, status = ? WHERE id = ?;",
+                    survivor_updates
+                )
 
         return stats

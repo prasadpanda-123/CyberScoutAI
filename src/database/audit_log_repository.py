@@ -23,7 +23,7 @@ class AuditLogRepository:
         event_type: str,
         action: str,
         status: str,
-        user_id: Optional[int] = None,
+        user_id: Optional[Any] = None,
         username: Optional[str] = None,
         source_ip: Optional[str] = None,
         details: Optional[str] = None,
@@ -32,34 +32,51 @@ class AuditLogRepository:
         Records a new administrative audit event in the AuditLogs table.
         """
         ts = datetime.now(timezone.utc).isoformat()
+        safe_user_id = None
+        if user_id is not None:
+            try:
+                candidate_id = int(user_id)
+                # Verify that candidate_id exists in Users table to satisfy fk_auditlogs_user_id constraint
+                conn = self.db_manager.get_connection()
+                chk_cursor = conn.cursor()
+                try:
+                    chk_cursor.execute('SELECT 1 FROM "Users" WHERE id = ? LIMIT 1;', (candidate_id,))
+                    if chk_cursor.fetchone():
+                        safe_user_id = candidate_id
+                    else:
+                        safe_user_id = None
+                        extra_detail = f" [unresolved_user_id: {candidate_id}]"
+                        if details and extra_detail not in details:
+                            details = f"{details}{extra_detail}"
+                        elif not details:
+                            details = extra_detail.strip()
+                finally:
+                    chk_cursor.close()
+            except Exception:
+                safe_user_id = None
+
         sql = """
         INSERT INTO "AuditLogs" (timestamp, user_id, username, event_type, action, source_ip, status, details)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        RETURNING id
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """
-        conn = self.db_manager.get_connection()
-        cursor = conn.cursor()
         try:
-            cursor.execute(
-                sql,
-                (
-                    ts,
-                    user_id,
-                    username or "Anonymous",
-                    event_type,
-                    action,
-                    source_ip or "127.0.0.1",
-                    status,
-                    details or "",
-                ),
-            )
-            row = cursor.fetchone()
-            conn.commit()
-            log_id = row[0] if row else None
+            with self.db_manager.transaction() as cursor:
+                cursor.execute(
+                    sql,
+                    (
+                        ts,
+                        safe_user_id,
+                        username or "Anonymous",
+                        event_type,
+                        action,
+                        source_ip or "127.0.0.1",
+                        status,
+                        details or "",
+                    ),
+                )
             return {
-                "id": log_id,
                 "timestamp": ts,
-                "user_id": user_id,
+                "user_id": safe_user_id,
                 "username": username or "Anonymous",
                 "event_type": event_type,
                 "action": action,
@@ -68,13 +85,9 @@ class AuditLogRepository:
                 "details": details or "",
             }
         except Exception as e:
-            conn.rollback()
             from src.core.logging import get_logger
             get_logger(__name__).error(f"Could not record audit log: {e}")
-            # Return a failure dict to keep caller happy
             return {"status": "failed", "error": str(e)}
-        finally:
-            cursor.close()
 
     def query_logs(
         self,

@@ -42,6 +42,7 @@ def index():
     prio_dist = stats_service.get_priority_distribution()
     src_dist = stats_service.get_source_distribution()
     daily_trends = stats_service.get_daily_opportunity_trends()
+    recent_opps = dash_service.opp_repo.get_paginated_opportunities(limit=4, sort_by="newest")
 
     return render_template(
         "dashboard.html",
@@ -51,6 +52,7 @@ def index():
         priority_distribution=prio_dist,
         source_distribution=src_dist,
         daily_trends=daily_trends,
+        recent_opportunities=recent_opps,
     )
 
 

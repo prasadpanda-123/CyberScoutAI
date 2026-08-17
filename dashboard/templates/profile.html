@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% set active_page = "profile" %}
+
+{% block title %}Account Settings & Profile — CyberScout AI{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-3xl mx-auto w-full">
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border-subtle">
+    <div>
+      <h2 class="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">Profile & Account Settings</h2>
+      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">Manage your credentials, theme appearance, and session security.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-mono text-success bg-success/10 border border-success/20 px-3 py-1 rounded-full flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-success"></span>
+        <span>ACTIVE ACCOUNT</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- Account Information Card -->
+  <div class="bg-surface rounded-xl border border-border-subtle p-6 space-y-4">
+    <div class="flex items-center gap-3 pb-3 border-b border-border-subtle">
+      <div class="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-base border border-primary/20">
+        {{ user_info.username[0]|upper }}
+      </div>
+      <div>
+        <h3 class="text-base font-bold text-text-primary">{{ user_info.username }}</h3>
+        <p class="text-xs text-text-muted font-mono">{{ user_info.email }}</p>
+      </div>
+    </div>
+
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div class="p-3.5 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
+        <div class="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Account Username</div>
+        <div class="text-sm font-bold text-text-primary font-mono">{{ user_info.username }}</div>
+      </div>
+      <div class="p-3.5 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
+        <div class="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Account Status</div>
+        <div class="text-sm font-bold text-success flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-success"></span>
+          <span>Verified & Operational</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Appearance / Theme Settings -->
+  <div class="bg-surface rounded-xl border border-border-subtle p-6 space-y-4">
+    <div class="flex items-center gap-2 pb-2 border-b border-border-subtle">
+      <span class="material-symbols-outlined text-primary text-[20px]">palette</span>
+      <h3 class="text-sm font-bold text-text-primary uppercase tracking-wider">Appearance Theme</h3>
+    </div>
+
+    <div class="grid grid-cols-3 gap-3" id="themeRadioGroup">
+      <button type="button" onclick="setThemePreference('dark')" id="themeBtnDark" class="p-3 rounded-lg border border-primary bg-primary/10 text-center space-y-1.5 transition-all">
+        <span class="material-symbols-outlined text-primary text-xl">dark_mode</span>
+        <div class="text-xs font-bold text-text-primary">Dark Theme</div>
+      </button>
+
+      <button type="button" onclick="setThemePreference('light')" id="themeBtnLight" class="p-3 rounded-lg border border-border-subtle bg-surface-container-low hover:border-text-muted text-center space-y-1.5 transition-all">
+        <span class="material-symbols-outlined text-text-secondary text-xl">light_mode</span>
+        <div class="text-xs font-bold text-text-primary">Light Theme</div>
+      </button>
+
+      <button type="button" onclick="setThemePreference('system')" id="themeBtnSystem" class="p-3 rounded-lg border border-border-subtle bg-surface-container-low hover:border-text-muted text-center space-y-1.5 transition-all">
+        <span class="material-symbols-outlined text-text-secondary text-xl">settings_brightness</span>
+        <div class="text-xs font-bold text-text-primary">System Auto</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- Change Password Form -->
+  <div class="bg-surface rounded-xl border border-border-subtle p-6 space-y-4">
+    <div class="flex items-center gap-2 pb-2 border-b border-border-subtle">
+      <span class="material-symbols-outlined text-primary text-[20px]">lock</span>
+      <h3 class="text-sm font-bold text-text-primary uppercase tracking-wider">Update Account Password</h3>
+    </div>
+
+    <form action="/profile" method="POST" class="space-y-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+      <div>
+        <label for="current_password" class="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">Current Password</label>
+        <input type="password" id="current_password" name="current_password" required class="w-full bg-bg-body border border-border-subtle rounded-lg py-2.5 px-3 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors">
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label for="new_password" class="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">New Password</label>
+          <input type="password" id="new_password" name="new_password" minlength="8" required class="w-full bg-bg-body border border-border-subtle rounded-lg py-2.5 px-3 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors" placeholder="Min. 8 characters">
+        </div>
+        <div>
+          <label for="confirm_password" class="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">Confirm New Password</label>
+          <input type="password" id="confirm_password" name="confirm_password" minlength="8" required class="w-full bg-bg-body border border-border-subtle rounded-lg py-2.5 px-3 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors" placeholder="Re-enter new password">
+        </div>
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button type="submit" class="bg-primary hover:bg-primary-container text-surface-container-lowest font-bold text-xs px-5 py-2.5 rounded-lg brand-glow transition-all flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[16px]">save</span>
+          <span>Save Password</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Account Session Actions -->
+  <div class="bg-surface rounded-xl border border-border-subtle p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div>
+      <h3 class="text-sm font-bold text-text-primary">Sign Out of Session</h3>
+      <p class="text-xs text-text-secondary">Terminates your active authentication session on this device.</p>
+    </div>
+    <a href="/logout" class="bg-danger/10 hover:bg-danger text-danger hover:text-white border border-danger/30 text-xs font-bold px-4 py-2 rounded-lg transition-all flex items-center gap-1.5">
+      <span class="material-symbols-outlined text-[16px]">logout</span>
+      <span>Logout Now</span>
+    </a>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function setThemePreference(mode) {
+    localStorage.setItem('cyberscout-theme-mode', mode);
+    let resolved = mode;
+    if (mode === 'system') {
+      resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    localStorage.setItem('cyberscout-theme', resolved);
+    document.documentElement.setAttribute('data-theme', resolved);
+    if (resolved === 'light') {
+      document.documentElement.classList.remove('dark');
+    } else {
+      document.documentElement.classList.add('dark');
+    }
+    updateThemeUI(mode);
+  }
+
+  function updateThemeUI(activeMode) {
+    ['dark', 'light', 'system'].forEach(m => {
+      const btn = document.getElementById('themeBtn' + m.charAt(0).toUpperCase() + m.slice(1));
+      if (!btn) return;
+      if (m === activeMode) {
+        btn.classList.add('border-primary', 'bg-primary/10');
+        btn.classList.remove('border-border-subtle', 'bg-surface-container-low');
+      } else {
+        btn.classList.remove('border-primary', 'bg-primary/10');
+        btn.classList.add('border-border-subtle', 'bg-surface-container-low');
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const mode = localStorage.getItem('cyberscout-theme-mode') || 'dark';
+    updateThemeUI(mode);
+  });
+</script>
+{% endblock %}

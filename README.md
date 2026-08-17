@@ -184,11 +184,11 @@ DATABASE_URL=postgresql://postgres:password@localhost:5432/cyberscout
 # Optional GitHub Personal Access Token (5,000 req/hr capacity)
 GITHUB_TOKEN=ghp_your_actual_token_here
 
-# Optional SMTP Email Settings
-SMTP_HOST=smtp.gmail.com
+# Optional SMTP Email Settings (Brevo SMTP Relay)
+SMTP_HOST=smtp-relay.brevo.com
 SMTP_PORT=587
 SMTP_USER=user@example.com
-SMTP_PASSWORD=your_smtp_app_password
+SMTP_PASSWORD=your_brevo_smtp_key
 RECIPIENT_EMAIL=user@example.com
 ```
 4. **Inspect Environment Status**:

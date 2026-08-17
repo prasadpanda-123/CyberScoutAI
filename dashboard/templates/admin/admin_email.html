@@ -1,37 +1,102 @@
 {% extends "admin/admin_base.html" %}
+{% set active_page = "admin_email" %}
 
-{% block title %}Admin Email Diagnostics{% endblock %}
+{% block title %}Email & Notification Control — Admin Portal{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <div>
-    <h2 class="fw-bold text-light mb-1"><i class="bi bi-envelope-check-fill text-danger me-2"></i>Email & SMTP Diagnostics</h2>
-    <p class="text-muted mb-0">Pre-flight provider connectivity checks and test email dispatching.</p>
-  </div>
-  <button class="btn btn-danger btn-sm" onclick="sendTestEmail()"><i class="bi bi-send-fill me-1"></i> Dispatch Test Email</button>
-</div>
+<div class="space-y-6 max-w-4xl">
 
-<div class="admin-card">
-  <div class="admin-card-header">
-    <span><i class="bi bi-shield-check text-success me-2"></i>SMTP Provider Status</span>
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border-subtle">
+    <div>
+      <h2 class="text-xl sm:text-2xl font-bold text-admin-accent tracking-tight flex items-center gap-2">
+        <span class="material-symbols-outlined text-admin-accent">mail</span>
+        <span>Email & Notification Control</span>
+      </h2>
+      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">SMTP transport connectivity verification and test dispatch.</p>
+    </div>
   </div>
-  <div class="p-4">
-    {% if smtp_health %}
-    <div class="d-flex align-items-center gap-3">
-      <i class="bi bi-check-circle-fill text-success fs-2"></i>
-      <div>
-        <h5 class="fw-bold text-light mb-1">SMTP Pre-flight Diagnostics</h5>
-        <p class="admin-code text-muted mb-0">{{ smtp_health }}</p>
+
+  <!-- Email Control Card -->
+  <div class="bg-surface rounded-xl border border-border-subtle p-6 space-y-6">
+    <div class="flex items-center justify-between pb-4 border-b border-border-subtle">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-lg bg-info/10 text-info flex items-center justify-center">
+          <span class="material-symbols-outlined text-2xl">mark_email_read</span>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-text-primary">SMTP Transport Engine</h3>
+          <p class="text-xs text-text-muted">Sends daily midnight bulletins and 2FA authentication passcodes</p>
+        </div>
       </div>
     </div>
-    {% endif %}
-  </div>
-</div>
 
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Provider Type</div>
+        <div class="text-sm font-bold text-text-primary">{{ smtp_health.provider|default('Configured Mailer') }}</div>
+      </div>
+
+      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Transport Status</div>
+        <div class="text-sm font-bold {% if smtp_health.healthy %}text-success{% else %}text-warning{% endif %} flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full {% if smtp_health.healthy %}bg-success{% else %}bg-warning{% endif %}"></span>
+          <span>{{ smtp_health.status|default('Operational') }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="pt-4 border-t border-border-subtle">
+      <button type="button" id="btnTestEmail" onclick="sendTestEmail()" class="bg-danger hover:bg-danger/90 text-white font-bold text-xs px-5 py-2.5 rounded-lg admin-glow transition-all flex items-center gap-2">
+        <span class="material-symbols-outlined text-[16px]">send</span>
+        <span>Dispatch Test Intelligence Email</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="emailFeedback" class="hidden p-4 rounded-xl border text-xs"></div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
 <script>
-function sendTestEmail() {
-  fetch('/admin/api/email/test', { method: 'POST' })
-    .then(r => r.json()).then(d => alert(d.message || JSON.stringify(d))).catch(e => alert(e));
-}
+  async function sendTestEmail() {
+    const btn = document.getElementById('btnTestEmail');
+    const feedback = document.getElementById('emailFeedback');
+    
+    btn.disabled = true;
+    btn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span><span>Sending...</span>`;
+    
+    feedback.className = 'p-4 rounded-xl border text-xs bg-surface-container border-border-subtle text-text-primary flex items-center gap-2';
+    feedback.innerHTML = `<span class="material-symbols-outlined text-base animate-spin">sync</span><span>Connecting to SMTP server...</span>`;
+    feedback.classList.remove('hidden');
+
+    try {
+      const res = await fetch('/admin/api/email/test', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        feedback.className = 'p-4 rounded-xl border text-xs bg-success/10 border-success/30 text-success flex items-center gap-2';
+        feedback.innerHTML = `<span class="material-symbols-outlined text-base">check_circle</span><span><strong>Success:</strong> ${data.message || 'Test email dispatched successfully.'}</span>`;
+      } else {
+        feedback.className = 'p-4 rounded-xl border text-xs bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
+        feedback.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Notice:</strong> ${data.message || data.error || 'Failed to dispatch email.'}</span>`;
+      }
+    } catch(err) {
+      feedback.className = 'p-4 rounded-xl border text-xs bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
+      feedback.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Error:</strong> ${err.message}</span>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">send</span><span>Dispatch Test Intelligence Email</span>`;
+    }
+  }
 </script>
 {% endblock %}

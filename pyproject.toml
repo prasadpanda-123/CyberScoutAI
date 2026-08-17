@@ -42,16 +42,8 @@ where = ["."]
 include = ["src*"]
 
 [tool.pyright]
-include = ["src", "tests", "dashboard"]
+include = ["src", "dashboard"]
 extraPaths = ["."]
 executionEnvironments = [
   { root = "." }
-]
-
-[tool.pytest.ini_options]
-minversion = "8.0"
-addopts = "-ra -q"
-pythonpath = ["."]
-testpaths = [
-    "tests",
 ]

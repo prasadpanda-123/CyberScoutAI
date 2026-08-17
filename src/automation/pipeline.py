@@ -130,7 +130,10 @@ def run_pipeline_once(
 
     for idx, res in enumerate(collector_results):
         sid = getattr(res, "source_id", "unknown") or "unknown"
-        is_succ = getattr(res, "status", "") == "success" or getattr(res, "success", False) or not getattr(res, "errors", [])
+        errors = getattr(res, "errors", []) or []
+        status_str = getattr(res, "status", "")
+        succ_val = getattr(res, "success", None)
+        is_succ = (status_str == "success" or succ_val is True or (not status_str and not succ_val and not errors)) and not errors
         collector_status[sid] = "success" if is_succ else "failed"
 
         items = getattr(res, "items", []) or []
@@ -190,6 +193,7 @@ def run_pipeline_once(
     _notify("saving", 90.0, "Persisting Knowledge Base Records", len(ranked_items))
     db_start = time.time()
     saved_count = 0
+    persistence_success = False
     sources_str = ",".join(getattr(search_plan, "sources_targeted", []))
 
     if not dry_run:
@@ -218,16 +222,24 @@ def run_pipeline_once(
                 for opp in ranked_items:
                     opp.run_id = run_id
                 saved_count = km.process_opportunity_batch(ranked_items)
+            persistence_success = True
         except Exception as hist_err:
-            logger.warning(f"Could not persist Knowledge Base records: {hist_err}")
+            logger.error(f"Database persistence failed: {hist_err}")
+            persistence_success = False
+    else:
+        persistence_success = True
+
     metrics.db_update_time = time.time() - db_start
 
-    # 8. Notifications Phase
+    # 8. Notifications Phase — Strictly gated on successful database persistence
     notify_start = time.time()
     email_sent = False
     if not dry_run and send_email:
-        if not db.ping():
-            logger.error("Email cancelled because database transaction failed.")
+        if not persistence_success:
+            logger.error("Email notification cancelled: Database persistence failed.")
+            email_sent = False
+        elif not db.ping():
+            logger.error("Email notification cancelled: Database connection unreachable.")
             email_sent = False
         else:
             email_res = ec.send_daily_digest()
@@ -306,6 +318,7 @@ def run_pipeline_once(
         "items_quality_rejected": len(rejected_items),
         "items_ranked": len(ranked_items),
         "saved": saved_count if not dry_run else 0,
+        "persistence_success": persistence_success,
         "email_sent": email_sent,
         "execution_time_sec": duration_sec,
         "quality_metrics": qe.metrics.to_dict(),

@@ -66,10 +66,15 @@ class SendGridEmailProvider(BaseEmailProvider):
 
         sender_email = (os.getenv("EMAIL_FROM") or os.getenv("SENDGRID_SENDER") or "cyberscout-alerts@example.com").strip()
         sender_name = os.getenv("EMAIL_SENDER_NAME") or "CyberScout AI"
-        recipient_email = (os.getenv("EMAIL_TO") or os.getenv("RECIPIENT_EMAIL") or "user@example.com").strip()
+        raw_recipients = (os.getenv("EMAIL_TO") or os.getenv("RECIPIENT_EMAIL") or "user@example.com").strip()
+        import re
+        recipients = [e.strip() for e in re.split(r"[,;]", raw_recipients) if e.strip() and "@" in e]
+        unique_recipients = list(dict.fromkeys(recipients))
+        if not unique_recipients:
+            unique_recipients = ["user@example.com"]
 
         payload: Dict[str, Any] = {
-            "personalizations": [{"to": [{"email": recipient_email}]}],
+            "personalizations": [{"to": [{"email": r} for r in unique_recipients]}],
             "from": {"email": sender_email, "name": sender_name},
             "subject": subject,
             "content": [
@@ -115,7 +120,7 @@ class SendGridEmailProvider(BaseEmailProvider):
                     "status": "success",
                     "provider": self.provider_name,
                     "message_id": msg_id,
-                    "recipient": recipient_email,
+                    "recipient": ", ".join(unique_recipients),
                 }
         except urllib.error.HTTPError as http_err:
             err_body = http_err.read().decode("utf-8", errors="ignore")

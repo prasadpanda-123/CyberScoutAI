@@ -1,121 +1,212 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% set active_page = "dashboard" %}
+
+{% block title %}Intelligence Dashboard — CyberScout AI{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <div>
-    <h2 class="fw-bold mb-0"><i class="bi bi-speedometer2 text-primary me-2"></i> Executive Overview</h2>
-    <span class="text-secondary small">Real-time cybersecurity intelligence telemetry & metrics</span>
-  </div>
-  <div>
-    <button class="btn btn-sm btn-outline-secondary me-2" onclick="location.reload();"><i class="bi bi-arrow-clockwise me-1"></i> Refresh</button>
-    <a href="/reports" class="btn btn-sm btn-primary"><i class="bi bi-file-earmark-arrow-down me-1"></i> Reports Center</a>
-  </div>
-</div>
+<div class="space-y-6">
 
-<!-- Compact Operational KPI Cards Banner -->
-<div class="row g-3 mb-4">
-  <div class="col-md-3">
-    <div class="card p-3 shadow-sm border-start border-4 {% if summary.database_status == 'Connected' %}border-success{% else %}border-danger{% endif %} h-100">
-      <div class="d-flex justify-content-between align-items-center mb-1">
-        <span class="text-secondary small fw-bold">System Status</span>
-        <span class="badge {% if summary.database_status == 'Connected' %}bg-success{% else %}bg-danger{% endif %}">
-          {% if summary.database_status == 'Connected' %}Operational{% else %}Offline{% endif %}
-        </span>
+  <!-- Header Section -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border-subtle">
+    <div>
+      <h2 class="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">Intelligence Overview</h2>
+      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">Welcome back, {{ current_user.username }}. Real-time cybersecurity opportunity feed.</p>
+    </div>
+    <div class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-lowest rounded-full border border-border-subtle">
+      <span class="relative flex h-2.5 w-2.5">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-success"></span>
+      </span>
+      <span class="font-mono text-xs text-success font-semibold tracking-wider">PIPELINE ACTIVE</span>
+    </div>
+  </div>
+
+  <!-- Telemetry Metrics Grid (4 KPI Cards) -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- Total Opportunities -->
+    <div class="bg-surface rounded-xl p-5 border border-border-subtle relative overflow-hidden group hover:border-primary/40 transition-colors">
+      <div class="flex justify-between items-start mb-3">
+        <span class="text-xs font-semibold text-text-muted uppercase tracking-wider">Total Discovered</span>
+        <span class="material-symbols-outlined text-primary text-xl" style="font-variation-settings: 'FILL' 1;">travel_explore</span>
       </div>
-      <div class="fs-4 fw-bold text-primary">CyberScout AI</div>
-      <div class="text-secondary small mt-1">
-        <i class="bi bi-activity me-1 text-success"></i> Health Status: Normal
-        {% if summary.database_latency_ms >= 0 %}
-          <span class="ms-1 text-success">({{ summary.database_latency_ms }}ms)</span>
-        {% endif %}
+      <div class="flex items-baseline gap-2">
+        <span class="text-3xl font-extrabold text-text-primary">{{ summary.total_opportunities|default(0) }}</span>
       </div>
+      <p class="text-[11px] text-text-muted mt-1.5">Across all collector feeds</p>
+    </div>
+
+    <!-- New Today -->
+    <div class="bg-surface rounded-xl p-5 border border-border-subtle relative overflow-hidden group hover:border-info/40 transition-colors">
+      <div class="flex justify-between items-start mb-3">
+        <span class="text-xs font-semibold text-text-muted uppercase tracking-wider">New Ingestion</span>
+        <span class="material-symbols-outlined text-info text-xl" style="font-variation-settings: 'FILL' 1;">new_releases</span>
+      </div>
+      <div class="flex items-baseline gap-2">
+        <span class="text-3xl font-extrabold text-info">{{ summary.today_opportunities|default(0) }}</span>
+      </div>
+      <p class="text-[11px] text-text-muted mt-1.5">Ingested last 24 hours</p>
+    </div>
+
+    <!-- Closing Soon -->
+    <div class="bg-surface rounded-xl p-5 border border-border-subtle relative overflow-hidden group hover:border-warning/40 transition-colors">
+      <div class="flex justify-between items-start mb-3">
+        <span class="text-xs font-semibold text-text-muted uppercase tracking-wider">Closing Soon</span>
+        <span class="material-symbols-outlined text-warning text-xl" style="font-variation-settings: 'FILL' 1;">timer</span>
+      </div>
+      <div class="flex items-baseline gap-2">
+        <span class="text-3xl font-extrabold text-warning">{{ summary.closing_soon_count|default(0) }}</span>
+      </div>
+      <p class="text-[11px] text-text-muted mt-1.5">Expiring in &le; 7 days</p>
+    </div>
+
+    <!-- Saved Items -->
+    <div class="bg-surface rounded-xl p-5 border border-border-subtle relative overflow-hidden group hover:border-primary/40 transition-colors">
+      <div class="flex justify-between items-start mb-3">
+        <span class="text-xs font-semibold text-text-muted uppercase tracking-wider">Saved Bookmarks</span>
+        <span class="material-symbols-outlined text-warning text-xl" style="font-variation-settings: 'FILL' 1;">bookmark</span>
+      </div>
+      <div class="flex items-baseline gap-2">
+        <span id="dashSavedCount" class="text-3xl font-extrabold text-text-primary">0</span>
+      </div>
+      <p class="text-[11px] text-text-muted mt-1.5">Locally pinned items</p>
     </div>
   </div>
 
-  <div class="col-md-3">
-    <div class="card p-3 shadow-sm h-100">
-      <div class="text-secondary small fw-medium">Total Opportunities</div>
-      <div class="fs-2 fw-bold text-primary my-1">{{ summary.total_opportunities }}</div>
-      <div class="text-secondary small"><i class="bi bi-shield-check me-1 text-info"></i> Active Scanned Items</div>
+  <!-- Cyber Intelligence Domain Matrix (6 Launchpad Cards) -->
+  <div>
+    <div class="flex justify-between items-center mb-3">
+      <h3 class="text-sm font-bold text-text-primary uppercase tracking-wider flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-[18px]">category</span>
+        <span>Opportunity Categories</span>
+      </h3>
+      <a href="/opportunities" class="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
+        <span>View all</span>
+        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+      </a>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <a href="/opportunities?category=internship" class="bg-surface hover:bg-bg-card-hover p-4 rounded-xl border border-border-subtle transition-all text-center group">
+        <div class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center mx-auto mb-2.5 group-hover:scale-110 transition-transform">
+          <span class="material-symbols-outlined text-xl">work</span>
+        </div>
+        <div class="text-xs font-bold text-text-primary">Internships</div>
+        <div class="text-xs font-mono font-bold text-primary mt-1">{{ category_distribution.get('internship', 0) }}</div>
+      </a>
+
+      <a href="/opportunities?category=ctf" class="bg-surface hover:bg-bg-card-hover p-4 rounded-xl border border-border-subtle transition-all text-center group">
+        <div class="w-10 h-10 rounded-lg bg-danger/10 text-danger flex items-center justify-center mx-auto mb-2.5 group-hover:scale-110 transition-transform">
+          <span class="material-symbols-outlined text-xl">flag</span>
+        </div>
+        <div class="text-xs font-bold text-text-primary">CTFs</div>
+        <div class="text-xs font-mono font-bold text-danger mt-1">{{ category_distribution.get('ctf', 0) }}</div>
+      </a>
+
+      <a href="/opportunities?category=certification" class="bg-surface hover:bg-bg-card-hover p-4 rounded-xl border border-border-subtle transition-all text-center group">
+        <div class="w-10 h-10 rounded-lg bg-success/10 text-success flex items-center justify-center mx-auto mb-2.5 group-hover:scale-110 transition-transform">
+          <span class="material-symbols-outlined text-xl">verified</span>
+        </div>
+        <div class="text-xs font-bold text-text-primary">Certifications</div>
+        <div class="text-xs font-mono font-bold text-success mt-1">{{ category_distribution.get('certification', 0) }}</div>
+      </a>
+
+      <a href="/opportunities?category=bug_bounty" class="bg-surface hover:bg-bg-card-hover p-4 rounded-xl border border-border-subtle transition-all text-center group">
+        <div class="w-10 h-10 rounded-lg bg-warning/10 text-warning flex items-center justify-center mx-auto mb-2.5 group-hover:scale-110 transition-transform">
+          <span class="material-symbols-outlined text-xl">bug_report</span>
+        </div>
+        <div class="text-xs font-bold text-text-primary">Bug Bounties</div>
+        <div class="text-xs font-mono font-bold text-warning mt-1">{{ category_distribution.get('bug_bounty', 0) }}</div>
+      </a>
+
+      <a href="/opportunities?category=course" class="bg-surface hover:bg-bg-card-hover p-4 rounded-xl border border-border-subtle transition-all text-center group">
+        <div class="w-10 h-10 rounded-lg bg-info/10 text-info flex items-center justify-center mx-auto mb-2.5 group-hover:scale-110 transition-transform">
+          <span class="material-symbols-outlined text-xl">school</span>
+        </div>
+        <div class="text-xs font-bold text-text-primary">Courses</div>
+        <div class="text-xs font-mono font-bold text-info mt-1">{{ category_distribution.get('course', 0) }}</div>
+      </a>
+
+      <a href="/opportunities?category=job" class="bg-surface hover:bg-bg-card-hover p-4 rounded-xl border border-border-subtle transition-all text-center group">
+        <div class="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center mx-auto mb-2.5 group-hover:scale-110 transition-transform">
+          <span class="material-symbols-outlined text-xl">badge</span>
+        </div>
+        <div class="text-xs font-bold text-text-primary">Full-Time Jobs</div>
+        <div class="text-xs font-mono font-bold text-purple-400 mt-1">{{ category_distribution.get('job', 0) }}</div>
+      </a>
     </div>
   </div>
 
-  <div class="col-md-3">
-    <div class="card p-3 shadow-sm h-100">
-      <div class="text-secondary small fw-medium">Discovered Today</div>
-      <div class="fs-2 fw-bold text-success my-1">{{ summary.today_opportunities }}</div>
-      <div class="text-success small"><i class="bi bi-calendar-check me-1"></i> Today's Intelligence</div>
+  <!-- Recent Opportunities Ingestion Feed -->
+  <div class="bg-surface rounded-xl border border-border-subtle overflow-hidden">
+    <div class="p-4 border-b border-border-subtle flex justify-between items-center bg-surface-container-low">
+      <h3 class="text-sm font-bold text-text-primary flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-[18px]">bolt</span>
+        <span>Latest Discovered Opportunities</span>
+      </h3>
+      <a href="/opportunities" class="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
+        <span>Explore all opportunities</span>
+        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+      </a>
+    </div>
+
+    <div class="divide-y divide-border-subtle">
+      {% for opp in recent_opportunities %}
+        <div class="p-4 hover:bg-bg-card-hover transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div class="space-y-1 max-w-2xl">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-[11px] font-semibold px-2 py-0.5 rounded uppercase font-mono {% if opp.category == 'internship' %}badge-category-internship{% elif opp.category == 'ctf' %}badge-category-ctf{% elif opp.category == 'certification' %}badge-category-certification{% elif opp.category == 'course' %}badge-category-course{% elif opp.category == 'job' %}badge-category-job{% else %}badge-category-default{% endif %}">
+                {{ opp.category|replace('_', ' ') }}
+              </span>
+              <a href="{{ opp.url }}" target="_blank" rel="noopener" class="text-sm font-bold text-text-primary hover:text-primary transition-colors flex items-center gap-1">
+                <span>{{ opp.title }}</span>
+                <span class="material-symbols-outlined text-[14px] opacity-60">open_in_new</span>
+              </a>
+            </div>
+            <div class="flex flex-wrap items-center gap-3 text-xs text-text-muted">
+              {% if opp.provider %}
+                <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">domain</span> {{ opp.provider }}</span>
+              {% endif %}
+              {% if opp.location %}
+                <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">location_on</span> {{ opp.location }}</span>
+              {% endif %}
+              {% if opp.deadline %}
+                <span class="flex items-center gap-1 text-warning"><span class="material-symbols-outlined text-[14px]">schedule</span> Deadline: {{ opp.deadline }}</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 shrink-0">
+            {% if opp.price_normalized %}
+              <span class="text-xs font-mono font-semibold px-2 py-1 rounded bg-surface-container border border-border-subtle text-text-secondary">
+                {{ opp.price_normalized }}
+              </span>
+            {% endif %}
+            <a href="{{ opp.url }}" target="_blank" rel="noopener" class="bg-primary/10 hover:bg-primary text-primary hover:text-surface-container-lowest text-xs font-bold px-3 py-1.5 rounded-lg border border-primary/30 transition-all flex items-center gap-1">
+              <span>View</span>
+              <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+            </a>
+          </div>
+        </div>
+      {% else %}
+        <div class="p-8 text-center text-text-muted text-xs">
+          No opportunities have been harvested yet. Click "Run Scan Now" to trigger discovery.
+        </div>
+      {% endfor %}
     </div>
   </div>
 
-  <div class="col-md-3">
-    <div class="card p-3 shadow-sm h-100">
-      <div class="text-secondary small fw-medium">Active Sources</div>
-      <div class="fs-2 fw-bold text-info my-1">{{ summary.active_collectors }}</div>
-      <div class="text-info small"><i class="bi bi-broadcast me-1"></i> Intelligence Sources</div>
-    </div>
-  </div>
-</div>
-
-<!-- Charts Section -->
-<div class="row g-4">
-  <div class="col-md-8">
-    <div class="card p-3">
-      <div class="card-header border-0 bg-transparent ps-0 fw-bold fs-6">Daily Opportunity Collection Trend</div>
-      <canvas id="dailyTrendChart" height="150"></canvas>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="card p-3">
-      <div class="card-header border-0 bg-transparent ps-0 fw-bold fs-6">Category Distribution</div>
-      <canvas id="categoryChart" height="250"></canvas>
-    </div>
-  </div>
 </div>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_scripts %}
 <script>
-function getThemeTextColor() {
-  return document.documentElement.getAttribute('data-theme') === 'light' ? '#0F172A' : '#F8FAFC';
-}
-
-const textColor = getThemeTextColor();
-
-const ctx1 = document.getElementById('dailyTrendChart').getContext('2d');
-new Chart(ctx1, {
-  type: 'line',
-  data: {
-    labels: {{ daily_trends.labels | tojson }},
-    datasets: [{
-      label: 'Collected Opportunities',
-      data: {{ daily_trends.counts | tojson }},
-      borderColor: '#0284C7',
-      backgroundColor: 'rgba(2, 132, 199, 0.15)',
-      fill: true,
-      tension: 0.3
-    }]
-  },
-  options: {
-    responsive: true,
-    plugins: { legend: { labels: { color: textColor } } },
-    scales: { x: { ticks: { color: textColor } }, y: { ticks: { color: textColor } } }
-  }
-});
-
-const ctx2 = document.getElementById('categoryChart').getContext('2d');
-new Chart(ctx2, {
-  type: 'doughnut',
-  data: {
-    labels: Object.keys({{ category_distribution | tojson }}),
-    datasets: [{
-      data: Object.values({{ category_distribution | tojson }}),
-      backgroundColor: ['#0284C7', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#64748B']
-    }]
-  },
-  options: {
-    responsive: true,
-    plugins: { legend: { labels: { color: textColor } } }
-  }
-});
+  // Hydrate Saved Count KPI on Dashboard
+  (function() {
+    try {
+      const b = JSON.parse(localStorage.getItem('cyberscout_bookmarks') || '[]');
+      const countEl = document.getElementById('dashSavedCount');
+      if (countEl) countEl.innerText = b.length;
+    } catch(e) {}
+  })();
 </script>
 {% endblock %}

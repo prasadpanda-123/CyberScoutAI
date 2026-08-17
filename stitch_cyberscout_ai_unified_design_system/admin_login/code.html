@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin Portal - Unauthorized Access Prohibited</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Config -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-bright": "#31394d",
+                    "on-secondary": "#00354a",
+                    "bg-card-hover": "#1E293B",
+                    "outline": "#89929b",
+                    "surface-container-lowest": "#060e20",
+                    "text-muted": "#64748B",
+                    "on-secondary-container": "#00374d",
+                    "on-tertiary": "#4b2800",
+                    "error-container": "#93000a",
+                    "inverse-surface": "#dae2fd",
+                    "primary": "#93ccff",
+                    "surface-container": "#171f33",
+                    "info": "#06B6D4",
+                    "primary-fixed": "#cce5ff",
+                    "on-primary-fixed": "#001d31",
+                    "on-error-container": "#ffdad6",
+                    "on-tertiary-container": "#412200",
+                    "on-secondary-fixed-variant": "#004c69",
+                    "outline-variant": "#3f4850",
+                    "surface-container-high": "#222a3d",
+                    "danger": "#EF4444",
+                    "on-tertiary-fixed": "#2d1600",
+                    "primary-container": "#3198dc",
+                    "surface-container-highest": "#2d3449",
+                    "border-subtle": "#1E293B",
+                    "surface-variant": "#2d3449",
+                    "surface": "#0b1326",
+                    "on-primary-container": "#002c47",
+                    "warning": "#F59E0B",
+                    "on-surface-variant": "#bfc7d2",
+                    "on-background": "#dae2fd",
+                    "text-secondary": "#94A3B8",
+                    "primary-fixed-dim": "#93ccff",
+                    "on-surface": "#dae2fd",
+                    "secondary-fixed-dim": "#7bd0ff",
+                    "error": "#ffb4ab",
+                    "surface-dim": "#0b1326",
+                    "bg-surface": "#0B0F19",
+                    "secondary-fixed": "#c4e7ff",
+                    "surface-container-low": "#131b2e",
+                    "tertiary-fixed": "#ffdcc0",
+                    "inverse-on-surface": "#283044",
+                    "surface-tint": "#93ccff",
+                    "tertiary-container": "#d07d1c",
+                    "inverse-primary": "#006398",
+                    "on-primary": "#003351",
+                    "background": "#0b1326",
+                    "tertiary": "#ffb875",
+                    "on-primary-fixed-variant": "#004b73",
+                    "secondary": "#7bd0ff",
+                    "on-error": "#690005",
+                    "secondary-container": "#00a6e0",
+                    "admin-accent": "#EF4444",
+                    "bg-body": "#070B14",
+                    "on-secondary-fixed": "#001e2c",
+                    "text-primary": "#F8FAFC",
+                    "success": "#10B981",
+                    "tertiary-fixed-dim": "#ffb875",
+                    "on-tertiary-fixed-variant": "#6b3b00"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "margin-mobile": "16px",
+                    "margin-desktop": "32px",
+                    "stack-md": "16px",
+                    "sidebar-collapsed": "64px",
+                    "stack-sm": "8px",
+                    "stack-lg": "32px",
+                    "sidebar-width": "280px"
+            },
+            "fontFamily": {
+                    "headline-lg": [
+                            "Inter"
+                    ],
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "headline-md": [
+                            "Inter"
+                    ],
+                    "mono-code": [
+                            "JetBrains Mono"
+                    ],
+                    "headline-sm": [
+                            "Inter"
+                    ],
+                    "label-caps": [
+                            "Inter"
+                    ],
+                    "display-kpi": [
+                            "Inter"
+                    ],
+                    "body-lg": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "headline-lg": [
+                            "30px",
+                            {
+                                    "lineHeight": "36px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-md": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-md": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "mono-code": [
+                            "13px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-sm": [
+                            "18px",
+                            {
+                                    "lineHeight": "24px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "label-caps": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "display-kpi": [
+                            "48px",
+                            {
+                                    "lineHeight": "48px",
+                                    "letterSpacing": "-0.04em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-lg": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #070B14; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1E293B; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3f4850; 
+        }
+        
+        .admin-glow {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.15);
+        }
+        
+        .admin-focus-glow:focus-within {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.15);
+            border-color: #EF4444;
+        }
+    </style>
+</head>
+<body class="bg-bg-body text-text-primary min-h-screen flex items-center justify-center font-body-md overflow-hidden relative selection:bg-admin-accent/30 selection:text-white">
+<!-- Ambient Background Effect -->
+<div class="absolute inset-0 z-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(circle at 50% 50%, #EF4444 0%, transparent 50%); background-size: 150% 150%; background-position: center; filter: blur(100px);"></div>
+<!-- Grid Pattern Overlay -->
+<div class="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style="background-image: linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px); background-size: 32px 32px;"></div>
+<div class="relative z-10 w-full max-w-md px-margin-mobile md:px-0">
+<!-- Header Section -->
+<div class="text-center mb-stack-lg">
+<div class="inline-flex items-center justify-center w-16 h-16 rounded-lg bg-surface border border-admin-accent/20 admin-glow mb-stack-md">
+<span class="material-symbols-outlined text-admin-accent text-[32px]" data-icon="admin_panel_settings" style="font-variation-settings: 'FILL' 1;">admin_panel_settings</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-text-primary">Admin Portal</h1>
+<p class="font-body-md text-body-md text-text-muted mt-2">System Core Authentication</p>
+</div>
+<!-- Login Card -->
+<div class="bg-surface border border-admin-accent/20 rounded-xl p-stack-lg shadow-[inset_0_0_40px_rgba(239,68,68,0.02)] backdrop-blur-sm relative overflow-hidden">
+<!-- Warning Banner -->
+<div class="absolute top-0 left-0 w-full bg-admin-accent/10 border-b border-admin-accent/20 py-2 px-4 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-admin-accent text-[16px]" data-icon="warning">warning</span>
+<span class="font-label-caps text-label-caps text-admin-accent uppercase tracking-wider">Unauthorized Access Prohibited</span>
+</div>
+<form action="#" class="mt-8 space-y-stack-md" method="POST">
+<!-- Username Field -->
+<div>
+<label class="block font-label-caps text-label-caps text-text-secondary mb-2" for="admin_username">Administrator ID</label>
+<div class="relative admin-focus-glow rounded-DEFAULT transition-all duration-200 border border-border-subtle bg-bg-body">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-text-muted text-[18px]" data-icon="badge">badge</span>
+</div>
+<input autocomplete="off" class="block w-full pl-10 pr-3 py-2.5 bg-transparent border-none text-text-primary font-mono-code text-mono-code placeholder-text-muted/50 focus:ring-0" id="admin_username" name="admin_username" placeholder="admin_sys_core" required="" type="text"/>
+</div>
+</div>
+<!-- Password Field -->
+<div>
+<label class="block font-label-caps text-label-caps text-text-secondary mb-2" for="admin_password">Security Credential</label>
+<div class="relative admin-focus-glow rounded-DEFAULT transition-all duration-200 border border-border-subtle bg-bg-body">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-text-muted text-[18px]" data-icon="key">key</span>
+</div>
+<input class="block w-full pl-10 pr-10 py-2.5 bg-transparent border-none text-text-primary font-mono-code text-mono-code placeholder-text-muted/50 focus:ring-0" id="admin_password" name="admin_password" placeholder="••••••••••••••••" required="" type="password"/>
+<button class="absolute inset-y-0 right-0 pr-3 flex items-center text-text-muted hover:text-text-primary transition-colors focus:outline-none" type="button">
+<span class="material-symbols-outlined text-[18px]" data-icon="visibility_off">visibility_off</span>
+</button>
+</div>
+</div>
+<!-- Hidden Error State Example (Commented out logically, structured for demonstration) -->
+<!--
+                <div class="bg-error-container/20 border border-admin-accent/30 rounded-DEFAULT p-3 mt-4 flex items-start gap-2">
+                    <span class="material-symbols-outlined text-admin-accent text-[18px] mt-0.5" data-icon="error">error</span>
+                    <p class="font-body-md text-body-md text-admin-accent">Authentication failed. Invalid credentials or unauthorized attempt.</p>
+                </div>
+                -->
+<!-- Action Area -->
+<div class="pt-stack-sm">
+<button class="w-full flex items-center justify-center gap-2 bg-admin-accent text-white font-label-caps text-label-caps py-3 px-4 rounded-DEFAULT hover:bg-admin-accent/90 hover:scale-[0.98] transition-all duration-200 admin-glow" type="submit">
+<span class="material-symbols-outlined text-[18px]" data-icon="login">login</span>
+<span>Authenticate</span>
+</button>
+</div>
+</form>
+<!-- Footer Meta -->
+<div class="mt-stack-lg pt-stack-md border-t border-border-subtle text-center">
+<p class="font-mono-code text-[11px] text-text-muted uppercase tracking-wider">Secure Node Connection • AES-256 Encrypted</p>
+</div>
+</div>
+<!-- System Status Footer -->
+<div class="mt-stack-md text-center flex items-center justify-center gap-2">
+<div class="w-2 h-2 rounded-full bg-success shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+<span class="font-mono-code text-[11px] text-text-muted uppercase tracking-wider">System Operational</span>
+</div>
+</div>
+<!-- Minimal Script for Password Toggle -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const passwordInput = document.getElementById('admin_password');
+            const toggleButton = passwordInput.nextElementSibling;
+            const toggleIcon = toggleButton.querySelector('.material-symbols-outlined');
+
+            toggleButton.addEventListener('click', () => {
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    toggleIcon.textContent = 'visibility';
+                    toggleIcon.setAttribute('data-icon', 'visibility');
+                } else {
+                    passwordInput.type = 'password';
+                    toggleIcon.textContent = 'visibility_off';
+                    toggleIcon.setAttribute('data-icon', 'visibility_off');
+                }
+            });
+        });
+    </script>
+</body></html>

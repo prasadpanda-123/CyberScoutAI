@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CyberScout Admin - Email Management</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed": "#ffdcc0",
+                      "on-surface": "#dae2fd",
+                      "on-tertiary-container": "#412200",
+                      "on-background": "#dae2fd",
+                      "on-error": "#690005",
+                      "inverse-surface": "#dae2fd",
+                      "surface-container-lowest": "#060e20",
+                      "on-error-container": "#ffdad6",
+                      "inverse-primary": "#006398",
+                      "secondary-fixed-dim": "#7bd0ff",
+                      "surface-container-low": "#131b2e",
+                      "danger": "#EF4444",
+                      "tertiary-container": "#d07d1c",
+                      "admin-accent": "#EF4444",
+                      "tertiary": "#ffb875",
+                      "on-primary-fixed-variant": "#004b73",
+                      "on-primary": "#003351",
+                      "surface-container-high": "#222a3d",
+                      "on-primary-fixed": "#001d31",
+                      "bg-card-hover": "#1E293B",
+                      "primary-fixed-dim": "#93ccff",
+                      "surface-bright": "#31394d",
+                      "surface-container-highest": "#2d3449",
+                      "inverse-on-surface": "#283044",
+                      "primary-fixed": "#cce5ff",
+                      "surface-container": "#171f33",
+                      "secondary": "#7bd0ff",
+                      "primary": "#93ccff",
+                      "error": "#ffb4ab",
+                      "info": "#06B6D4",
+                      "on-secondary": "#00354a",
+                      "background": "#0b1326",
+                      "surface-dim": "#0b1326",
+                      "text-primary": "#F8FAFC",
+                      "on-tertiary": "#4b2800",
+                      "surface": "#0b1326",
+                      "text-muted": "#64748B",
+                      "border-subtle": "#1E293B",
+                      "on-secondary-fixed-variant": "#004c69",
+                      "surface-variant": "#2d3449",
+                      "bg-surface": "#0B0F19",
+                      "on-tertiary-fixed": "#2d1600",
+                      "on-tertiary-fixed-variant": "#6b3b00",
+                      "secondary-fixed": "#c4e7ff",
+                      "on-primary-container": "#002c47",
+                      "surface-tint": "#93ccff",
+                      "on-secondary-fixed": "#001e2c",
+                      "primary-container": "#3198dc",
+                      "warning": "#F59E0B",
+                      "outline-variant": "#3f4850",
+                      "success": "#10B981",
+                      "on-surface-variant": "#bfc7d2",
+                      "error-container": "#93000a",
+                      "tertiary-fixed-dim": "#ffb875",
+                      "secondary-container": "#00a6e0",
+                      "outline": "#89929b",
+                      "text-secondary": "#94A3B8",
+                      "bg-body": "#070B14",
+                      "on-secondary-container": "#00374d"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "stack-md": "16px",
+                      "stack-sm": "8px",
+                      "margin-desktop": "32px",
+                      "sidebar-collapsed": "64px",
+                      "margin-mobile": "16px",
+                      "sidebar-width": "280px",
+                      "stack-lg": "32px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-sm": [
+                              "Inter"
+                      ],
+                      "display-kpi": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "mono-code": [
+                              "JetBrains Mono"
+                      ]
+              },
+              "fontSize": {
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-sm": [
+                              "18px",
+                              {
+                                      "lineHeight": "24px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-kpi": [
+                              "48px",
+                              {
+                                      "lineHeight": "48px",
+                                      "letterSpacing": "-0.04em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "30px",
+                              {
+                                      "lineHeight": "36px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "mono-code": [
+                              "13px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono-code { font-family: 'JetBrains Mono', monospace; }
+        .glow-admin-focus:focus {
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+            border-color: #EF4444;
+        }
+        .admin-glass-panel {
+            background: rgba(45, 52, 73, 0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(239, 68, 68, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-body text-on-surface h-screen flex overflow-hidden selection:bg-admin-accent/30">
+<!-- SideNavBar (Admin) -->
+<nav class="hidden md:flex bg-surface dark:bg-surface fixed left-0 top-0 h-full w-sidebar-width border-r border-admin-accent/20 flex-col py-gutter px-stack-md z-50">
+<div class="flex items-center gap-3 mb-stack-lg px-2">
+<span class="material-symbols-outlined text-[32px] text-admin-accent" style="font-variation-settings: 'FILL' 1;">shield</span>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-admin-accent dark:text-admin-accent leading-none">Admin Portal</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant mt-1">System Core</p>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded font-medium text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined">admin_panel_settings</span>
+<span class="font-body-md text-body-md">Admin Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded font-medium text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined">settings_input_component</span>
+<span class="font-body-md text-body-md">Collectors</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded font-medium text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined">schedule</span>
+<span class="font-body-md text-body-md">Scheduler</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded font-medium text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined">terminal</span>
+<span class="font-body-md text-body-md">Security Logs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded font-medium text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-body-md text-body-md">Users</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded font-bold text-admin-accent border-l-2 border-admin-accent bg-admin-accent/10 transition-colors" href="#">
+<span class="material-symbols-outlined">tune</span>
+<span class="font-body-md text-body-md">Configuration</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded font-medium text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-body-md text-body-md">Diagnostics</span>
+</a>
+</div>
+<div class="mt-auto pt-stack-md border-t border-border-subtle">
+<a class="flex items-center gap-3 px-3 py-2 rounded font-medium text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-body-md text-body-md">Exit Admin</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-full ml-0 md:ml-sidebar-width overflow-hidden bg-body relative">
+<!-- Top Navigation Bar / Header Area -->
+<header class="flex justify-between items-center h-16 px-gutter w-full bg-surface/92 dark:bg-surface/92 backdrop-blur-xl border-b border-outline-variant sticky top-0 z-40">
+<div class="flex items-center gap-4">
+<!-- Mobile Menu Trigger (hidden on desktop) -->
+<button class="md:hidden text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<div>
+<h2 class="font-headline-sm text-headline-sm font-bold text-on-surface">Email Management</h2>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center p-2 rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+</div>
+</header>
+<!-- Scrollable Content Canvas -->
+<div class="flex-1 overflow-y-auto p-margin-mobile md:p-margin-desktop">
+<div class="max-w-[1200px] mx-auto space-y-stack-lg">
+<!-- Header & Status Overview -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
+<div>
+<h3 class="font-headline-lg text-headline-lg font-bold text-on-surface mb-2">SMTP Configuration</h3>
+<p class="font-body-md text-body-md text-text-secondary">Manage global email delivery settings and test connectivity.</p>
+</div>
+<div class="flex items-center gap-3 px-4 py-2 rounded-lg bg-surface-container-highest border border-success/20">
+<div class="w-2 h-2 rounded-full bg-success animate-pulse"></div>
+<span class="font-label-caps text-label-caps text-success">SMTP Connected</span>
+<span class="font-mono-code text-mono-code text-on-surface-variant ml-2 border-l border-outline-variant pl-2">Latency: 42ms</span>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Left Column: Settings Form -->
+<div class="lg:col-span-2 space-y-6">
+<!-- SMTP Credentials Card -->
+<div class="bg-surface rounded-xl border border-border-subtle p-6 relative overflow-hidden">
+<!-- Subtle Admin Glow -->
+<div class="absolute inset-0 pointer-events-none rounded-xl shadow-[inset_0_0_40px_rgba(239,68,68,0.02)]"></div>
+<div class="flex justify-between items-center mb-6">
+<h4 class="font-headline-sm text-headline-sm font-semibold text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-admin-accent text-lg">mail_lock</span>
+                                    Connection Details
+                                </h4>
+<span class="font-label-caps text-label-caps text-text-muted">Requires Restart</span>
+</div>
+<form class="space-y-5">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+<div class="space-y-1">
+<label class="font-label-caps text-label-caps text-text-secondary block">SMTP Host</label>
+<input class="w-full bg-body border border-border-subtle rounded-lg px-3 py-2 font-mono-code text-mono-code text-on-surface focus:outline-none glow-admin-focus transition-all" placeholder="smtp.example.com" type="text" value="smtp.mailgun.org"/>
+</div>
+<div class="space-y-1">
+<label class="font-label-caps text-label-caps text-text-secondary block">Port</label>
+<input class="w-full bg-body border border-border-subtle rounded-lg px-3 py-2 font-mono-code text-mono-code text-on-surface focus:outline-none glow-admin-focus transition-all" placeholder="587" type="number" value="587"/>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+<div class="space-y-1">
+<label class="font-label-caps text-label-caps text-text-secondary block">Username</label>
+<input class="w-full bg-body border border-border-subtle rounded-lg px-3 py-2 font-mono-code text-mono-code text-on-surface focus:outline-none glow-admin-focus transition-all" type="text" value="postmaster@mg.cyberscout.ai"/>
+</div>
+<div class="space-y-1">
+<label class="font-label-caps text-label-caps text-text-secondary block">Password / API Key</label>
+<div class="relative">
+<input class="w-full bg-body border border-border-subtle rounded-lg px-3 py-2 font-mono-code text-mono-code text-on-surface focus:outline-none glow-admin-focus transition-all pr-10" type="password" value="************************"/>
+<button class="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-on-surface" type="button">
+<span class="material-symbols-outlined text-sm">visibility_off</span>
+</button>
+</div>
+</div>
+</div>
+<div class="space-y-1">
+<label class="font-label-caps text-label-caps text-text-secondary block">From Address</label>
+<input class="w-full bg-body border border-border-subtle rounded-lg px-3 py-2 font-mono-code text-mono-code text-on-surface focus:outline-none glow-admin-focus transition-all" type="email" value="noreply@cyberscout.ai"/>
+</div>
+<div class="flex items-center gap-3 pt-2">
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-admin-accent"></div>
+<span class="ml-3 font-body-md text-body-md font-medium text-on-surface">Require TLS</span>
+</label>
+</div>
+<div class="pt-4 border-t border-border-subtle flex justify-end gap-3">
+<button class="px-4 py-2 rounded-lg font-body-md text-body-md font-medium border border-border-subtle text-text-secondary hover:bg-surface-container transition-colors" type="button">Discard</button>
+<button class="px-4 py-2 rounded-lg font-body-md text-body-md font-semibold bg-admin-accent text-white hover:scale-95 transition-transform shadow-[0_0_15px_rgba(239,68,68,0.2)]" type="button">Save Configuration</button>
+</div>
+</form>
+</div>
+</div>
+<!-- Right Column: Testing & Telemetry -->
+<div class="space-y-6">
+<!-- Send Test Email Card -->
+<div class="admin-glass-panel rounded-xl p-6">
+<h4 class="font-headline-sm text-headline-sm font-semibold text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-info text-lg">send</span>
+                                Dispatch Test
+                            </h4>
+<p class="font-body-md text-body-md text-text-secondary mb-4">Send a diagnostic email to verify transport layer configuration.</p>
+<div class="space-y-4">
+<input class="w-full bg-surface border border-border-subtle rounded-lg px-3 py-2 font-mono-code text-mono-code text-on-surface focus:outline-none glow-admin-focus transition-all" placeholder="Recipient Address" type="email"/>
+<button class="w-full flex justify-center items-center gap-2 px-4 py-2 rounded-lg font-body-md text-body-md font-medium border border-outline-variant text-on-surface hover:bg-surface-container-high transition-all" id="btn-test-email">
+<span class="material-symbols-outlined text-sm">outgoing_mail</span>
+<span>Send Test Email</span>
+</button>
+<!-- Loading State (Hidden by default) -->
+<div class="hidden w-full flex justify-center items-center gap-2 px-4 py-2 rounded-lg font-body-md text-body-md font-medium border border-border-subtle text-text-muted bg-surface-container" id="test-email-loading">
+<span class="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+<span>Dispatching...</span>
+</div>
+<!-- Success State (Hidden by default) -->
+<div class="hidden w-full flex justify-center items-center gap-2 px-4 py-2 rounded-lg font-body-md text-body-md font-medium border border-success/30 text-success bg-success/10" id="test-email-success">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+<span>Delivered Successfully</span>
+</div>
+</div>
+</div>
+<!-- Telemetry / Recent Logs -->
+<div class="bg-surface rounded-xl border border-border-subtle p-6">
+<h4 class="font-headline-sm text-headline-sm font-semibold text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-lg">monitoring</span>
+                                Recent Delivery Logs
+                            </h4>
+<div class="space-y-3">
+<!-- Log Item -->
+<div class="flex items-start justify-between p-3 rounded bg-body border border-border-subtle hover:bg-bg-card-hover transition-colors">
+<div class="flex flex-col">
+<span class="font-mono-code text-mono-code text-on-surface">user_invite_tx_091</span>
+<span class="font-label-caps text-label-caps text-text-muted mt-1">alice@example.com</span>
+</div>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-success/10 text-success border border-success/20">DELIVERED</span>
+</div>
+<!-- Log Item -->
+<div class="flex items-start justify-between p-3 rounded bg-body border border-border-subtle hover:bg-bg-card-hover transition-colors">
+<div class="flex flex-col">
+<span class="font-mono-code text-mono-code text-on-surface">alert_critical_004</span>
+<span class="font-label-caps text-label-caps text-text-muted mt-1">soc-team@cyberscout.ai</span>
+</div>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-success/10 text-success border border-success/20">DELIVERED</span>
+</div>
+<!-- Log Item -->
+<div class="flex items-start justify-between p-3 rounded bg-body border border-admin-accent/30 hover:bg-bg-card-hover transition-colors">
+<div class="flex flex-col">
+<span class="font-mono-code text-mono-code text-danger">weekly_report_gen</span>
+<span class="font-label-caps text-label-caps text-text-muted mt-1">bounced@domain.com</span>
+</div>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-danger/10 text-danger border border-danger/20">BOUNCED</span>
+</div>
+</div>
+<button class="w-full mt-4 text-center font-label-caps text-label-caps text-text-secondary hover:text-on-surface transition-colors">
+                                View Full Mail Logs
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Simple script to demonstrate button states for 'Send Test Email'
+        document.getElementById('btn-test-email').addEventListener('click', function() {
+            const btn = this;
+            const loading = document.getElementById('test-email-loading');
+            const success = document.getElementById('test-email-success');
+            
+            btn.classList.add('hidden');
+            loading.classList.remove('hidden');
+            
+            // Simulate network request
+            setTimeout(() => {
+                loading.classList.add('hidden');
+                success.classList.remove('hidden');
+                
+                // Reset after 3 seconds
+                setTimeout(() => {
+                    success.classList.add('hidden');
+                    btn.classList.remove('hidden');
+                }, 3000);
+            }, 1500);
+        });
+    </script>
+</body></html>

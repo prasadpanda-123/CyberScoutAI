@@ -3,7 +3,6 @@ Opportunity Cleaner Processor for CyberScout AI.
 """
 
 from pathlib import Path
-import re
 from typing import List, Optional
 import urllib.parse
 import yaml
@@ -12,6 +11,7 @@ from src.core.constants import CONFIG_DIR
 from src.models.opportunity import Opportunity
 from src.processors.base import BaseProcessor
 from src.utils.string_utils import clean_html, normalize_whitespace
+from src.utils.url_utils import normalize_url
 
 
 class CleanerProcessor(BaseProcessor):
@@ -78,8 +78,10 @@ class CleanerProcessor(BaseProcessor):
             clean_d = clean_html(opportunity.description)
             opportunity.description = normalize_whitespace(clean_d)
 
-        # Clean URL
+        # Clean URL to canonical representation
         if opportunity.url:
-            opportunity.url = self._strip_tracking_params(opportunity.url)
+            canonical_url = normalize_url(opportunity.url)
+            if canonical_url:
+                opportunity.url = canonical_url
 
         return opportunity

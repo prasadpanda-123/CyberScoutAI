@@ -1,69 +1,120 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html class="dark" lang="en" data-theme="dark">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CyberScout AI — First-Run System Setup</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>First-Run System Setup — CyberScout AI</title>
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script>
-    (function() {
-      const savedTheme = localStorage.getItem('cyberscout-theme') || 'dark';
-      document.documentElement.setAttribute('data-theme', savedTheme);
-    })();
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface-bright": "#31394d",
+            "bg-card-hover": "#1E293B",
+            "outline": "#89929b",
+            "surface-container-lowest": "#060e20",
+            "text-muted": "#64748B",
+            "primary": "#93ccff",
+            "surface-container": "#171f33",
+            "info": "#06B6D4",
+            "primary-container": "#3198dc",
+            "surface-container-highest": "#2d3449",
+            "border-subtle": "#1E293B",
+            "surface-variant": "#2d3449",
+            "surface": "#0b1326",
+            "warning": "#F59E0B",
+            "text-secondary": "#94A3B8",
+            "bg-surface": "#0B0F19",
+            "surface-container-low": "#131b2e",
+            "bg-body": "#070B14",
+            "text-primary": "#F8FAFC",
+            "success": "#10B981",
+            "danger": "#EF4444"
+          },
+          fontFamily: {
+            "sans": ["Inter", "system-ui", "sans-serif"],
+            "mono": ["JetBrains Mono", "monospace"]
+          }
+        }
+      }
+    }
   </script>
-  <style>
-    body { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
 </head>
-<body>
-<div class="container" style="max-width: 480px;">
-  <div class="card p-4 shadow-lg">
-    <div class="text-center mb-4">
-      <h3 class="fw-bold text-primary"><i class="bi bi-gear-fill me-2"></i>First-Run Setup</h3>
-      <span class="text-muted small d-block">Create Initial Super Admin Credentials</span>
+<body class="bg-bg-body text-text-primary font-sans antialiased min-h-screen flex flex-col justify-center items-center p-4">
+
+  <div class="w-full max-w-md">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center gap-3 mb-4">
+        <div class="h-12 w-12 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center">
+          <span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">admin_panel_settings</span>
+        </div>
+      </div>
+      <h1 class="text-xl font-bold text-text-primary tracking-tight">First-Run System Setup</h1>
+      <p class="text-xs text-text-secondary mt-1">Bootstrap initial Super Admin credentials for CyberScout AI v{{ app_info.version }}</p>
     </div>
 
+    <!-- Flashed Alerts -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show small" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          </div>
-        {% endfor %}
+        <div class="mb-4 space-y-2">
+          {% for category, message in messages %}
+            <div class="p-3 rounded-lg border text-xs flex items-center gap-2 {% if category == 'success' %}bg-success/10 border-success/30 text-success{% elif category in ['danger', 'error'] %}bg-danger/10 border-danger/30 text-danger{% elif category == 'warning' %}bg-warning/10 border-warning/30 text-warning{% else %}bg-info/10 border-info/30 text-info{% endif %}">
+              <span class="material-symbols-outlined text-[16px]">
+                {% if category == 'success' %}check_circle{% elif category in ['danger', 'error'] %}error{% elif category == 'warning' %}warning{% else %}info{% endif %}
+              </span>
+              <span>{{ message }}</span>
+            </div>
+          {% endfor %}
+        </div>
       {% endif %}
     {% endwith %}
 
-    <p class="text-muted small mb-4">
-      Welcome to CyberScout AI v{{ app_info.version }}! No administrator accounts were detected. Please create your primary <strong>Super Admin</strong> account to manage the system.
-    </p>
+    <!-- Card -->
+    <div class="bg-surface p-6 sm:p-8 rounded-xl border border-border-subtle shadow-2xl">
+      <p class="text-xs text-text-muted mb-4 leading-relaxed">
+        No existing administrator accounts were detected. Please create your primary <strong>Super Admin</strong> account to initialize system security.
+      </p>
 
-    <form method="POST" action="/setup">
-      <div class="mb-3">
-        <label class="form-label small text-muted">Super Admin Username</label>
-        <input type="text" name="username" class="form-control" placeholder="admin" required autofocus>
-      </div>
-      <div class="mb-3">
-        <label class="form-label small text-muted">Admin Email Address</label>
-        <input type="email" name="email" class="form-control" placeholder="admin@cyberscout.ai" required>
-      </div>
-      <div class="mb-3">
-        <label class="form-label small text-muted">Password</label>
-        <input type="password" name="password" class="form-control" placeholder="••••••••••••" required>
-      </div>
-      <div class="mb-3">
-        <label class="form-label small text-muted">Confirm Password</label>
-        <input type="password" name="confirm_password" class="form-control" placeholder="••••••••••••" required>
-      </div>
-      <button type="submit" class="btn btn-primary w-100 fw-bold py-2 mt-2"><i class="bi bi-shield-check me-1"></i> Complete First-Run Setup</button>
-    </form>
+      <form action="/setup" method="POST" class="space-y-4">
+        <div>
+          <label for="username" class="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">Super Admin Username</label>
+          <input type="text" id="username" name="username" required autofocus class="w-full bg-bg-body border border-border-subtle rounded-lg py-2.5 px-3 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors" placeholder="admin">
+        </div>
+
+        <div>
+          <label for="email" class="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">Admin Email Address</label>
+          <input type="email" id="email" name="email" required class="w-full bg-bg-body border border-border-subtle rounded-lg py-2.5 px-3 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors" placeholder="admin@cyberscout.ai">
+        </div>
+
+        <div>
+          <label for="password" class="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">Admin Password</label>
+          <input type="password" id="password" name="password" minlength="8" required class="w-full bg-bg-body border border-border-subtle rounded-lg py-2.5 px-3 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors" placeholder="••••••••••••">
+        </div>
+
+        <div>
+          <label for="confirm_password" class="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">Confirm Password</label>
+          <input type="password" id="confirm_password" name="confirm_password" minlength="8" required class="w-full bg-bg-body border border-border-subtle rounded-lg py-2.5 px-3 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors" placeholder="••••••••••••">
+        </div>
+
+        <div class="pt-2">
+          <button type="submit" class="w-full bg-primary hover:bg-primary-container text-surface-container-lowest font-bold text-sm py-2.5 rounded-lg brand-glow transition-all flex items-center justify-center gap-2">
+            <span>Complete Setup</span>
+            <span class="material-symbols-outlined text-[18px]">verified_user</span>
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 </body>
 </html>

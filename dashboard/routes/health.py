@@ -49,8 +49,9 @@ def index():
     ):
         return api_health()
 
+    db_mgr = get_db_manager()
     report = dash_service.get_health_report()
-    metrics = db_manager.get_health_metrics()
+    metrics = db_mgr.get_health_metrics()
     return render_template(
         "health.html",
         active_page="health",

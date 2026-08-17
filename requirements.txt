@@ -16,10 +16,7 @@ python-docx>=1.1.0
 pandas>=2.0.0
 openpyxl>=3.1.0
 
-# Data Ingestion & Web Scraping
+# Web Scraping & Headless Automation
 requests>=2.31.0
 beautifulsoup4>=4.12.3
 playwright>=1.42.0
-
-# Testing & Quality Assurance
-pytest>=8.0.0

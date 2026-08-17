@@ -9,10 +9,10 @@ rules:
     keywords: ["certification", "cert", "voucher", "exam", "accredited"]
   scholarship:
     keywords: ["scholarship", "grant", "financial aid", "funding"]
-  hackathon:
-    keywords: ["hackathon", "challenge", "competition"]
   ctf:
     keywords: ["ctf", "capture the flag", "jeopardy", "attack-defense"]
+  hackathon:
+    keywords: ["hackathon", "challenge", "competition"]
   github_repository:
     keywords: ["github", "repository", "repo", "stargazers"]
   security_news:

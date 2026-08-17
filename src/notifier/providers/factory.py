@@ -13,6 +13,7 @@ from src.notifier.providers.brevo_provider import BrevoEmailProvider
 from src.notifier.providers.console_provider import ConsoleEmailProvider
 from src.notifier.providers.resend_provider import ResendEmailProvider
 from src.notifier.providers.sendgrid_provider import SendGridEmailProvider
+from src.notifier.providers.smtp_provider import SmtpEmailProvider
 
 logger = get_logger(__name__)
 
@@ -24,6 +25,8 @@ class EmailProviderFactory:
     """
 
     _PROVIDERS: Dict[str, Type[BaseEmailProvider]] = {
+        "smtp": SmtpEmailProvider,
+        "mail": SmtpEmailProvider,
         "brevo": BrevoEmailProvider,
         "sendinblue": BrevoEmailProvider,
         "sendgrid": SendGridEmailProvider,

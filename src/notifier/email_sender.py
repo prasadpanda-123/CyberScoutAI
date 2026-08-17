@@ -34,15 +34,17 @@ class EmailSender:
         html_content: str,
         plain_content: str,
         subject: str,
+        recipient: Optional[Any] = None,
         attachments: Optional[List[Any]] = None,
     ) -> str:
         """
-        Transmits HTML/Text email report via Brevo REST API.
+        Transmits HTML/Text email report via configured email provider.
 
         Args:
             html_content: Email HTML body.
             plain_content: Fallback plain text body.
             subject: Email subject header.
+            recipient: Target recipient email or list of emails (optional).
             attachments: Optional list of filepaths.
 
         Returns:
@@ -53,6 +55,7 @@ class EmailSender:
             html_content=html_content,
             plain_content=plain_content,
             subject=subject,
+            recipient=recipient,
             attachments=attachments,
         )
 

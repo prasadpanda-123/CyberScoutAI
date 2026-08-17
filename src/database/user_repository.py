@@ -90,12 +90,18 @@ class UserRepository:
         finally:
             cursor.close()
 
-    def authenticate(self, identifier: str, password: str) -> Optional[Dict[str, Any]]:
+    def authenticate(self, identifier: Optional[str], password: Optional[str]) -> Optional[Dict[str, Any]]:
         """
         Authenticates a user by email or username and password.
         Returns user dictionary if authentication succeeds and user is active.
         """
+        if not identifier or not isinstance(identifier, str) or not password:
+            return None
+
         clean_id = identifier.strip().lower()
+        if not clean_id:
+            return None
+
         sql = "SELECT id, username, email, password_hash, role, is_active FROM Users WHERE LOWER(email) = ? OR LOWER(username) = ?"
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
@@ -122,6 +128,7 @@ class UserRepository:
                 return user_dict
             return None
         finally:
+            conn.rollback()
             cursor.close()
 
     def get_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
@@ -136,10 +143,30 @@ class UserRepository:
                 return row_to_dict(row, cursor.description)
             return None
         finally:
+            conn.rollback()
+            cursor.close()
+
+    def get_by_username(self, username: str) -> Optional[Dict[str, Any]]:
+        """Retrieves user details by username."""
+        if not username or not isinstance(username, str):
+            return None
+        sql = "SELECT id, username, email, role, is_active FROM Users WHERE LOWER(username) = ?"
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(sql, (username.strip().lower(),))
+            row = cursor.fetchone()
+            if row:
+                return row_to_dict(row, cursor.description)
+            return None
+        finally:
+            conn.rollback()
             cursor.close()
 
     def get_by_email(self, email: str) -> Optional[Dict[str, Any]]:
         """Retrieves user details by email."""
+        if not email or not isinstance(email, str):
+            return None
         sql = "SELECT id, username, email, role, is_active FROM Users WHERE LOWER(email) = ?"
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
@@ -150,6 +177,7 @@ class UserRepository:
                 return row_to_dict(row, cursor.description)
             return None
         finally:
+            conn.rollback()
             cursor.close()
 
     def update_last_login(self, user_id: int) -> None:
@@ -164,6 +192,54 @@ class UserRepository:
         finally:
             cursor.close()
 
+    def verify_password(self, user_id: int, password: str) -> bool:
+        """
+        Verifies whether submitted plaintext password matches the stored password_hash for user_id.
+        """
+        if not user_id or not password or not isinstance(password, str):
+            return False
+        sql = 'SELECT id, password_hash, is_active FROM "Users" WHERE id = %s'
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(sql, (user_id,))
+            row = cursor.fetchone()
+            if not row:
+                return False
+            row_d = row_to_dict(row, cursor.description)
+            if not row_d.get("is_active"):  # Inactive user
+                return False
+            pw_hash = row_d.get("password_hash")
+            if not pw_hash:
+                return False
+            return check_password_hash(pw_hash, password)
+        finally:
+            conn.rollback()
+            cursor.close()
+
+    def update_password(self, user_id: int, new_password: str) -> bool:
+        """
+        Updates user password with PBKDF2 SHA-256 hash.
+        """
+        if not user_id or not new_password or not isinstance(new_password, str):
+            raise ValueError("Invalid user_id or password.")
+        if len(new_password) < 8:
+            raise ValueError("Password must be at least 8 characters long.")
+
+        password_hash = generate_password_hash(new_password, method="pbkdf2:sha256")
+        sql = 'UPDATE "Users" SET password_hash = %s WHERE id = %s'
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(sql, (password_hash, user_id))
+            conn.commit()
+            return True
+        except Exception as e:
+            conn.rollback()
+            raise ValueError(f"Could not update password: {e}")
+        finally:
+            cursor.close()
+
     def list_users(self) -> List[Dict[str, Any]]:
         """Lists all registered users."""
         sql = "SELECT id, username, email, role, is_active, created_at, last_login FROM Users ORDER BY id ASC"
@@ -174,6 +250,7 @@ class UserRepository:
             rows = cursor.fetchall()
             return [row_to_dict(r, cursor.description) for r in rows]
         finally:
+            conn.rollback()
             cursor.close()
 
     def has_users(self) -> bool:
@@ -185,6 +262,7 @@ class UserRepository:
             res = cursor.fetchone()
             return res[0] > 0 if res else False
         finally:
+            conn.rollback()
             cursor.close()
 
     def has_admin(self) -> bool:
@@ -200,4 +278,5 @@ class UserRepository:
             res_users = cursor.fetchone()
             return res_users[0] > 0 if res_users else False
         finally:
+            conn.rollback()
             cursor.close()

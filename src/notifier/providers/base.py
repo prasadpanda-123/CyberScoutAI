@@ -23,6 +23,7 @@ class BaseEmailProvider(ABC):
         html_content: str,
         plain_content: str,
         subject: str,
+        recipient: Optional[Any] = None,
         attachments: Optional[List[Any]] = None,
     ) -> Dict[str, Any]:
         """

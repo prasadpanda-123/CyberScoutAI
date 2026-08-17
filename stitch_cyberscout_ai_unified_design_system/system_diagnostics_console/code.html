@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin Diagnostics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed": "#ffdcc0",
+                      "on-surface": "#dae2fd",
+                      "on-tertiary-container": "#412200",
+                      "on-background": "#dae2fd",
+                      "on-error": "#690005",
+                      "inverse-surface": "#dae2fd",
+                      "surface-container-lowest": "#060e20",
+                      "on-error-container": "#ffdad6",
+                      "inverse-primary": "#006398",
+                      "secondary-fixed-dim": "#7bd0ff",
+                      "surface-container-low": "#131b2e",
+                      "danger": "#EF4444",
+                      "tertiary-container": "#d07d1c",
+                      "admin-accent": "#EF4444",
+                      "tertiary": "#ffb875",
+                      "on-primary-fixed-variant": "#004b73",
+                      "on-primary": "#003351",
+                      "surface-container-high": "#222a3d",
+                      "on-primary-fixed": "#001d31",
+                      "bg-card-hover": "#1E293B",
+                      "primary-fixed-dim": "#93ccff",
+                      "surface-bright": "#31394d",
+                      "surface-container-highest": "#2d3449",
+                      "inverse-on-surface": "#283044",
+                      "primary-fixed": "#cce5ff",
+                      "surface-container": "#171f33",
+                      "secondary": "#7bd0ff",
+                      "primary": "#93ccff",
+                      "error": "#ffb4ab",
+                      "info": "#06B6D4",
+                      "on-secondary": "#00354a",
+                      "background": "#0b1326",
+                      "surface-dim": "#0b1326",
+                      "text-primary": "#F8FAFC",
+                      "on-tertiary": "#4b2800",
+                      "surface": "#0b1326",
+                      "text-muted": "#64748B",
+                      "border-subtle": "#1E293B",
+                      "on-secondary-fixed-variant": "#004c69",
+                      "surface-variant": "#2d3449",
+                      "bg-surface": "#0B0F19",
+                      "on-tertiary-fixed": "#2d1600",
+                      "on-tertiary-fixed-variant": "#6b3b00",
+                      "secondary-fixed": "#c4e7ff",
+                      "on-primary-container": "#002c47",
+                      "surface-tint": "#93ccff",
+                      "on-secondary-fixed": "#001e2c",
+                      "primary-container": "#3198dc",
+                      "warning": "#F59E0B",
+                      "outline-variant": "#3f4850",
+                      "success": "#10B981",
+                      "on-surface-variant": "#bfc7d2",
+                      "error-container": "#93000a",
+                      "tertiary-fixed-dim": "#ffb875",
+                      "secondary-container": "#00a6e0",
+                      "outline": "#89929b",
+                      "text-secondary": "#94A3B8",
+                      "bg-body": "#070B14",
+                      "on-secondary-container": "#00374d"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "stack-md": "16px",
+                      "stack-sm": "8px",
+                      "margin-desktop": "32px",
+                      "sidebar-collapsed": "64px",
+                      "margin-mobile": "16px",
+                      "sidebar-width": "280px",
+                      "stack-lg": "32px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-sm": [
+                              "Inter"
+                      ],
+                      "display-kpi": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "mono-code": [
+                              "JetBrains Mono"
+                      ]
+              },
+              "fontSize": {
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-sm": [
+                              "18px",
+                              {
+                                      "lineHeight": "24px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-kpi": [
+                              "48px",
+                              {
+                                      "lineHeight": "48px",
+                                      "letterSpacing": "-0.04em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "30px",
+                              {
+                                      "lineHeight": "36px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "mono-code": [
+                              "13px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.bg-body');
+            color: theme('colors.text-primary');
+        }
+        .glow-admin {
+            box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.05);
+        }
+        .log-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .log-container::-webkit-scrollbar-track {
+            background: theme('colors.surface-container'); 
+        }
+        .log-container::-webkit-scrollbar-thumb {
+            background: theme('colors.outline-variant'); 
+            border-radius: theme('borderRadius.DEFAULT');
+        }
+        .log-container::-webkit-scrollbar-thumb:hover {
+            background: theme('colors.outline'); 
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md flex h-screen overflow-hidden">
+<!-- Admin SideNavBar -->
+<nav class="hidden md:flex bg-surface dark:bg-surface fixed left-0 top-0 h-full w-sidebar-width border-r border-admin-accent/20 bg-surface-container-highest dark:bg-surface-container-highest shadow-[inset_0_0_20px_rgba(239,68,68,0.05)] flex-col py-gutter px-stack-md z-50">
+<div class="flex items-center gap-4 mb-stack-lg p-2">
+<div class="w-10 h-10 rounded bg-admin-accent/20 flex items-center justify-center border border-admin-accent/50">
+<span class="material-symbols-outlined text-admin-accent" data-icon="admin_panel_settings">admin_panel_settings</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-admin-accent dark:text-admin-accent">Admin Portal</h1>
+<p class="font-label-caps text-label-caps text-text-muted">System Core</p>
+</div>
+</div>
+<ul class="flex flex-col gap-2 flex-grow">
+<li>
+<a class="flex items-center gap-3 p-3 rounded text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+<span>Admin Dashboard</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 p-3 rounded text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings_input_component">settings_input_component</span>
+<span>Collectors</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 p-3 rounded text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="schedule">schedule</span>
+<span>Scheduler</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 p-3 rounded text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+<span>Security Logs</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 p-3 rounded text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span>Users</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 p-3 rounded text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="tune">tune</span>
+<span>Configuration</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 p-3 rounded text-admin-accent font-bold border-l-2 border-admin-accent bg-admin-accent/10 hover:bg-admin-accent/5 hover:text-on-surface transition-colors scale-95 duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="analytics" data-weight="fill" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span>Diagnostics</span>
+</a>
+</li>
+</ul>
+<div class="mt-auto border-t border-admin-accent/20 pt-4">
+<a class="flex items-center gap-3 p-3 rounded text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span>Exit Admin</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 ml-0 md:ml-sidebar-width h-screen overflow-y-auto bg-body">
+<!-- TopAppBar (Admin Context) -->
+<header class="bg-surface/92 dark:bg-surface/92 backdrop-blur-xl docked full-width top-0 sticky z-40 border-b border-admin-accent/30 flex justify-between items-center h-16 px-gutter w-full">
+<div class="flex items-center gap-4">
+<button class="md:hidden text-text-primary">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h2 class="font-headline-sm text-headline-sm font-bold text-on-surface">Diagnostics &amp; System Health</h2>
+</div>
+<div class="flex items-center gap-4">
+<span class="flex items-center gap-2 font-label-caps text-label-caps px-2 py-1 bg-admin-accent/20 text-admin-accent border border-admin-accent/50 rounded">
+<span class="w-2 h-2 rounded-full bg-admin-accent animate-pulse"></span>
+                    ADMIN PRIVILEGES ACTIVE
+                </span>
+<button class="text-on-surface-variant hover:text-admin-accent transition-colors">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+<button class="text-on-surface-variant hover:text-admin-accent transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<button class="bg-admin-accent hover:bg-red-600 text-white font-label-caps text-label-caps px-4 py-2 rounded transition-all hover:scale-95 duration-150 ease-in-out shadow-[0_0_15px_rgba(239,68,68,0.3)]">
+                    Restart Services
+                </button>
+</div>
+</header>
+<div class="p-gutter max-w-[1600px] mx-auto space-y-stack-lg">
+<!-- Global Health Overview -->
+<section class="grid grid-cols-1 md:grid-cols-4 gap-stack-md">
+<div class="bg-surface p-stack-md rounded border border-border-subtle glow-admin flex flex-col gap-2">
+<span class="font-label-caps text-label-caps text-text-secondary">Overall System Health</span>
+<div class="flex items-baseline gap-2">
+<span class="font-display-kpi text-display-kpi text-warning">87%</span>
+</div>
+<span class="font-body-md text-body-md text-warning flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">warning</span>
+                        Degraded Performance
+                    </span>
+</div>
+<div class="bg-surface p-stack-md rounded border border-border-subtle flex flex-col gap-2">
+<span class="font-label-caps text-label-caps text-text-secondary">Active Connections</span>
+<div class="flex items-baseline gap-2">
+<span class="font-display-kpi text-display-kpi text-text-primary">1,204</span>
+</div>
+<span class="font-body-md text-body-md text-success flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+                        Normal
+                    </span>
+</div>
+<div class="bg-surface p-stack-md rounded border border-border-subtle flex flex-col gap-2">
+<span class="font-label-caps text-label-caps text-text-secondary">RSS Feed Latency (Avg)</span>
+<div class="flex items-baseline gap-2">
+<span class="font-display-kpi text-display-kpi text-danger">450ms</span>
+</div>
+<span class="font-body-md text-body-md text-danger flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">error</span>
+                        Spike Detected
+                    </span>
+</div>
+<div class="bg-surface p-stack-md rounded border border-border-subtle flex flex-col gap-2">
+<span class="font-label-caps text-label-caps text-text-secondary">Failed Jobs (24h)</span>
+<div class="flex items-baseline gap-2">
+<span class="font-display-kpi text-display-kpi text-text-primary">23</span>
+</div>
+<span class="font-body-md text-body-md text-text-muted flex items-center gap-1">
+                        View Scheduler Logs
+                    </span>
+</div>
+</section>
+<!-- Service Status Bento -->
+<section>
+<h3 class="font-headline-sm text-headline-sm font-bold text-text-primary mb-stack-md">Service Modules</h3>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-stack-md">
+<!-- Module 1 -->
+<div class="bg-surface rounded border border-border-subtle p-stack-md flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div>
+<h4 class="font-headline-sm text-headline-sm font-semibold text-text-primary">RSS Ingestion Engine</h4>
+<p class="font-body-md text-body-md text-text-muted">v2.4.1-stable</p>
+</div>
+<span class="px-2 py-1 rounded bg-warning/20 text-warning font-label-caps text-label-caps border border-warning/50">WARNING</span>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between font-mono-code text-mono-code text-text-secondary text-xs">
+<span>Worker Threads</span>
+<span class="text-text-primary">48 / 64</span>
+</div>
+<div class="flex justify-between font-mono-code text-mono-code text-text-secondary text-xs">
+<span>Memory Heap</span>
+<span class="text-warning">812MB (85%)</span>
+</div>
+</div>
+<button class="mt-auto w-full py-2 border border-border-subtle rounded text-text-secondary font-label-caps text-label-caps hover:bg-surface-variant transition-colors" onclick="toggleDrawer('drawer-1')">
+                             View Module Logs
+                         </button>
+</div>
+<!-- Module 2 -->
+<div class="bg-surface rounded border border-border-subtle p-stack-md flex flex-col gap-4 glow-admin">
+<div class="flex justify-between items-start">
+<div>
+<h4 class="font-headline-sm text-headline-sm font-semibold text-text-primary">Threat Intelligence API</h4>
+<p class="font-body-md text-body-md text-text-muted">v1.1.0-beta</p>
+</div>
+<span class="px-2 py-1 rounded bg-danger/20 text-danger font-label-caps text-label-caps border border-danger/50 animate-pulse">FAILED</span>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between font-mono-code text-mono-code text-text-secondary text-xs">
+<span>Upstream Latency</span>
+<span class="text-danger">Timeout (5000ms+)</span>
+</div>
+<div class="flex justify-between font-mono-code text-mono-code text-text-secondary text-xs">
+<span>Rate Limit</span>
+<span class="text-text-primary">0 / 1000 req/min</span>
+</div>
+</div>
+<button class="mt-auto w-full py-2 border border-admin-accent/50 rounded text-admin-accent font-label-caps text-label-caps hover:bg-admin-accent/10 transition-colors" onclick="toggleDrawer('drawer-2')">
+                             Investigate Outage
+                         </button>
+</div>
+<!-- Module 3 -->
+<div class="bg-surface rounded border border-border-subtle p-stack-md flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div>
+<h4 class="font-headline-sm text-headline-sm font-semibold text-text-primary">Elasticsearch Cluster</h4>
+<p class="font-body-md text-body-md text-text-muted">Node: cs-es-01</p>
+</div>
+<span class="px-2 py-1 rounded bg-success/20 text-success font-label-caps text-label-caps border border-success/50">ACTIVE</span>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between font-mono-code text-mono-code text-text-secondary text-xs">
+<span>Cluster Status</span>
+<span class="text-success">Green</span>
+</div>
+<div class="flex justify-between font-mono-code text-mono-code text-text-secondary text-xs">
+<span>Disk Usage</span>
+<span class="text-text-primary">42% (1.2TB free)</span>
+</div>
+</div>
+<button class="mt-auto w-full py-2 border border-border-subtle rounded text-text-secondary font-label-caps text-label-caps hover:bg-surface-variant transition-colors" onclick="toggleDrawer('drawer-3')">
+                            Query Metrics
+                        </button>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Overlay Drawers for Logs (Hidden by default) -->
+<!-- Drawer 2 (Threat Intel - Failed) -->
+<div class="fixed inset-y-0 right-0 w-full md:w-[600px] bg-surface border-l border-admin-accent/30 shadow-[-10px_0_30px_rgba(0,0,0,0.5)] transform translate-x-full transition-transform duration-300 z-50 flex flex-col" id="drawer-2">
+<div class="p-stack-md border-b border-border-subtle flex justify-between items-center bg-surface-container-highest">
+<div>
+<h3 class="font-headline-sm text-headline-sm font-bold text-admin-accent">Threat Intelligence API Logs</h3>
+<p class="font-body-md text-body-md text-text-muted">Last 15 minutes | Status: FAILED</p>
+</div>
+<button class="text-text-secondary hover:text-text-primary" onclick="toggleDrawer('drawer-2')">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="flex-1 p-stack-md bg-body log-container overflow-y-auto">
+<pre class="font-mono-code text-mono-code text-xs text-text-secondary leading-relaxed whitespace-pre-wrap"><span class="text-text-muted">[2023-10-27T14:32:01Z]</span> INFO  Starting connection check to upstream provider (api.threatintel.io)
+<span class="text-text-muted">[2023-10-27T14:32:01Z]</span> DEBUG Resolving DNS for api.threatintel.io... OK (192.168.1.104)
+<span class="text-text-muted">[2023-10-27T14:32:06Z]</span> <span class="text-danger font-bold">ERROR</span> ConnectionTimeout: Upstream failed to respond within 5000ms.
+<span class="text-text-muted">[2023-10-27T14:32:06Z]</span> WARN  Retrying (1/3) in 2000ms...
+<span class="text-text-muted">[2023-10-27T14:32:13Z]</span> <span class="text-danger font-bold">ERROR</span> ConnectionTimeout: Upstream failed to respond within 5000ms.
+<span class="text-text-muted">[2023-10-27T14:32:13Z]</span> WARN  Retrying (2/3) in 4000ms...
+<span class="text-text-muted">[2023-10-27T14:32:22Z]</span> <span class="text-danger font-bold">ERROR</span> ConnectionTimeout: Upstream failed to respond within 5000ms.
+<span class="text-text-muted">[2023-10-27T14:32:22Z]</span> <span class="text-danger font-bold">FATAL</span> Max retries reached. Marking module as FAILED.
+            </pre>
+<div class="mt-stack-lg border border-border-subtle rounded bg-surface-container overflow-hidden">
+<div class="bg-surface p-2 border-b border-border-subtle">
+<span class="font-label-caps text-label-caps text-text-secondary">Latest Diagnostic Snapshot (JSON)</span>
+</div>
+<div class="p-4">
+<pre class="font-mono-code text-mono-code text-xs text-primary-fixed-dim whitespace-pre-wrap">{
+  "service": "threat-intel-api",
+  "status": "offline",
+  "last_success": "2023-10-27T14:15:22Z",
+  "error_details": {
+    "code": "ECONNRESET",
+    "syscall": "connect",
+    "address": "192.168.1.104",
+    "port": 443
+  },
+  "circuit_breaker": "open"
+}
+                    </pre>
+</div>
+</div>
+</div>
+<div class="p-stack-md border-t border-border-subtle bg-surface-container-highest flex gap-4">
+<button class="flex-1 bg-admin-accent hover:bg-red-600 text-white font-label-caps text-label-caps py-2 rounded transition-colors text-center">
+                 Force Reconnect
+             </button>
+<button class="flex-1 border border-border-subtle text-text-secondary hover:text-text-primary hover:bg-surface-variant font-label-caps text-label-caps py-2 rounded transition-colors text-center">
+                 Download Dump
+             </button>
+</div>
+</div>
+<!-- Backdrop for drawers -->
+<div class="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 hidden" id="drawer-backdrop" onclick="closeAllDrawers()"></div>
+<script>
+        function toggleDrawer(drawerId) {
+            const drawer = document.getElementById(drawerId);
+            const backdrop = document.getElementById('drawer-backdrop');
+            
+            if (drawer) {
+                if (drawer.classList.contains('translate-x-full')) {
+                    // Open
+                    drawer.classList.remove('translate-x-full');
+                    drawer.classList.add('translate-x-0');
+                    backdrop.classList.remove('hidden');
+                } else {
+                    // Close
+                    drawer.classList.add('translate-x-full');
+                    drawer.classList.remove('translate-x-0');
+                    backdrop.classList.add('hidden');
+                }
+            }
+        }
+
+        function closeAllDrawers() {
+            const drawers = document.querySelectorAll('[id^="drawer-"]');
+            drawers.forEach(drawer => {
+                if(drawer.id !== 'drawer-backdrop') {
+                    drawer.classList.add('translate-x-full');
+                    drawer.classList.remove('translate-x-0');
+                }
+            });
+            document.getElementById('drawer-backdrop').classList.add('hidden');
+        }
+    </script>
+</body></html>

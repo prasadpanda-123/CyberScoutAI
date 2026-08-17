@@ -65,11 +65,16 @@ class ResendEmailProvider(BaseEmailProvider):
             }
 
         sender_email = (os.getenv("EMAIL_FROM") or os.getenv("RESEND_SENDER") or "onboarding@resend.dev").strip()
-        recipient_email = (os.getenv("EMAIL_TO") or os.getenv("RECIPIENT_EMAIL") or "user@example.com").strip()
+        raw_recipients = (os.getenv("EMAIL_TO") or os.getenv("RECIPIENT_EMAIL") or "user@example.com").strip()
+        import re
+        recipients = [e.strip() for e in re.split(r"[,;]", raw_recipients) if e.strip() and "@" in e]
+        unique_recipients = list(dict.fromkeys(recipients))
+        if not unique_recipients:
+            unique_recipients = ["user@example.com"]
 
         payload: Dict[str, Any] = {
             "from": sender_email,
-            "to": [recipient_email],
+            "to": unique_recipients,
             "subject": subject,
             "html": html_content,
             "text": plain_content,
@@ -106,7 +111,7 @@ class ResendEmailProvider(BaseEmailProvider):
                     "status": "success",
                     "provider": self.provider_name,
                     "message_id": msg_id,
-                    "recipient": recipient_email,
+                    "recipient": ", ".join(unique_recipients),
                 }
         except urllib.error.HTTPError as http_err:
             err_body = http_err.read().decode("utf-8", errors="ignore")

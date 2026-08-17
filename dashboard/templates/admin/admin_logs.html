@@ -1,124 +1,121 @@
 {% extends "admin/admin_base.html" %}
+{% set active_page = "admin_logs" %}
 
-{% block title %}Admin Logs & Audit Center{% endblock %}
+{% block title %}Security Logs & Audit Trail — Admin Portal{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <div>
-    <h2 class="fw-bold text-light mb-1"><i class="bi bi-terminal-fill text-danger me-2"></i>Structured Logs & Security Audit Center</h2>
-    <p class="text-muted mb-0">Monitor application runtime events and administrative audit trails.</p>
-  </div>
-  <div>
-    <a href="{{ url_for('admin_api.admin_export_logs') }}" class="btn btn-outline-danger btn-sm"><i class="bi bi-download me-1"></i> Export JSON Logs</a>
-  </div>
-</div>
+<div class="space-y-6">
 
-<ul class="nav nav-tabs border-secondary mb-4">
-  <li class="nav-item">
-    <a class="nav-link {% if active_tab != 'audit_logs' %}active bg-dark text-light border-secondary{% else %}text-muted{% endif %}" href="{{ url_for('admin_ui.admin_logs', tab='app_logs') }}">
-      <i class="bi bi-journal-text me-1"></i> Application Logs
-    </a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link {% if active_tab == 'audit_logs' %}active bg-dark text-danger border-secondary{% else %}text-muted{% endif %}" href="{{ url_for('admin_ui.admin_logs', tab='audit_logs') }}">
-      <i class="bi bi-shield-lock-fill me-1"></i> Security Audit Trail
-    </a>
-  </li>
-</ul>
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border-subtle">
+    <div>
+      <h2 class="text-xl sm:text-2xl font-bold text-admin-accent tracking-tight flex items-center gap-2">
+        <span class="material-symbols-outlined text-admin-accent">terminal</span>
+        <span>Security Logs & Audit Trail</span>
+      </h2>
+      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">Filter runtime application logs and security compliance events.</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="{{ url_for('admin_api.admin_export_logs') }}" class="bg-surface-container hover:bg-surface-container-high text-text-primary border border-border-subtle text-xs font-bold px-3.5 py-2 rounded-lg transition-colors flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-[16px]">download</span>
+        <span>Export JSON Logs</span>
+      </a>
+    </div>
+  </div>
 
-{% if active_tab == 'audit_logs' %}
-<!-- Audit Logs View -->
-<div class="admin-card">
-  <div class="admin-card-header">
-    <span><i class="bi bi-shield-check text-danger me-2"></i>Administrative Audit Logs</span>
+  <!-- Tab Switcher -->
+  <div class="flex border-b border-border-subtle gap-6 text-sm font-semibold">
+    <a href="{{ url_for('admin_ui.admin_logs', tab='app_logs') }}" class="pb-3 border-b-2 transition-colors {% if active_tab != 'audit_logs' %}border-admin-accent text-admin-accent font-bold{% else %}border-transparent text-text-muted hover:text-text-primary{% endif %}">
+      Application Runtime Logs
+    </a>
+    <a href="{{ url_for('admin_ui.admin_logs', tab='audit_logs') }}" class="pb-3 border-b-2 transition-colors {% if active_tab == 'audit_logs' %}border-admin-accent text-admin-accent font-bold{% else %}border-transparent text-text-muted hover:text-text-primary{% endif %}">
+      Security Audit Trail
+    </a>
   </div>
-  <div class="table-responsive">
-    <table class="table table-dark table-hover mb-0 align-middle">
-      <thead>
-        <tr class="text-muted small border-bottom border-secondary">
-          <th>TIMESTAMP</th>
-          <th>EVENT</th>
-          <th>ACTION</th>
-          <th>USER</th>
-          <th>SOURCE IP</th>
-          <th>STATUS</th>
-          <th>DETAILS</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% if audit_logs %}
-          {% for log in audit_logs %}
-          <tr>
-            <td class="admin-code small text-nowrap">{{ log.timestamp }}</td>
-            <td><span class="badge bg-secondary">{{ log.event_type }}</span></td>
-            <td class="fw-semibold text-light">{{ log.action }}</td>
-            <td class="text-info">{{ log.username or 'Anonymous' }}</td>
-            <td class="admin-code text-muted small">{{ log.source_ip }}</td>
-            <td>
-              {% if log.status == 'SUCCESS' %}
-              <span class="badge bg-success">SUCCESS</span>
-              {% elif log.status == 'FAILED' or log.status == 'DENIED' %}
-              <span class="badge bg-danger">{{ log.status }}</span>
-              {% else %}
-              <span class="badge bg-warning text-dark">{{ log.status }}</span>
-              {% endif %}
-            </td>
-            <td class="small text-muted">{{ log.details }}</td>
-          </tr>
-          {% endfor %}
+
+  <!-- Filter Toolbar -->
+  <form method="GET" action="{{ url_for('admin_ui.admin_logs') }}" class="bg-surface p-4 rounded-xl border border-border-subtle flex flex-wrap items-center gap-3">
+    <input type="hidden" name="tab" value="{{ active_tab }}">
+
+    <div class="relative flex-1 min-w-[200px]">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-[16px]">search</span>
+      <input type="text" name="q" value="{{ search_query }}" placeholder="Filter message, module, or user..." class="w-full bg-bg-body border border-border-subtle rounded-lg py-2 pl-9 pr-3 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-admin-accent">
+    </div>
+
+    {% if active_tab != 'audit_logs' %}
+      <select name="level" onchange="this.form.submit()" class="bg-bg-body border border-border-subtle rounded-lg px-3 py-2 text-xs font-semibold text-text-primary focus:border-admin-accent">
+        <option value="">All Severity Levels</option>
+        <option value="INFO" {% if selected_level == 'INFO' %}selected{% endif %}>INFO</option>
+        <option value="WARNING" {% if selected_level == 'WARNING' %}selected{% endif %}>WARNING</option>
+        <option value="ERROR" {% if selected_level == 'ERROR' %}selected{% endif %}>ERROR</option>
+        <option value="CRITICAL" {% if selected_level == 'CRITICAL' %}selected{% endif %}>CRITICAL</option>
+      </select>
+    {% endif %}
+
+    <button type="submit" class="bg-primary/10 hover:bg-primary text-primary hover:text-surface-container-lowest font-bold text-xs px-4 py-2 rounded-lg border border-primary/30 transition-all">
+      Filter
+    </button>
+  </form>
+
+  <!-- Logs Table -->
+  <div class="bg-surface rounded-xl border border-border-subtle overflow-hidden">
+    {% if active_tab == 'audit_logs' %}
+      <!-- Audit Trail Table -->
+      <div class="hidden md:grid md:grid-cols-[160px_120px_1fr_120px_120px_90px] gap-3 p-3.5 border-b border-border-subtle bg-surface-container-low text-[11px] font-bold uppercase tracking-wider text-text-muted font-mono">
+        <div>Timestamp</div>
+        <div>Event</div>
+        <div>Action / Details</div>
+        <div>Username</div>
+        <div>Source IP</div>
+        <div class="text-center">Status</div>
+      </div>
+
+      <div class="divide-y divide-border-subtle font-mono text-xs">
+        {% for a in audit_logs %}
+          <div class="p-3.5 hover:bg-bg-card-hover transition-colors flex flex-col md:grid md:grid-cols-[160px_120px_1fr_120px_120px_90px] gap-2 md:gap-3 items-start md:items-center">
+            <div class="text-text-muted">{{ a.timestamp }}</div>
+            <div class="text-text-primary font-bold">{{ a.event_type }}</div>
+            <div class="text-text-secondary truncate">{{ a.action }} {% if a.details %}— {{ a.details }}{% endif %}</div>
+            <div class="text-text-primary">{{ a.username|default('—') }}</div>
+            <div class="text-text-muted">{{ a.source_ip|default('127.0.0.1') }}</div>
+            <div class="w-full md:w-auto flex justify-start md:justify-center">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded {% if a.status == 'SUCCESS' %}bg-success/15 text-success border border-success/30{% else %}bg-danger/15 text-danger border border-danger/30{% endif %}">
+                {{ a.status }}
+              </span>
+            </div>
+          </div>
         {% else %}
-          <tr>
-            <td colspan="7" class="text-center text-muted py-4">No security audit logs found.</td>
-          </tr>
-        {% endif %}
-      </tbody>
-    </table>
-  </div>
-</div>
-{% else %}
-<!-- App Logs View -->
-<div class="admin-card">
-  <div class="admin-card-header">
-    <span><i class="bi bi-list-nested text-info me-2"></i>Application Logs</span>
-  </div>
-  <div class="table-responsive">
-    <table class="table table-dark table-hover mb-0 align-middle">
-      <thead>
-        <tr class="text-muted small border-bottom border-secondary">
-          <th>TIMESTAMP</th>
-          <th>LEVEL</th>
-          <th>MODULE</th>
-          <th>FUNCTION</th>
-          <th>MESSAGE</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% if logs %}
-          {% for log in logs %}
-          <tr>
-            <td class="admin-code small text-nowrap">{{ log.timestamp }}</td>
-            <td>
-              {% if log.level == 'ERROR' %}
-              <span class="badge bg-danger">ERROR</span>
-              {% elif log.level == 'WARNING' %}
-              <span class="badge bg-warning text-dark">WARNING</span>
-              {% else %}
-              <span class="badge bg-info text-dark">INFO</span>
-              {% endif %}
-            </td>
-            <td class="admin-code text-light small">{{ log.module }}</td>
-            <td class="admin-code text-muted small">{{ log.function_name }}</td>
-            <td class="small">{{ log.message }}</td>
-          </tr>
-          {% endfor %}
+          <div class="p-12 text-center text-text-muted text-xs">No security audit records match your query.</div>
+        {% endfor %}
+      </div>
+
+    {% else %}
+      <!-- App Logs Table -->
+      <div class="hidden md:grid md:grid-cols-[160px_90px_140px_1fr] gap-3 p-3.5 border-b border-border-subtle bg-surface-container-low text-[11px] font-bold uppercase tracking-wider text-text-muted font-mono">
+        <div>Timestamp</div>
+        <div>Level</div>
+        <div>Module</div>
+        <div>Message</div>
+      </div>
+
+      <div class="divide-y divide-border-subtle font-mono text-xs">
+        {% for l in logs %}
+          <div class="p-3.5 hover:bg-bg-card-hover transition-colors flex flex-col md:grid md:grid-cols-[160px_90px_140px_1fr] gap-2 md:gap-3 items-start md:items-center">
+            <div class="text-text-muted">{{ l.timestamp }}</div>
+            <div>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded {% if l.level == 'INFO' %}bg-info/15 text-info border border-info/30{% elif l.level == 'WARNING' %}bg-warning/15 text-warning border border-warning/30{% elif l.level in ['ERROR', 'CRITICAL'] %}bg-danger/15 text-danger border border-danger/30{% else %}bg-surface-container text-text-muted{% endif %}">
+                {{ l.level }}
+              </span>
+            </div>
+            <div class="text-text-secondary truncate">{{ l.module }}</div>
+            <div class="text-text-primary break-all">{{ l.message }}</div>
+          </div>
         {% else %}
-          <tr>
-            <td colspan="5" class="text-center text-muted py-4">No application logs available.</td>
-          </tr>
-        {% endif %}
-      </tbody>
-    </table>
+          <div class="p-12 text-center text-text-muted text-xs">No application runtime logs match your query.</div>
+        {% endfor %}
+      </div>
+    {% endif %}
   </div>
+
 </div>
-{% endif %}
 {% endblock %}

@@ -92,6 +92,7 @@ class BrevoEmailProvider(BaseEmailProvider):
         html_content: str,
         plain_content: str,
         subject: str,
+        recipient: Optional[Any] = None,
         attachments: Optional[List[Any]] = None,
     ) -> Dict[str, Any]:
         """Dispatches email via Brevo v3 REST API."""
@@ -104,11 +105,27 @@ class BrevoEmailProvider(BaseEmailProvider):
 
         sender_email = (os.getenv("EMAIL_FROM") or os.getenv("BREVO_SENDER") or "cyberscout-alerts@example.com").strip()
         sender_name = os.getenv("EMAIL_SENDER_NAME") or "CyberScout AI"
-        recipient_email = (os.getenv("EMAIL_TO") or os.getenv("RECIPIENT_EMAIL") or "user@example.com").strip()
+
+        import re
+        if recipient:
+            if isinstance(recipient, str):
+                raw_recipients = recipient.strip()
+            elif isinstance(recipient, (list, tuple)):
+                raw_recipients = ",".join(str(r) for r in recipient)
+            else:
+                raw_recipients = str(recipient)
+        else:
+            raw_recipients = (os.getenv("EMAIL_TO") or os.getenv("RECIPIENT_EMAIL") or "user@example.com").strip()
+
+        # Parse, clean, and deduplicate recipients
+        recipients = [e.strip() for e in re.split(r"[,;]", raw_recipients) if e.strip() and "@" in e]
+        unique_recipients = list(dict.fromkeys(recipients))
+        if not unique_recipients:
+            unique_recipients = ["user@example.com"]
 
         payload: Dict[str, Any] = {
             "sender": {"name": sender_name, "email": sender_email},
-            "to": [{"email": recipient_email}],
+            "to": [{"email": r} for r in unique_recipients],
             "subject": subject,
             "htmlContent": html_content,
             "textContent": plain_content,
@@ -146,7 +163,7 @@ class BrevoEmailProvider(BaseEmailProvider):
                     "status": "success",
                     "provider": self.provider_name,
                     "message_id": msg_id,
-                    "recipient": recipient_email,
+                    "recipient": ", ".join(unique_recipients),
                 }
         except urllib.error.HTTPError as http_err:
             err_body = http_err.read().decode("utf-8", errors="ignore")

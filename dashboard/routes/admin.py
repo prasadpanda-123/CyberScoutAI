@@ -4,6 +4,7 @@ Dedicated Administrative Portal Routes (Phase 1 & Phase 3) for CyberScout AI v2.
 Isolates all administrative views under `/admin/*` protected by `@admin_required`.
 """
 
+import os
 from pathlib import Path
 import time
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for, send_from_directory, abort
@@ -21,6 +22,7 @@ from src.database.admin_repository import AdminRepository
 from src.database.audit_log_repository import AuditLogRepository
 from src.database.log_repository import LogRepository
 from src.database.user_repository import UserRepository
+from src.utils.ip_utils import get_client_ip
 
 admin_bp = Blueprint("admin_ui", __name__, url_prefix="/admin")
 
@@ -55,11 +57,18 @@ def admin_login():
         if session.get("admin_authenticated"):
             return redirect(url_for("admin_ui.admin_dashboard"))
 
-        client_ip = request.remote_addr or "127.0.0.1"
+        client_ip = get_client_ip(request)
 
         if request.method == "POST":
-            identifier = request.form.get("identifier", "").strip()
-            password = request.form.get("password", "").strip()
+            identifier = (
+                request.form.get("admin_username", "").strip()
+                or request.form.get("identifier", "").strip()
+                or request.form.get("username", "").strip()
+            )
+            password = (
+                request.form.get("admin_password", "").strip()
+                or request.form.get("password", "").strip()
+            )
             csrf_token = request.form.get("csrf_token", "").strip()
             next_url = request.form.get("next") or request.args.get("next") or url_for("admin_ui.admin_dashboard")
 
@@ -119,7 +128,7 @@ def admin_login():
                     pass
                 flash("Access Denied: Standard user accounts cannot authenticate through the Administrator Portal.", "danger")
                 try:
-                    audit_repo.log_event("AUTH", "ADMIN_LOGIN", "DENIED", user_id=user["id"], username=user["username"], source_ip=client_ip, details=f"Non-admin role '{user_role}' attempted admin login")
+                    audit_repo.log_event("AUTH", "ADMIN_LOGIN", "DENIED", username=user["username"], source_ip=client_ip, details=f"Non-admin role '{user_role}' attempted admin login")
                 except Exception:
                     pass
                 return render_template("admin/admin_login.html", next=next_url)
@@ -156,20 +165,36 @@ def admin_login():
                   <p style="font-size:13px; color:#94a3b8;">This code is valid for 5 minutes. If you did not request this login, please notify system administrators immediately.</p>
                 </div>
                 </body></html>"""
-                sender.send_email(html_content=html_body, plain_content=plain_body, subject=subject)
+                
+                admin_email = user.get("email") or os.getenv("EMAIL_TO") or "admin@cyberscout.ai"
+                from src.core.logging import get_logger
+                logger = get_logger(__name__)
+                logger.info(f"Admin OTP email requested for administrator: '{user['username']}'")
+                
+                msg_id = sender.send_email(
+                    html_content=html_body,
+                    plain_content=plain_body,
+                    subject=subject,
+                    recipient=admin_email,
+                )
+                logger.info(f"Brevo accepted email message (Message-ID: {msg_id})")
                 try:
-                    audit_repo.log_event("MFA", "OTP_GENERATED", "SUCCESS", user_id=user["id"], username=user["username"], source_ip=client_ip, details="OTP code dispatched via email")
+                    audit_repo.log_event("MFA", "OTP_GENERATED", "SUCCESS", username=user["username"], source_ip=client_ip, details=f"OTP code dispatched via Brevo (msg_id={msg_id})")
                 except Exception:
                     pass
-                flash("Credentials verified! A 6-digit verification code has been dispatched to your email address.", "info")
+                flash("Verification code sent to your registered email.", "info")
+                return redirect(url_for("admin_ui.admin_verify_otp"))
             except Exception as e:
+                AdminSecurityManager.clear_pending_mfa(pending_token)
+                session.pop("admin_pending_token", None)
+                from src.core.logging import get_logger
+                get_logger(__name__).error(f"Brevo API rejected OTP email: {e}")
                 try:
-                    audit_repo.log_event("MFA", "OTP_GENERATED", "DEV_FALLBACK", user_id=user["id"], username=user["username"], source_ip=client_ip, details=f"OTP: {otp_code} (Dispatch info: {e})")
+                    audit_repo.log_event("MFA", "OTP_GENERATED", "DISPATCH_FAILED", username=user["username"], source_ip=client_ip, details=f"Failed to dispatch OTP email for admin '{user['username']}'")
                 except Exception:
                     pass
-                flash(f"Credentials verified! Verification Code: {otp_code}", "info")
-
-            return redirect(url_for("admin_ui.admin_verify_otp"))
+                flash("We couldn't send the verification code. Please try again or contact the administrator.", "danger")
+                return render_template("admin/admin_login.html", next=next_url)
 
         return render_template("admin/admin_login.html", next=request.args.get("next", ""))
     except Exception as e:
@@ -204,25 +229,26 @@ def admin_verify_otp():
                 "next_url": session.get("admin_pending_next", url_for("admin_ui.admin_dashboard")),
             }
 
-    if not mfa_state:
+    if not mfa_state or not pending_token:
         flash("No pending authentication session. Please log in.", "warning")
         return redirect(url_for("admin_ui.admin_login"))
 
-    user_id = mfa_state["user_id"]
-    username = mfa_state["username"]
-    role = mfa_state["role"]
-    otp_hash = mfa_state["otp_hash"]
-    expires_at = mfa_state["expires_at"]
-    next_url = mfa_state.get("next_url") or url_for("admin_ui.admin_dashboard")
+    user_id = mfa_state.get("user_id")
+    username = str(mfa_state.get("username") or "")
+    role = str(mfa_state.get("role") or "Administrator")
+    otp_hash = str(mfa_state.get("otp_hash") or "")
+    expires_at = int(mfa_state.get("expires_at") or 0)
+    next_url = str(mfa_state.get("next_url") or url_for("admin_ui.admin_dashboard"))
+    pending_token_str = str(pending_token)
 
-    client_ip = request.remote_addr or "127.0.0.1"
+    client_ip = get_client_ip(request)
     now = int(time.time())
 
     # Check 5-minute expiration window
-    if now > expires_at:
-        AdminSecurityManager.clear_pending_mfa(pending_token)
+    if expires_at <= 0 or now > expires_at:
+        AdminSecurityManager.clear_pending_mfa(pending_token_str)
         session.pop("admin_pending_token", None)
-        audit_repo.log_event("MFA", "OTP_EXPIRED", "FAILED", user_id=user_id, username=username, source_ip=client_ip, details="OTP code expired")
+        audit_repo.log_event("MFA", "OTP_EXPIRED", "FAILED", username=username, source_ip=client_ip, details=f"OTP code expired for admin '{username}'")
         flash("Verification code has expired (valid for 5 minutes). Please log in again.", "danger")
         return redirect(url_for("admin_ui.admin_login"))
 
@@ -235,36 +261,38 @@ def admin_verify_otp():
             return render_template("admin/admin_verify_otp.html", username=username)
 
         # Track verification attempts
-        attempts = AdminSecurityManager.increment_pending_mfa_attempts(pending_token)
+        attempts = AdminSecurityManager.increment_pending_mfa_attempts(pending_token_str)
 
         if attempts > 5:
-            AdminSecurityManager.clear_pending_mfa(pending_token)
+            AdminSecurityManager.clear_pending_mfa(pending_token_str)
             session.pop("admin_pending_token", None)
             AdminSecurityManager.record_failed_attempt(client_ip, username)
-            audit_repo.log_event("MFA", "OTP_LOCKOUT", "FAILED", user_id=user_id, username=username, source_ip=client_ip, details="Exceeded 5 OTP attempts")
+            audit_repo.log_event("MFA", "OTP_LOCKOUT", "FAILED", username=username, source_ip=client_ip, details=f"Exceeded 5 OTP attempts for admin '{username}'")
             flash("Maximum OTP verification attempts exceeded. Please log in again.", "danger")
             return redirect(url_for("admin_ui.admin_login"))
 
         if AdminSecurityManager.verify_otp_code(otp_code, otp_hash):
             # Single-use OTP: Clear pending MFA state
-            AdminSecurityManager.clear_pending_mfa(pending_token)
+            AdminSecurityManager.clear_pending_mfa(pending_token_str)
 
             # Issue full administrator session
             AdminSecurityManager.reset_failed_attempts(client_ip, username)
             session.clear()
+            session.permanent = True
             session["admin_authenticated"] = True
             session["admin_user_id"] = user_id
             session["admin_username"] = username
             session["admin_role"] = role
+            session["role"] = role
             session["admin_csrf_token"] = AdminSecurityManager.generate_csrf_token()
 
-            audit_repo.log_event("MFA", "OTP_VERIFIED", "SUCCESS", user_id=user_id, username=username, source_ip=client_ip, details="OTP verified successfully")
-            audit_repo.log_event("AUTH", "ADMIN_LOGIN", "SUCCESS", user_id=user_id, username=username, source_ip=client_ip, details="Administrator MFA Session Established")
+            audit_repo.log_event("MFA", "OTP_VERIFIED", "SUCCESS", username=username, source_ip=client_ip, details=f"OTP verified successfully for admin '{username}'")
+            audit_repo.log_event("AUTH", "ADMIN_LOGIN", "SUCCESS", username=username, source_ip=client_ip, details=f"Administrator MFA Session Established for '{username}'")
             flash(f"MFA Verification Successful! Welcome to the Administrator Portal, {username}.", "success")
             return redirect(next_url)
         else:
             remaining = max(0, 5 - attempts)
-            audit_repo.log_event("MFA", "OTP_VERIFY_FAILED", "FAILED", user_id=user_id, username=username, source_ip=client_ip, details=f"Invalid OTP code (attempt {attempts}/5)")
+            audit_repo.log_event("MFA", "OTP_VERIFY_FAILED", "FAILED", username=username, source_ip=client_ip, details=f"Invalid OTP code (attempt {attempts}/5) for admin '{username}'")
             flash(f"Invalid verification code. {remaining} attempt(s) remaining.", "danger")
 
     return render_template("admin/admin_verify_otp.html", username=username)
@@ -273,12 +301,11 @@ def admin_verify_otp():
 @admin_bp.route("/logout")
 def admin_logout():
     """Clears administrative session namespace and redirects to /admin/login."""
-    client_ip = request.remote_addr or "127.0.0.1"
+    client_ip = get_client_ip(request)
     admin_user = session.get("admin_username")
-    admin_id = session.get("admin_user_id")
 
     if admin_user:
-        audit_repo.log_event("AUTH", "ADMIN_LOGOUT", "SUCCESS", user_id=admin_id, username=admin_user, source_ip=client_ip, details="Admin logged out")
+        audit_repo.log_event("AUTH", "ADMIN_LOGOUT", "SUCCESS", username=admin_user, source_ip=client_ip, details=f"Admin '{admin_user}' logged out")
 
     session.pop("admin_authenticated", None)
     session.pop("admin_user_id", None)
@@ -428,7 +455,7 @@ def admin_users():
     """Protected User Management & Account Administration."""
     if request.method == "POST":
         action = request.form.get("action")
-        client_ip = request.remote_addr or "127.0.0.1"
+        client_ip = get_client_ip(request)
 
         if action == "create_user":
             username = request.form.get("username", "").strip()
@@ -442,7 +469,7 @@ def admin_users():
             else:
                 try:
                     user_repo.create_user(username=username, email=email, password=password, role=role)
-                    audit_repo.log_event("USER_MGMT", "CREATE_USER", "SUCCESS", user_id=session.get("admin_user_id"), username=session.get("admin_username"), source_ip=client_ip, details=f"Created user '{username}' with role '{role}'")
+                    audit_repo.log_event("USER_MGMT", "CREATE_USER", "SUCCESS", username=session.get("admin_username"), source_ip=client_ip, details=f"Admin '{session.get('admin_username')}' created user '{username}' with role '{role}'")
                     flash(f"User '{username}' created successfully as {role}.", "success")
                 except ValueError as e:
                     flash(str(e), "danger")
@@ -474,7 +501,7 @@ def admin_download_report(filename):
     reports_dir = REPORTS_DIR
     if not reports_dir.exists():
         abort(404)
-    audit_repo.log_event("REPORTS", "DOWNLOAD_REPORT", "SUCCESS", user_id=session.get("admin_user_id"), username=session.get("admin_username"), source_ip=request.remote_addr, details=f"Downloaded report '{filename}'")
+    audit_repo.log_event("REPORTS", "DOWNLOAD_REPORT", "SUCCESS", username=session.get("admin_username"), source_ip=get_client_ip(request), details=f"Admin '{session.get('admin_username')}' downloaded report '{filename}'")
     return send_from_directory(str(reports_dir), filename, as_attachment=True)
 
 
@@ -483,7 +510,7 @@ def admin_download_report(filename):
 def admin_diagnostics():
     """Protected System & Feed Diagnostics Control."""
     diag_summary = RSSDiagnosticsManager().get_feed_diagnostics_summary()
-    audit_repo.log_event("DIAGNOSTICS", "ACCESS_DIAGNOSTICS", "SUCCESS", user_id=session.get("admin_user_id"), username=session.get("admin_username"), source_ip=request.remote_addr, details="Viewed feed diagnostics")
+    audit_repo.log_event("DIAGNOSTICS", "ACCESS_DIAGNOSTICS", "SUCCESS", username=session.get("admin_username"), source_ip=get_client_ip(request), details=f"Admin '{session.get('admin_username')}' viewed feed diagnostics")
     return render_template(
         "admin/admin_diagnostics.html",
         active_page="admin_diagnostics",

@@ -39,17 +39,31 @@ class ConsoleEmailProvider(BaseEmailProvider):
         html_content: str,
         plain_content: str,
         subject: str,
+        recipient: Optional[Any] = None,
         attachments: Optional[List[Any]] = None,
     ) -> Dict[str, Any]:
         """Logs mock email dispatch."""
         msg_id = f"<console-{uuid.uuid4()}@cyberscout.ai>"
-        recipient = (os.getenv("EMAIL_TO") or "user@example.com").strip()
+        import re
+        if recipient:
+            if isinstance(recipient, str):
+                raw_recipient = recipient.strip()
+            elif isinstance(recipient, (list, tuple)):
+                raw_recipient = ",".join(str(r) for r in recipient)
+            else:
+                raw_recipient = str(recipient)
+        else:
+            raw_recipient = (os.getenv("EMAIL_TO") or "user@example.com").strip()
+
+        recipients = [e.strip() for e in re.split(r"[,;]", raw_recipient) if e.strip() and "@" in e]
+        unique_recipients = list(dict.fromkeys(recipients))
+        resolved_recipient = ", ".join(unique_recipients) if unique_recipients else "user@example.com"
         att_count = len(attachments) if attachments else 0
 
         logger.info(
             f"[Console Provider] Dispatched Email:\n"
             f"  Subject     : {subject}\n"
-            f"  Recipient   : {recipient}\n"
+            f"  Recipient   : {resolved_recipient}\n"
             f"  Attachments : {att_count}\n"
             f"  Message-ID  : {msg_id}"
         )

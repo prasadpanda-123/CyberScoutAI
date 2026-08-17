@@ -197,43 +197,94 @@ class DatabaseManager:
             return self._engine
         return get_engine()
 
-    def initialize_database(self) -> None:
+    def verify_rls_policies(self) -> Dict[str, Any]:
         """
-        Initializes PostgreSQL database schema via SQLAlchemy Base.metadata.create_all
-        and executes seed data population on empty databases.
+        Verifies Row Level Security (RLS) state and policies across core tables via PostgreSQL system catalogs.
+        Returns a dictionary with status details without modifying database schema or acquiring exclusive locks.
         """
-        try:
-            if not self.ping():
-                logger.warning("PostgreSQL database is currently unreachable. Schema initialization skipped.")
-                return
-
-            engine = self.get_engine()
-
-            # Automatically create all schema tables via SQLAlchemy ORM
-            from src.database.base import Base
-            import src.database.models  # Ensures all models are registered
-            Base.metadata.create_all(bind=engine)
-
-            # Run default seed data population
-            from src.database.seed import SeedManager
-            SeedManager(db_manager=self).run_all_seeds()
-
-            # Enforce PostgreSQL Row Level Security (RLS) policies (Phase 2)
-            self.configure_rls_policies()
-
-            logger.info("PostgreSQL database successfully initialized and schema created.")
-        except Exception as e:
-            logger.warning(f"Database initialization encountered an exception: {e}")
-
-    def configure_rls_policies(self) -> None:
-        """
-        Enforces Row Level Security (RLS) policies across core tables idempotently in PostgreSQL.
-        Configures table RLS enabled state and explicit security policies on Admins, Users, Opportunities, and AuditLogs.
-        """
+        result = {
+            "is_configured": False,
+            "tables": {},
+            "policies": [],
+            "missing_tables": [],
+            "unprotected_tables": [],
+        }
+        target_tables = ("admins", "users", "opportunities", "auditlogs")
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
             try:
+                # 1. Query pg_class for table RLS flags
+                cursor.execute("""
+                    SELECT c.relname, c.relrowsecurity
+                    FROM pg_class c
+                    JOIN pg_namespace n ON n.oid = c.relnamespace
+                    WHERE n.nspname = 'public'
+                      AND LOWER(c.relname) IN ('admins', 'users', 'opportunities', 'auditlogs')
+                      AND c.relkind = 'r';
+                """)
+                rows = cursor.fetchall()
+                found_map = {row[0]: bool(row[1]) for row in rows}
+                result["tables"] = found_map
+
+                for t in target_tables:
+                    matching = [v for k, v in found_map.items() if k.lower() == t]
+                    if not matching:
+                        result["missing_tables"].append(t)
+                    elif not matching[0]:
+                        result["unprotected_tables"].append(t)
+
+                # 2. Query pg_policies for opportunity read policy
+                cursor.execute("""
+                    SELECT tablename, policyname
+                    FROM pg_policies
+                    WHERE schemaname = 'public'
+                      AND LOWER(tablename) = 'opportunities'
+                      AND policyname = 'opportunity_read_policy';
+                """)
+                policy_rows = cursor.fetchall()
+                result["policies"] = [f"{r[0]}.{r[1]}" for r in policy_rows]
+
+                has_policy = len(policy_rows) > 0
+                has_all_tables_secured = (
+                    len(result["missing_tables"]) == 0
+                    and len(result["unprotected_tables"]) == 0
+                    and len(found_map) >= len(target_tables)
+                )
+
+                result["is_configured"] = bool(has_all_tables_secured and has_policy)
+            finally:
+                conn.rollback()
+                cursor.close()
+        except Exception as e:
+            logger.debug(f"Error during RLS policy verification: {e}")
+            result["error"] = str(e)
+
+        return result
+
+    def configure_rls_policies(self, force: bool = False) -> bool:
+        """
+        Enforces Row Level Security (RLS) policies across core tables idempotently in PostgreSQL.
+        First verifies current catalog state; skips redundant DDL statements if RLS is already verified active.
+        """
+        # 1. Check existing RLS catalog state before attempting DDL locks
+        if not force:
+            status = self.verify_rls_policies()
+            if status.get("is_configured"):
+                logger.info("PostgreSQL Row Level Security (RLS) verified active on core tables. Skipping redundant DDL.")
+                return True
+
+        logger.info("Configuring PostgreSQL Row Level Security (RLS) policies...")
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            try:
+                # Set safe local lock timeout to prevent infinite blocking on contention
+                try:
+                    cursor.execute("SET LOCAL lock_timeout = '5s';")
+                except Exception:
+                    pass
+
                 # 1. Enable RLS on core tables idempotently
                 for table_name in ('"Admins"', '"Users"', '"Opportunities"', '"AuditLogs"'):
                     cursor.execute(f'ALTER TABLE {table_name} ENABLE ROW LEVEL SECURITY;')
@@ -251,13 +302,50 @@ class DatabaseManager:
                 cursor.execute(rls_policy_sql)
                 conn.commit()
                 logger.info("PostgreSQL Row Level Security (RLS) enabled and policies configured on core tables.")
+                return True
             except Exception as e:
                 conn.rollback()
-                logger.debug(f"RLS initialization notice: {e}")
+                logger.warning(f"RLS configuration notice: {e}")
+                return False
             finally:
                 cursor.close()
         except Exception as e:
-            logger.debug(f"Could not configure RLS policies: {e}")
+            logger.warning(f"Could not configure RLS policies: {e}")
+            return False
+
+    def initialize_database(self) -> None:
+        """
+        Initializes PostgreSQL database schema idempotently.
+        Verifies existing schema and RLS state; creates tables and seeds only if missing.
+        """
+        try:
+            if not self.ping():
+                logger.warning("PostgreSQL database is currently unreachable. Schema initialization skipped.")
+                return
+
+            # Check if schema and RLS are already fully initialized
+            rls_status = self.verify_rls_policies()
+            if rls_status.get("is_configured"):
+                logger.info("PostgreSQL database schema and RLS policies already verified healthy.")
+                return
+
+            engine = self.get_engine()
+
+            # Automatically create any missing schema tables via SQLAlchemy ORM
+            from src.database.base import Base
+            import src.database.models  # Ensures all models are registered
+            Base.metadata.create_all(bind=engine)
+
+            # Run default seed data population
+            from src.database.seed import SeedManager
+            SeedManager(db_manager=self).run_all_seeds()
+
+            # Enforce PostgreSQL Row Level Security (RLS) policies (Phase 2)
+            self.configure_rls_policies()
+
+            logger.info("PostgreSQL database successfully initialized and schema created.")
+        except Exception as e:
+            logger.warning(f"Database initialization encountered an exception: {e}")
 
     def get_connection(self) -> PgConnectionAdapter:
         """

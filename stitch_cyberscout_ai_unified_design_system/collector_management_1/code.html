@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collector Management - Admin Portal</title>
+    
+    <!-- Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    
+    <!-- Tailwind Configuration -->
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-bright": "#31394d",
+                    "on-secondary": "#00354a",
+                    "bg-card-hover": "#1E293B",
+                    "outline": "#89929b",
+                    "surface-container-lowest": "#060e20",
+                    "text-muted": "#64748B",
+                    "on-secondary-container": "#00374d",
+                    "on-tertiary": "#4b2800",
+                    "error-container": "#93000a",
+                    "inverse-surface": "#dae2fd",
+                    "primary": "#93ccff",
+                    "surface-container": "#171f33",
+                    "info": "#06B6D4",
+                    "primary-fixed": "#cce5ff",
+                    "on-primary-fixed": "#001d31",
+                    "on-error-container": "#ffdad6",
+                    "on-tertiary-container": "#412200",
+                    "on-secondary-fixed-variant": "#004c69",
+                    "outline-variant": "#3f4850",
+                    "surface-container-high": "#222a3d",
+                    "danger": "#EF4444",
+                    "on-tertiary-fixed": "#2d1600",
+                    "primary-container": "#3198dc",
+                    "surface-container-highest": "#2d3449",
+                    "border-subtle": "#1E293B",
+                    "surface-variant": "#2d3449",
+                    "surface": "#0b1326",
+                    "on-primary-container": "#002c47",
+                    "warning": "#F59E0B",
+                    "on-surface-variant": "#bfc7d2",
+                    "on-background": "#dae2fd",
+                    "text-secondary": "#94A3B8",
+                    "primary-fixed-dim": "#93ccff",
+                    "on-surface": "#dae2fd",
+                    "secondary-fixed-dim": "#7bd0ff",
+                    "error": "#ffb4ab",
+                    "surface-dim": "#0b1326",
+                    "bg-surface": "#0B0F19",
+                    "secondary-fixed": "#c4e7ff",
+                    "surface-container-low": "#131b2e",
+                    "tertiary-fixed": "#ffdcc0",
+                    "inverse-on-surface": "#283044",
+                    "surface-tint": "#93ccff",
+                    "tertiary-container": "#d07d1c",
+                    "inverse-primary": "#006398",
+                    "on-primary": "#003351",
+                    "background": "#0b1326",
+                    "tertiary": "#ffb875",
+                    "on-primary-fixed-variant": "#004b73",
+                    "secondary": "#7bd0ff",
+                    "on-error": "#690005",
+                    "secondary-container": "#00a6e0",
+                    "admin-accent": "#EF4444",
+                    "bg-body": "#070B14",
+                    "on-secondary-fixed": "#001e2c",
+                    "text-primary": "#F8FAFC",
+                    "success": "#10B981",
+                    "tertiary-fixed-dim": "#ffb875",
+                    "on-tertiary-fixed-variant": "#6b3b00"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "margin-mobile": "16px",
+                    "margin-desktop": "32px",
+                    "stack-md": "16px",
+                    "sidebar-collapsed": "64px",
+                    "stack-sm": "8px",
+                    "stack-lg": "32px",
+                    "sidebar-width": "280px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "mono-code": ["JetBrains Mono"],
+                    "headline-sm": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "display-kpi": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg": ["30px", {"lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "mono-code": ["13px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-sm": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "display-kpi": ["48px", {"lineHeight": "48px", "letterSpacing": "-0.04em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+        .brand-glow {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.15); /* admin-accent glow */
+        }
+        .admin-boundary {
+            box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.05);
+        }
+        
+        /* Custom Scrollbar for dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #070B14; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1E293B; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3f4850; 
+        }
+    </style>
+</head>
+<body class="bg-bg-body text-text-primary font-body-md antialiased min-h-screen flex selection:bg-admin-accent/30 selection:text-white">
+
+    <!-- Mobile Navigation Drawer Overlay (Hidden by default on md+) -->
+    <div id="mobile-nav-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 hidden md:hidden"></div>
+
+    <!-- SideNavBar (Admin) -->
+    <nav id="sidebar" class="bg-surface dark:bg-surface fixed left-0 top-0 h-full w-sidebar-width border-r border-admin-accent/20 z-50 flex flex-col py-gutter px-stack-md transition-transform duration-300 md:translate-x-0 -translate-x-full shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]">
+        <!-- Header -->
+        <div class="flex items-center gap-3 mb-8 px-2">
+            <div class="w-10 h-10 rounded-lg bg-admin-accent/10 border border-admin-accent/30 flex items-center justify-center">
+                <span class="material-symbols-outlined text-admin-accent" style="font-variation-settings: 'FILL' 1;">security</span>
+            </div>
+            <div>
+                <h1 class="font-headline-md text-headline-md font-bold text-admin-accent dark:text-admin-accent">Admin Portal</h1>
+                <p class="font-label-caps text-label-caps text-text-muted mt-1 uppercase">System Core</p>
+            </div>
+            <button id="close-mobile-nav" class="ml-auto md:hidden text-text-secondary hover:text-white">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+
+        <!-- Navigation Links -->
+        <div class="flex-1 overflow-y-auto space-y-1">
+            
+            <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors group">
+                <span class="material-symbols-outlined text-text-secondary group-hover:text-admin-accent transition-colors">admin_panel_settings</span>
+                <span class="font-body-md text-body-md">Admin Dashboard</span>
+            </a>
+            
+            <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-admin-accent font-bold border-l-2 border-admin-accent bg-admin-accent/10 hover:bg-admin-accent/5 transition-colors group active-scale-95">
+                <span class="material-symbols-outlined text-admin-accent" style="font-variation-settings: 'FILL' 1;">settings_input_component</span>
+                <span class="font-body-md text-body-md">Collectors</span>
+            </a>
+            
+            <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors group">
+                <span class="material-symbols-outlined text-text-secondary group-hover:text-admin-accent transition-colors">schedule</span>
+                <span class="font-body-md text-body-md">Scheduler</span>
+            </a>
+            
+            <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors group">
+                <span class="material-symbols-outlined text-text-secondary group-hover:text-admin-accent transition-colors">terminal</span>
+                <span class="font-body-md text-body-md">Security Logs</span>
+            </a>
+            
+            <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors group">
+                <span class="material-symbols-outlined text-text-secondary group-hover:text-admin-accent transition-colors">group</span>
+                <span class="font-body-md text-body-md">Users</span>
+            </a>
+            
+            <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors group">
+                <span class="material-symbols-outlined text-text-secondary group-hover:text-admin-accent transition-colors">tune</span>
+                <span class="font-body-md text-body-md">Configuration</span>
+            </a>
+            
+            <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors group">
+                <span class="material-symbols-outlined text-text-secondary group-hover:text-admin-accent transition-colors">analytics</span>
+                <span class="font-body-md text-body-md">Diagnostics</span>
+            </a>
+            
+        </div>
+
+        <!-- Footer -->
+        <div class="pt-4 border-t border-border-subtle mt-4">
+            <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant font-medium hover:bg-admin-accent/5 hover:text-on-surface transition-colors group">
+                <span class="material-symbols-outlined text-text-secondary group-hover:text-admin-accent transition-colors">logout</span>
+                <span class="font-body-md text-body-md">Exit Admin</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 md:ml-sidebar-width min-w-0 flex flex-col h-screen overflow-hidden">
+        
+        <!-- Top App Bar (Mobile toggle + Page Actions) -->
+        <header class="h-16 border-b border-border-subtle bg-bg-body/90 backdrop-blur-md flex items-center justify-between px-margin-mobile md:px-margin-desktop sticky top-0 z-30 shrink-0">
+            <div class="flex items-center gap-4">
+                <button id="open-mobile-nav" class="md:hidden text-text-secondary hover:text-white p-1 rounded-md hover:bg-surface-container">
+                    <span class="material-symbols-outlined">menu</span>
+                </button>
+                <div class="flex items-center gap-2">

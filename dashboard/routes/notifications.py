@@ -1,23 +1,31 @@
 """
-Notifications Route (Page 6).
+User Notifications Route for CyberScout AI.
 """
 
-from flask import Blueprint, render_template
-from src.auth.decorators import login_required, roles_required
+from flask import Blueprint, render_template, session
+from src.auth.decorators import login_required
+from src.database.connection import DatabaseManager
+from src.database.scheduler_repository import SchedulerRepository
 
 notifications_bp = Blueprint("notifications_ui", __name__)
 
 
 @notifications_bp.route("/notifications")
 @login_required
-@roles_required("Super Admin", "Administrator")
 def index():
-    """Renders Notifications control & preview page."""
+    """Renders user-facing notification preferences and daily intelligence status."""
+    db_mgr = DatabaseManager()
+    sched_repo = SchedulerRepository(db_manager=db_mgr)
+    state = sched_repo.get_state()
+
+    user_email = session.get("email") or "Registered Email"
+
     email_info = {
-        "last_email": "Daily Scheduled",
-        "last_status": "Success",
-        "recipient_count": 1,
-        "smtp_host": "Brevo REST API (HTTPS)",
+        "status": "Active",
+        "frequency": "Daily at 00:00 UTC",
+        "recipient_email": user_email,
+        "last_delivery": state.get("last_email_sent") or "Active (Awaiting next scheduled cycle)",
+        "attachments": "DOCX & CSV Daily Opportunity Digests",
     }
     return render_template(
         "notifications.html",

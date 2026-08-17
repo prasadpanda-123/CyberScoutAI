@@ -1,48 +1,83 @@
 {% extends "admin/admin_base.html" %}
+{% set active_page = "admin_reports" %}
 
-{% block title %}Admin Reports Download Center{% endblock %}
+{% block title %}Reports & Bulletins — Admin Portal{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <div>
-    <h2 class="fw-bold text-light mb-1"><i class="bi bi-file-earmark-bar-graph-fill text-danger me-2"></i>Admin Reports Download Center</h2>
-    <p class="text-muted mb-0">Access and download generated DOCX and CSV security reports.</p>
-  </div>
-</div>
+<div class="space-y-6">
 
-<div class="admin-card">
-  <div class="admin-card-header">
-    <span><i class="bi bi-folder-fill text-warning me-2"></i>Generated Reports</span>
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border-subtle">
+    <div>
+      <h2 class="text-xl sm:text-2xl font-bold text-admin-accent tracking-tight flex items-center gap-2">
+        <span class="material-symbols-outlined text-admin-accent">folder</span>
+        <span>Administrative Reports Center</span>
+      </h2>
+      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">Direct administrative access and download center for all system intelligence bulletins.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-mono text-text-muted bg-surface-container px-3 py-1.5 rounded-lg border border-border-subtle">
+        Total Files: <span class="font-bold text-primary">{{ reports|length }}</span>
+      </span>
+    </div>
   </div>
-  <div class="table-responsive">
-    <table class="table table-dark table-hover mb-0 align-middle">
-      <thead>
-        <tr class="text-muted small border-bottom border-secondary">
-          <th>FILENAME</th>
-          <th>TYPE</th>
-          <th>ACTION</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% if reports %}
-          {% for r in reports %}
-          <tr>
-            <td class="admin-code text-light fw-semibold">{{ r.name or r }}</td>
-            <td><span class="badge bg-secondary">Doc / CSV</span></td>
-            <td>
-              <a href="{{ url_for('admin_ui.admin_download_report', filename=r.name or r) }}" class="btn btn-outline-danger btn-sm">
-                <i class="bi bi-download me-1"></i> Download
-              </a>
-            </td>
-          </tr>
-          {% endfor %}
-        {% else %}
-          <tr>
-            <td colspan="3" class="text-center text-muted py-4">No reports generated yet.</td>
-          </tr>
-        {% endif %}
-      </tbody>
-    </table>
+
+  <!-- Reports Table -->
+  <div class="bg-surface rounded-xl border border-border-subtle overflow-hidden shadow-sm">
+    <div class="hidden md:grid md:grid-cols-[1fr_120px_160px_100px_120px] gap-4 p-3.5 border-b border-border-subtle bg-surface-container-low text-[11px] font-bold uppercase tracking-wider text-text-muted">
+      <div>Report Document</div>
+      <div>Format</div>
+      <div>Generated Date</div>
+      <div>Size</div>
+      <div class="text-right">Download</div>
+    </div>
+
+    <div class="divide-y divide-border-subtle">
+      {% for rep in reports %}
+        <div class="p-4 hover:bg-bg-card-hover transition-colors flex flex-col md:grid md:grid-cols-[1fr_120px_160px_100px_120px] gap-3 md:gap-4 items-start md:items-center">
+          <div class="flex items-center gap-3 w-full">
+            <div class="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 {% if rep.file_type == 'DOCX' %}bg-primary/10 text-primary border border-primary/20{% else %}bg-success/10 text-success border border-success/20{% endif %}">
+              <span class="material-symbols-outlined text-[20px]">
+                {% if rep.file_type == 'DOCX' %}description{% else %}table_view{% endif %}
+              </span>
+            </div>
+            <div class="overflow-hidden">
+              <div class="text-sm font-bold text-text-primary truncate">{{ rep.filename }}</div>
+              <div class="text-[11px] text-text-muted">System Intelligence Export</div>
+            </div>
+          </div>
+
+          <div class="w-full md:w-auto">
+            <span class="md:hidden text-text-muted text-[11px] uppercase mr-1">Type:</span>
+            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded {% if rep.file_type == 'DOCX' %}bg-primary/15 text-primary border border-primary/30{% else %}bg-success/15 text-success border border-success/30{% endif %}">
+              {{ rep.file_type }}
+            </span>
+          </div>
+
+          <div class="text-xs text-text-muted font-mono w-full md:w-auto">
+            <span class="md:hidden text-text-muted text-[11px] uppercase mr-1">Generated:</span>
+            <span>{{ rep.created_at }}</span>
+          </div>
+
+          <div class="text-xs text-text-secondary font-mono w-full md:w-auto">
+            <span class="md:hidden text-text-muted text-[11px] uppercase mr-1">Size:</span>
+            <span>{{ rep.size_kb }} KB</span>
+          </div>
+
+          <div class="w-full md:w-auto flex justify-end">
+            <a href="{{ url_for('admin_ui.admin_download_report', filename=rep.filename) }}" class="bg-danger/10 hover:bg-danger text-danger hover:text-white text-xs font-bold px-3.5 py-1.5 rounded-lg border border-danger/30 transition-all flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[15px]">download</span>
+              <span>Download</span>
+            </a>
+          </div>
+        </div>
+      {% else %}
+        <div class="p-12 text-center text-text-muted text-xs">
+          No reports generated in storage yet.
+        </div>
+      {% endfor %}
+    </div>
   </div>
+
 </div>
 {% endblock %}

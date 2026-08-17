@@ -31,30 +31,26 @@ class SchedulerRepository:
             Dictionary containing 'last_email_sent', 'last_pipeline_run', and 'updated_at'.
         """
         sql = "SELECT id, last_email_sent, last_pipeline_run, updated_at FROM scheduler_state WHERE id = 1;"
-        conn = self.db_manager.get_connection()
-        cursor = conn.cursor()
         try:
-            cursor.execute(sql)
-            row = cursor.fetchone()
-            if not row:
-                now = datetime.now(timezone.utc).isoformat()
-                cursor.execute(
-                    "INSERT INTO scheduler_state (id, last_email_sent, last_pipeline_run, updated_at) VALUES (1, '', '', ?);",
-                    (now,),
-                )
-                conn.commit()
-                return {"last_email_sent": "", "last_pipeline_run": "", "updated_at": now}
-            
-            return {
-                "last_email_sent": row["last_email_sent"] or "",
-                "last_pipeline_run": row["last_pipeline_run"] or "",
-                "updated_at": row["updated_at"] or "",
-            }
+            with self.db_manager.transaction() as cursor:
+                cursor.execute(sql)
+                row = cursor.fetchone()
+                if not row:
+                    now = datetime.now(timezone.utc).isoformat()
+                    cursor.execute(
+                        "INSERT INTO scheduler_state (id, last_email_sent, last_pipeline_run, updated_at) VALUES (1, '', '', ?);",
+                        (now,),
+                    )
+                    return {"last_email_sent": "", "last_pipeline_run": "", "updated_at": now}
+                
+                return {
+                    "last_email_sent": row["last_email_sent"] or "",
+                    "last_pipeline_run": row["last_pipeline_run"] or "",
+                    "updated_at": row["updated_at"] or "",
+                }
         except Exception as e:
             logger.error(f"Error fetching scheduler state from database: {e}")
             return {"last_email_sent": "", "last_pipeline_run": "", "updated_at": ""}
-        finally:
-            cursor.close()
 
     def update_last_email_sent(self, date_str: str, pipeline_run_time: Optional[str] = None) -> bool:
         """

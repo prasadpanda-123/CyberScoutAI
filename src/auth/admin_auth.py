@@ -121,6 +121,17 @@ class AdminSecurityManager:
         import hashlib
         return hashlib.sha256(otp_code.encode("utf-8")).hexdigest()
 
+    @classmethod
+    def verify_otp_code(cls, otp_code: str, stored_otp_hash: str) -> bool:
+        """
+        Verifies whether submitted OTP code matches the stored OTP SHA-256 hash.
+        Uses constant-time comparison (secrets.compare_digest) to prevent timing attacks.
+        """
+        if not otp_code or not stored_otp_hash or not isinstance(otp_code, str):
+            return False
+        computed_hash = cls.hash_otp_code(otp_code.strip())
+        return secrets.compare_digest(computed_hash, stored_otp_hash.strip())
+
     # Server-managed store for pending MFA OTP sessions: key=pending_token -> dict of MFA state
     _pending_mfa_sessions: Dict[str, dict] = {}
 

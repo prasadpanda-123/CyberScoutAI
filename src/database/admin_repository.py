@@ -94,12 +94,17 @@ class AdminRepository:
         finally:
             cursor.close()
 
-    def authenticate(self, identifier: str, password: str) -> Optional[Dict[str, Any]]:
+    def authenticate(self, identifier: Optional[str], password: Optional[str]) -> Optional[Dict[str, Any]]:
         """
         Authenticates an administrator by email or username and password against the Admins table ONLY.
         Returns administrator dictionary if authentication succeeds and administrator is active.
         """
+        if not identifier or not isinstance(identifier, str) or not password:
+            return None
+
         clean_id = identifier.strip().lower()
+        if not clean_id:
+            return None
         sql = 'SELECT id, username, email, password_hash, role, is_active FROM "Admins" WHERE LOWER(email) = ? OR LOWER(username) = ?'
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
@@ -126,6 +131,7 @@ class AdminRepository:
                 return admin_dict
             return None
         finally:
+            conn.rollback()
             cursor.close()
 
     def get_by_id(self, admin_id: int) -> Optional[Dict[str, Any]]:
@@ -140,6 +146,7 @@ class AdminRepository:
                 return row_to_dict(row, cursor.description)
             return None
         finally:
+            conn.rollback()
             cursor.close()
 
     def get_by_email(self, email: str) -> Optional[Dict[str, Any]]:
@@ -154,6 +161,7 @@ class AdminRepository:
                 return row_to_dict(row, cursor.description)
             return None
         finally:
+            conn.rollback()
             cursor.close()
 
     def update_last_login(self, admin_id: int) -> None:
@@ -177,4 +185,5 @@ class AdminRepository:
             res = cursor.fetchone()
             return res[0] > 0 if res else False
         finally:
+            conn.rollback()
             cursor.close()

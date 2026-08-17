@@ -1,130 +1,276 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <div>
-    <h2 class="fw-bold mb-0"><i class="bi bi-briefcase text-primary me-2"></i> Opportunities Explorer</h2>
-    <span class="text-secondary small">Filter, search, and discover cybersecurity opportunities</span>
-  </div>
-</div>
+{% extends "base.html" %}
+{% set active_page = "opportunities" %}
 
-<!-- Filters -->
-<div class="card p-3 mb-4">
-  <form method="GET" action="/opportunities" class="row g-3 align-items-center">
-    <div class="col-md-4">
-      <label class="form-label text-secondary small mb-1">Search Keywords</label>
-      <input type="text" name="q" class="form-control" placeholder="Search titles, providers, keywords..." value="{{ search_query }}">
+{% block title %}Opportunities Hub — CyberScout AI{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border-subtle">
+    <div>
+      <h2 class="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">Opportunities Hub</h2>
+      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">Explore, search, filter, and bookmark cybersecurity opportunities.</p>
     </div>
-    <div class="col-md-3">
-      <label class="form-label text-secondary small mb-1">Category</label>
-      <select name="category" class="form-select">
-        <option value="all">All Categories</option>
-        <option value="internship" {% if selected_category == 'internship' %}selected{% endif %}>Internship</option>
-        <option value="ctf" {% if selected_category == 'ctf' %}selected{% endif %}>CTF Competition</option>
-        <option value="course" {% if selected_category == 'course' %}selected{% endif %}>Course / Training</option>
-        <option value="certification" {% if selected_category == 'certification' %}selected{% endif %}>Certification</option>
-        <option value="job" {% if selected_category == 'job' %}selected{% endif %}>Job / Hiring</option>
-      </select>
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-mono text-text-muted bg-surface-container px-3 py-1.5 rounded-lg border border-border-subtle">
+        Total: <span class="font-bold text-primary">{{ total_count }}</span>
+      </span>
     </div>
-    <div class="col-md-2">
-      <label class="form-label text-secondary small mb-1">Per Page</label>
-      <select name="per_page" class="form-select" onchange="this.form.submit()">
-        <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
-        <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
-        <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
-      </select>
+  </div>
+
+  <!-- Search & Filter Controls -->
+  <form method="GET" action="/opportunities" class="bg-surface p-4 sm:p-5 rounded-xl border border-border-subtle space-y-4 shadow-sm">
+    <!-- Search Bar -->
+    <div class="relative">
+      <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted text-[18px]">search</span>
+      <input type="text" name="q" value="{{ search_query }}" placeholder="Search by title, provider, skills, tags, keywords..." class="w-full bg-bg-body border border-border-subtle rounded-lg py-2.5 pl-10 pr-4 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-primary transition-colors">
     </div>
-    <div class="col-md-3 d-flex align-items-end" style="margin-top: auto;">
-      <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search me-1"></i> Search & Filter</button>
+
+    <!-- Filter Dropdowns & View Mode -->
+    <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+      <div class="flex flex-wrap items-center gap-2.5">
+        <!-- Category Filter -->
+        <select name="category" onchange="this.form.submit()" class="bg-bg-body border border-border-subtle rounded-lg px-3 py-2 text-xs font-semibold text-text-primary focus:border-primary focus:outline-none cursor-pointer">
+          <option value="all" {% if selected_category == 'all' or not selected_category %}selected{% endif %}>All Categories</option>
+          <option value="internship" {% if selected_category == 'internship' %}selected{% endif %}>Internships</option>
+          <option value="ctf" {% if selected_category == 'ctf' %}selected{% endif %}>CTFs & Challenges</option>
+          <option value="certification" {% if selected_category == 'certification' %}selected{% endif %}>Certifications</option>
+          <option value="bug_bounty" {% if selected_category == 'bug_bounty' %}selected{% endif %}>Bug Bounties</option>
+          <option value="course" {% if selected_category == 'course' %}selected{% endif %}>Courses & Training</option>
+          <option value="job" {% if selected_category == 'job' %}selected{% endif %}>Full-Time Jobs</option>
+          <option value="hackathon" {% if selected_category == 'hackathon' %}selected{% endif %}>Hackathons</option>
+          <option value="scholarship" {% if selected_category == 'scholarship' %}selected{% endif %}>Scholarships</option>
+          <option value="github_repository" {% if selected_category == 'github_repository' %}selected{% endif %}>GitHub Repositories</option>
+          <option value="security_tool" {% if selected_category == 'security_tool' %}selected{% endif %}>Security Tools</option>
+        </select>
+
+        <!-- Deadline Filter -->
+        <select name="deadline" onchange="this.form.submit()" class="bg-bg-body border border-border-subtle rounded-lg px-3 py-2 text-xs font-semibold text-text-primary focus:border-primary focus:outline-none cursor-pointer">
+          <option value="all" {% if selected_deadline == 'all' or not selected_deadline %}selected{% endif %}>Any Deadline</option>
+          <option value="closing_soon" {% if selected_deadline == 'closing_soon' %}selected{% endif %}>Closing Soon (&le; 7 Days)</option>
+          <option value="active" {% if selected_deadline == 'active' %}selected{% endif %}>Active / Future</option>
+          <option value="no_deadline" {% if selected_deadline == 'no_deadline' %}selected{% endif %}>No Fixed Deadline</option>
+          <option value="passed" {% if selected_deadline == 'passed' %}selected{% endif %}>Expired Deadlines</option>
+        </select>
+
+        <!-- Sort Filter -->
+        <select name="sort" onchange="this.form.submit()" class="bg-bg-body border border-border-subtle rounded-lg px-3 py-2 text-xs font-semibold text-text-primary focus:border-primary focus:outline-none cursor-pointer">
+          <option value="relevance" {% if selected_sort == 'relevance' or not selected_sort %}selected{% endif %}>Sort: Relevance Score</option>
+          <option value="newest" {% if selected_sort == 'newest' %}selected{% endif %}>Sort: Newest Ingestion</option>
+          <option value="deadline_soonest" {% if selected_sort == 'deadline_soonest' %}selected{% endif %}>Sort: Deadline (Soonest)</option>
+        </select>
+
+        <!-- Per Page -->
+        <select name="per_page" onchange="this.form.submit()" class="bg-bg-body border border-border-subtle rounded-lg px-3 py-2 text-xs font-semibold text-text-primary focus:border-primary focus:outline-none cursor-pointer">
+          <option value="20" {% if per_page == 20 %}selected{% endif %}>20 / page</option>
+          <option value="50" {% if per_page == 50 %}selected{% endif %}>50 / page</option>
+          <option value="100" {% if per_page == 100 %}selected{% endif %}>100 / page</option>
+        </select>
+      </div>
+
+      <!-- View Switcher (All vs Saved) -->
+      <div class="flex bg-bg-body rounded-lg p-1 border border-border-subtle">
+        <a href="/opportunities" class="px-3 py-1 rounded text-xs font-semibold transition-all {% if view_mode != 'saved' %}bg-primary text-surface-container-lowest font-bold{% else %}text-text-muted hover:text-text-primary{% endif %}">
+          All
+        </a>
+        <a href="/opportunities?view=saved" class="px-3 py-1 rounded text-xs font-semibold transition-all flex items-center gap-1.5 {% if view_mode == 'saved' %}bg-warning text-surface-container-lowest font-bold{% else %}text-text-muted hover:text-text-primary{% endif %}">
+          <span class="material-symbols-outlined text-[14px]">bookmark</span>
+          <span>Saved</span>
+          <span id="savedCountBadge" class="text-[10px] bg-surface-container-high px-1.5 py-0.2 rounded font-mono">0</span>
+        </a>
+      </div>
     </div>
   </form>
-</div>
 
-<!-- Opportunities Table -->
-<div class="card p-3 mb-4">
-  <div class="table-responsive">
-    <table class="table table-striped table-hover align-middle mb-0">
-      <thead>
-        <tr>
-          <th>Title</th>
-          <th>Category</th>
-          <th>Source</th>
-          <th>Score</th>
-          <th>Discovered</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for opp in opportunities %}
-        {% set cat_key = (opp.category|default('other'))|lower %}
-        <tr>
-          <td class="fw-semibold">
-            <a href="{{ opp.url }}" target="_blank" class="text-primary text-decoration-none">{{ opp.title }}</a>
-            {% if opp.provider %}
-              <div class="text-secondary small font-monospace">{{ opp.provider }}</div>
+  <!-- Opportunity List / Table Container -->
+  <div class="bg-surface rounded-xl border border-border-subtle overflow-hidden">
+    <!-- Table Header (Desktop) -->
+    <div class="hidden md:grid md:grid-cols-[1fr_130px_130px_130px_60px] gap-4 p-3.5 border-b border-border-subtle bg-surface-container-low text-[11px] font-bold uppercase tracking-wider text-text-muted">
+      <div>Opportunity Details</div>
+      <div>Source / Org</div>
+      <div>Ingested</div>
+      <div>Deadline</div>
+      <div class="text-center">Save</div>
+    </div>
+
+    <!-- Rows -->
+    <div class="divide-y divide-border-subtle">
+      {% for opp in opportunities %}
+        <div data-opp-id="{{ opp.id }}" data-deadline="{{ opp.deadline or '' }}" class="p-4 hover:bg-bg-card-hover transition-colors flex flex-col md:grid md:grid-cols-[1fr_130px_130px_130px_60px] gap-3 md:gap-4 items-start md:items-center">
+          <!-- Details Column -->
+          <div class="space-y-1.5 w-full">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded font-mono uppercase {% if opp.category == 'internship' %}badge-category-internship{% elif opp.category == 'ctf' %}badge-category-ctf{% elif opp.category == 'certification' %}badge-category-certification{% elif opp.category == 'course' %}badge-category-course{% elif opp.category == 'job' %}badge-category-job{% else %}badge-category-default{% endif %}">
+                {{ opp.category|replace('_', ' ') }}
+              </span>
+              <a href="{{ opp.url }}" target="_blank" rel="noopener" class="text-sm font-bold text-text-primary hover:text-primary transition-colors flex items-center gap-1">
+                <span>{{ opp.title }}</span>
+                <span class="material-symbols-outlined text-[14px] opacity-60">open_in_new</span>
+              </a>
+            </div>
+
+            {% if opp.description %}
+              <p class="text-xs text-text-secondary line-clamp-2 leading-relaxed">
+                {{ opp.description }}
+              </p>
             {% endif %}
-          </td>
-          <td>
-            <span class="badge {% if cat_key in ['ctf', 'internship', 'course', 'certification', 'job'] %}badge-category-{{ cat_key }}{% else %}badge-category-default{% endif %}">
-              {{ (opp.category|default('Other'))|capitalize }}
-            </span>
-          </td>
-          <td class="text-secondary small">{{ opp.source_id }}</td>
-          <td>
-            <span class="badge {% if (opp.score|default(80)) >= 80 %}badge-p2{% elif (opp.score|default(80)) >= 60 %}badge-p1{% else %}badge-p3{% endif %}">
-              Score: {{ opp.score|default(80) }}
-            </span>
-          </td>
-          <td class="text-secondary small">{{ opp.discovered_date|default('N/A') }}</td>
-          <td>
-            <a href="{{ opp.url }}" target="_blank" class="btn btn-outline-primary btn-sm"><i class="bi bi-box-arrow-up-right"></i> Open</a>
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="6" class="text-center text-muted py-5">
-            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-            <div>No opportunities found</div>
-            <div class="small text-secondary mt-1">Try changing your search query or category filter.</div>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
 
-<!-- Pagination Controls Footer -->
-{% if total_count > 0 %}
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
-  <div class="text-secondary small">
-    Showing <span class="fw-bold text-primary">{{ "{:,}".format(start_item) }}–{{ "{:,}".format(end_item) }}</span> of <span class="fw-bold text-primary">{{ "{:,}".format(total_count) }}</span> opportunities
-  </div>
-  
-  <nav aria-label="Opportunities Table Pagination">
-    <ul class="pagination pagination-sm mb-0">
-      <!-- Previous Button -->
-      <li class="page-item {% if not has_prev %}disabled{% endif %}">
-        <a class="page-link" href="/opportunities?page={{ page - 1 }}&per_page={{ per_page }}&category={{ selected_category }}&q={{ search_query }}" aria-label="Previous">
-          <i class="bi bi-chevron-left"></i> Previous
-        </a>
-      </li>
+            <div class="flex flex-wrap items-center gap-3 text-[11px] text-text-muted pt-0.5">
+              {% if opp.location %}
+                <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">location_on</span> {{ opp.location }}</span>
+              {% endif %}
+              {% if opp.price_normalized %}
+                <span class="font-mono text-text-primary bg-surface-container px-1.5 py-0.2 rounded">{{ opp.price_normalized }}</span>
+              {% endif %}
+              {% if opp.score %}
+                <span class="text-primary font-mono font-semibold">Score: {{ opp.score }}/100</span>
+              {% endif %}
+            </div>
+          </div>
 
-      <!-- Page Numbers -->
-      {% for p_num in page_numbers %}
-      <li class="page-item {% if p_num == page %}active{% endif %}">
-        <a class="page-link" href="/opportunities?page={{ p_num }}&per_page={{ per_page }}&category={{ selected_category }}&q={{ search_query }}">{{ p_num }}</a>
-      </li>
+          <!-- Source Column -->
+          <div class="text-xs text-text-secondary font-medium w-full md:w-auto">
+            <span class="md:hidden text-text-muted text-[11px] uppercase mr-1">Source:</span>
+            <span class="truncate block">{{ opp.provider|default(opp.source_id|default('Direct Feed')) }}</span>
+          </div>
+
+          <!-- Discovered Column -->
+          <div class="text-xs text-text-muted font-mono w-full md:w-auto">
+            <span class="md:hidden text-text-muted text-[11px] uppercase mr-1">Discovered:</span>
+            <span>{{ opp.discovered_date|default('Recent') }}</span>
+          </div>
+
+          <!-- Deadline Column -->
+          <div class="w-full md:w-auto">
+            <span class="md:hidden text-text-muted text-[11px] uppercase mr-1">Deadline:</span>
+            {% if opp.deadline %}
+              <span class="deadline-badge inline-flex items-center gap-1 text-xs font-mono px-2 py-0.5 rounded bg-warning/10 text-warning border border-warning/20">
+                <span class="material-symbols-outlined text-[13px]">timer</span>
+                <span>{{ opp.deadline }}</span>
+              </span>
+            {% else %}
+              <span class="text-xs text-text-muted font-mono">Ongoing</span>
+            {% endif %}
+          </div>
+
+          <!-- Save / Star Button -->
+          <div class="w-full md:w-auto flex justify-end md:justify-center">
+            <button type="button" onclick="toggleBookmark('{{ opp.id }}')" class="p-1 text-text-muted hover:text-warning transition-colors" title="Bookmark Opportunity">
+              <span id="star-{{ opp.id }}" class="material-symbols-outlined text-[20px]">star_border</span>
+            </button>
+          </div>
+        </div>
+      {% else %}
+        <div class="p-12 text-center text-text-muted space-y-2">
+          <span class="material-symbols-outlined text-4xl text-text-muted">search_off</span>
+          <h4 class="text-sm font-bold text-text-primary">No opportunities found</h4>
+          <p class="text-xs text-text-secondary max-w-sm mx-auto">Try broadening your search keywords or resetting your category and deadline filters.</p>
+        </div>
       {% endfor %}
+    </div>
 
-      <!-- Next Button -->
-      <li class="page-item {% if not has_next %}disabled{% endif %}">
-        <a class="page-link" href="/opportunities?page={{ page + 1 }}&per_page={{ per_page }}&category={{ selected_category }}&q={{ search_query }}" aria-label="Next">
-          Next <i class="bi bi-chevron-right"></i>
-        </a>
-      </li>
-    </ul>
-  </nav>
+    <!-- Pagination Footer -->
+    {% if total_pages > 1 %}
+      <div class="p-4 border-t border-border-subtle bg-surface-container-lowest flex flex-col sm:flex-row justify-between items-center gap-3">
+        <div class="text-xs text-text-muted">
+          Showing <span class="font-bold text-text-primary">{{ start_item }}</span> to <span class="font-bold text-text-primary">{{ end_item }}</span> of <span class="font-bold text-text-primary">{{ total_count }}</span> items
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          {% if has_prev %}
+            <a href="{{ url_for('opportunities_ui.index', page=page-1, q=search_query, category=selected_category, deadline=selected_deadline, sort=selected_sort, per_page=per_page, view=view_mode) }}" class="px-2.5 py-1.5 rounded-lg border border-border-subtle text-xs font-semibold text-text-secondary hover:bg-surface-container hover:text-text-primary transition-colors flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">chevron_left</span>
+              <span>Prev</span>
+            </a>
+          {% endif %}
+
+          {% for p in page_numbers %}
+            {% if p == page %}
+              <span class="w-8 h-8 rounded-lg bg-primary text-surface-container-lowest font-bold text-xs flex items-center justify-center">{{ p }}</span>
+            {% else %}
+              <a href="{{ url_for('opportunities_ui.index', page=p, q=search_query, category=selected_category, deadline=selected_deadline, sort=selected_sort, per_page=per_page, view=view_mode) }}" class="w-8 h-8 rounded-lg border border-border-subtle hover:bg-surface-container text-xs font-semibold text-text-secondary hover:text-text-primary flex items-center justify-center transition-colors">{{ p }}</a>
+            {% endif %}
+          {% endfor %}
+
+          {% if has_next %}
+            <a href="{{ url_for('opportunities_ui.index', page=page+1, q=search_query, category=selected_category, deadline=selected_deadline, sort=selected_sort, per_page=per_page, view=view_mode) }}" class="px-2.5 py-1.5 rounded-lg border border-border-subtle text-xs font-semibold text-text-secondary hover:bg-surface-container hover:text-text-primary transition-colors flex items-center gap-1">
+              <span>Next</span>
+              <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
 </div>
-{% endif %}
 {% endblock %}
 
+{% block extra_scripts %}
+<script>
+  function getBookmarks() {
+    try {
+      return JSON.parse(localStorage.getItem('cyberscout_bookmarks') || '[]');
+    } catch(e) {
+      return [];
+    }
+  }
+
+  function saveBookmarks(arr) {
+    localStorage.setItem('cyberscout_bookmarks', JSON.stringify(arr));
+    updateBookmarkUI();
+  }
+
+  function toggleBookmark(id) {
+    let b = getBookmarks();
+    const idx = b.indexOf(id);
+    if (idx >= 0) {
+      b.splice(idx, 1);
+    } else {
+      b.push(id);
+    }
+    saveBookmarks(b);
+  }
+
+  function updateBookmarkUI() {
+    const b = getBookmarks();
+    const badge = document.getElementById('savedCountBadge');
+    const navBadge = document.getElementById('navSavedBadge');
+    if (badge) badge.innerText = b.length;
+    if (navBadge) navBadge.innerText = b.length;
+
+    // Update star icons
+    document.querySelectorAll('[data-opp-id]').forEach(el => {
+      const oppId = el.getAttribute('data-opp-id');
+      const star = document.getElementById('star-' + oppId);
+      const isSaved = b.includes(oppId);
+
+      if (star) {
+        if (isSaved) {
+          star.innerText = 'star';
+          star.classList.add('text-warning');
+          star.style.fontVariationSettings = "'FILL' 1";
+        } else {
+          star.innerText = 'star_border';
+          star.classList.remove('text-warning');
+          star.style.fontVariationSettings = "'FILL' 0";
+        }
+      }
+
+      // If in saved view mode, filter rows
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('view') === 'saved') {
+        if (!isSaved) {
+          el.style.display = 'none';
+        } else {
+          el.style.display = '';
+        }
+      }
+    });
+  }
+
+  // Initialize Bookmark States on load
+  document.addEventListener('DOMContentLoaded', updateBookmarkUI);
+</script>
+{% endblock %}

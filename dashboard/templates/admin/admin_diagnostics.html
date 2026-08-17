@@ -1,44 +1,42 @@
 {% extends "admin/admin_base.html" %}
+{% set active_page = "admin_diagnostics" %}
 
-{% block title %}Admin System & Feed Diagnostics{% endblock %}
+{% block title %}System Diagnostics — Admin Portal{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <div>
-    <h2 class="fw-bold text-light mb-1"><i class="bi bi-activity text-danger me-2"></i>System & Feed Diagnostics</h2>
-    <p class="text-muted mb-0">Internal RSS feed parsing diagnostics, connection health, and provider reliability metrics.</p>
-  </div>
-</div>
+<div class="space-y-6 max-w-4xl">
 
-<div class="admin-card mb-4">
-  <div class="admin-card-header">
-    <span><i class="bi bi-rss-fill text-warning me-2"></i>RSS & Collection Source Diagnostics Summary</span>
-  </div>
-  <div class="p-4">
-    {% if diag %}
-    <div class="row g-4">
-      <div class="col-12 col-md-4">
-        <div class="p-3 rounded bg-dark border border-secondary text-center">
-          <span class="text-muted small fw-semibold">TOTAL SOURCES TESTED</span>
-          <h2 class="fw-bold text-light mt-2 mb-0">{{ diag.total_sources if diag.total_sources is defined else 0 }}</h2>
-        </div>
-      </div>
-      <div class="col-12 col-md-4">
-        <div class="p-3 rounded bg-dark border border-secondary text-center">
-          <span class="text-muted small fw-semibold">HEALTHY SOURCES</span>
-          <h2 class="fw-bold text-success mt-2 mb-0">{{ diag.healthy_count if diag.healthy_count is defined else 0 }}</h2>
-        </div>
-      </div>
-      <div class="col-12 col-md-4">
-        <div class="p-3 rounded bg-dark border border-secondary text-center">
-          <span class="text-muted small fw-semibold">DEGRADED / ERROR SOURCES</span>
-          <h2 class="fw-bold text-danger mt-2 mb-0">{{ diag.degraded_count if diag.degraded_count is defined else 0 }}</h2>
-        </div>
-      </div>
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border-subtle">
+    <div>
+      <h2 class="text-xl sm:text-2xl font-bold text-admin-accent tracking-tight flex items-center gap-2">
+        <span class="material-symbols-outlined text-admin-accent">analytics</span>
+        <span>System Diagnostics Console</span>
+      </h2>
+      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">Feed health telemetry and provider status.</p>
     </div>
-    {% else %}
-    <p class="text-muted mb-0">Diagnostics summary data initialized.</p>
-    {% endif %}
   </div>
+
+  <!-- Diagnostics Grid -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="bg-surface rounded-xl p-5 border border-border-subtle space-y-1">
+      <div class="text-[11px] font-semibold uppercase text-text-muted">Total Feeds</div>
+      <div class="text-3xl font-bold text-text-primary">{{ diag.total_sources|default(0) }}</div>
+      <p class="text-[11px] text-text-muted">Monitored endpoints</p>
+    </div>
+
+    <div class="bg-surface rounded-xl p-5 border border-border-subtle space-y-1">
+      <div class="text-[11px] font-semibold uppercase text-text-muted">Healthy Feeds</div>
+      <div class="text-3xl font-bold text-success">{{ diag.healthy_count|default(0) }}</div>
+      <p class="text-[11px] text-text-muted">Responding normally</p>
+    </div>
+
+    <div class="bg-surface rounded-xl p-5 border border-border-subtle space-y-1">
+      <div class="text-[11px] font-semibold uppercase text-text-muted">Degraded Feeds</div>
+      <div class="text-3xl font-bold text-warning">{{ diag.degraded_count|default(0) }}</div>
+      <p class="text-[11px] text-text-muted">High latency or errors</p>
+    </div>
+  </div>
+
 </div>
 {% endblock %}

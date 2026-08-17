@@ -1,104 +1,88 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% set active_page = "notifications" %}
+
+{% block title %}Notifications & Digest — CyberScout AI{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <div>
-    <h2 class="fw-bold mb-0"><i class="bi bi-envelope-paper-fill text-warning me-2"></i> Notification & Email Center</h2>
-    <span class="text-muted small">Brevo REST API over HTTPS (Port 443) Email Digest Dispatcher</span>
-  </div>
-  <button class="btn btn-warning btn-sm fw-bold" onclick="sendTestEmail()"><i class="bi bi-send-fill me-1"></i> Dispatch Test Email</button>
-</div>
+<div class="space-y-6 max-w-4xl mx-auto w-full">
 
-<!-- Health & Settings Cards -->
-<div class="row g-4 mb-4">
-  <div class="col-md-3">
-    <div class="card p-3 shadow-sm">
-      <div class="text-muted small">Active Email Provider</div>
-      <div class="fw-bold text-warning fs-5">Brevo REST API</div>
-      <div class="text-muted small">HTTPS Port 443</div>
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border-subtle">
+    <div>
+      <h2 class="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">Intelligence Delivery</h2>
+      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">Automated cybersecurity opportunity intelligence bulletins and email delivery.</p>
+    </div>
+    <div class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-lowest rounded-full border border-border-subtle">
+      <span class="w-2 h-2 rounded-full bg-success"></span>
+      <span class="font-mono text-xs text-success font-semibold">SCHEDULED DAILY (00:00 UTC)</span>
     </div>
   </div>
-  <div class="col-md-3">
-    <div class="card p-3 shadow-sm">
-      <div class="text-muted small">Provider Health Status</div>
-      <div class="fw-bold text-success fs-5"><i class="bi bi-check-circle-fill me-1"></i> Healthy & Ready</div>
-      <div class="text-muted small">Pre-flight Verified</div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card p-3 shadow-sm">
-      <div class="text-muted small">Scheduled Frequency</div>
-      <div class="fw-bold fs-5">Daily 00:00 UTC</div>
-      <div class="text-muted small">Automatic Scheduler</div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card p-3 shadow-sm">
-      <div class="text-muted small">Attachments Included</div>
-      <div class="fw-bold text-info fs-5">DOCX & CSV</div>
-      <div class="text-muted small">Auto-generated Reports</div>
-    </div>
-  </div>
-</div>
 
-<div class="card p-4 shadow-sm">
-  <h4 class="fw-bold mb-3"><i class="bi bi-info-circle text-info me-2"></i> Cloud Email Delivery Architecture</h4>
-  <p class="text-secondary">
-    CyberScout AI utilizes <strong>Brevo REST API over HTTPS (Port 443)</strong> for email report delivery. This ensures 100% reliability in containerized environments (such as Render) where traditional outbound TCP SMTP ports 587/25 are restricted.
-  </p>
-  <div class="row g-3 mt-2">
-    <div class="col-md-6">
-      <div class="p-3 rounded border border-subtle">
-        <h6 class="text-warning mb-2"><i class="bi bi-gear-fill me-1"></i> Render Production Setup</h6>
-        <code class="d-block">EMAIL_PROVIDER=brevo</code>
-        <code class="d-block">BREVO_API_KEY=xkeysib-...</code>
-        <code class="d-block">EMAIL_FROM=verified-sender@example.com</code>
-        <code class="d-block">EMAIL_TO=recipient@example.com</code>
+  <!-- Delivery Status Card -->
+  <div class="bg-surface rounded-xl border border-border-subtle p-6 space-y-6">
+    <div class="flex items-center gap-3 pb-4 border-b border-border-subtle">
+      <div class="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+        <span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">mail</span>
+      </div>
+      <div>
+        <h3 class="text-base font-bold text-text-primary">Daily Intelligence Digest</h3>
+        <p class="text-xs text-text-secondary">Summary of top verified opportunities directly to your inbox</p>
       </div>
     </div>
-    <div class="col-md-6">
-      <div class="p-3 rounded border border-subtle">
-        <h6 class="text-success mb-2"><i class="bi bi-shield-check me-1"></i> Diagnostic Endpoint</h6>
-        <p class="text-muted small mb-2">Check email subsystem pre-flight health via API:</p>
-        <a href="/api/system/smtp-health" target="_blank" class="btn btn-sm btn-outline-success"><i class="bi bi-box-arrow-up-right me-1"></i> View /api/system/smtp-health</a>
+
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Recipient Email</div>
+        <div class="text-sm font-bold text-text-primary font-mono">{{ email_info.recipient_email|default(current_user.email) }}</div>
+      </div>
+
+      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Delivery Schedule</div>
+        <div class="text-sm font-bold text-text-primary">{{ email_info.frequency|default('Daily at 00:00 UTC (Midnight)') }}</div>
+      </div>
+
+      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Service Status</div>
+        <div class="text-sm font-bold text-success flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-success"></span>
+          <span>{{ email_info.status|default('Active & Ready') }}</span>
+        </div>
+      </div>
+
+      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Last Dispatched</div>
+        <div class="text-sm font-bold text-text-secondary font-mono">{{ email_info.last_delivery|default('Automated Midnight Run') }}</div>
       </div>
     </div>
   </div>
-</div>
-{% endblock %}
 
-{% block scripts %}
-<script>
-function sendTestEmail() {
-  const btn = event ? event.target : null;
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Dispatching...';
-  }
-  fetch('/api/email/test', { method: 'POST' })
-    .then(async r => {
-      const rawText = await r.text();
-      try {
-        return JSON.parse(rawText);
-      } catch (parseErr) {
-        return { status: 'failed', error: 'Server response error (HTTP ' + r.status + '): ' + rawText.substring(0, 150) };
-      }
-    })
-    .then(d => {
-      if (d.status === 'success') {
-        alert('✔ Test Email Dispatched Successfully!\n\nMessage ID: ' + (d.message_id || 'brevo-sent') + '\nRecipient: ' + (d.recipient || 'Configured Email'));
-      } else if (d.status === 'skipped') {
-        alert('ℹ Test Email Skipped: ' + (d.message || 'No items to send.'));
-      } else {
-        alert('⚠ Email Dispatch Result:\nStatus: ' + (d.status || 'failed') + '\n\nDetail: ' + (d.error || d.message || 'Please check BREVO_API_KEY configuration.'));
-      }
-    })
-    .catch(e => alert('Error sending email: ' + (e.message || e)))
-    .finally(() => {
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-send-fill me-1"></i> Dispatch Test Email';
-      }
-    });
-}
-</script>
+  <!-- What You Receive Card -->
+  <div class="bg-surface rounded-xl border border-border-subtle p-6 space-y-4">
+    <h3 class="text-sm font-bold text-text-primary uppercase tracking-wider flex items-center gap-2">
+      <span class="material-symbols-outlined text-primary text-[18px]">featured_play_list</span>
+      <span>Digest Content Breakdown</span>
+    </h3>
+
+    <div class="grid sm:grid-cols-3 gap-4">
+      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-2">
+        <span class="material-symbols-outlined text-primary text-xl">verified</span>
+        <h4 class="text-xs font-bold text-text-primary">Top Scoring Items</h4>
+        <p class="text-[11px] text-text-secondary">High-confidence curated opportunities with top relevance scores.</p>
+      </div>
+
+      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-2">
+        <span class="material-symbols-outlined text-warning text-xl">timer</span>
+        <h4 class="text-xs font-bold text-text-primary">Urgent Deadlines</h4>
+        <p class="text-[11px] text-text-secondary">High priority alerts for applications closing within 7 days.</p>
+      </div>
+
+      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-2">
+        <span class="material-symbols-outlined text-info text-xl">attachment</span>
+        <h4 class="text-xs font-bold text-text-primary">DOCX & CSV Reports</h4>
+        <p class="text-[11px] text-text-secondary">Direct attachments of complete data exports for offline access.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
 {% endblock %}

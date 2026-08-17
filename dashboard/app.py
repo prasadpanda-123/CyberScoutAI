@@ -42,17 +42,15 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
     app.config.from_object(config_class)
     setattr(app, "db_manager", db_mgr)
 
-    db_connected = db_mgr.check_connection_with_backoff(max_retries=5)
-    if db_connected:
-        try:
-            db_mgr.initialize_database()
-            seed_mgr = SeedManager(db_mgr)
-            seed_mgr.run_all_seeds()
-        except Exception as e:
-            logger.error(f"Error during schema initialization: {e}. Dashboard continuing in Degraded Mode.")
-    else:
-        logger.warning("Database unreachable on boot. CyberScout AI starting in Degraded Mode.")
-    app.config.from_object(config_class)
+    if not app.config.get("TESTING"):
+        db_connected = db_mgr.check_connection_with_backoff(max_retries=5)
+        if db_connected:
+            try:
+                db_mgr.initialize_database()
+            except Exception as e:
+                logger.error(f"Error during schema initialization: {e}. Dashboard continuing in Degraded Mode.")
+        else:
+            logger.warning("Database unreachable on boot. CyberScout AI starting in Degraded Mode.")
 
     # Register Database Log Handler for structured app log persistence (idempotent)
     try:
@@ -67,11 +65,13 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
         logger.warning(f"Could not register DatabaseLogHandler: {e}")
 
     # Secure Session Cookie Configuration (Phase 3 Hardening)
+    import os
     from datetime import timedelta
     app.config["SESSION_COOKIE_NAME"] = "cyberscout_session"
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-    app.config["SESSION_COOKIE_SECURE"] = not app.config.get("DEBUG", False) and not app.config.get("TESTING", False)
+    is_prod = os.getenv("FLASK_ENV") == "production" or os.getenv("ENV") == "production"
+    app.config["SESSION_COOKIE_SECURE"] = is_prod and os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=1)
 
     # Register Blueprints
@@ -109,10 +109,19 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
 
     @app.context_processor
     def inject_user_and_admin():
-        """Injects active user session, admin session details, and app version into Jinja2 templates."""
+        """Injects active user session, admin session details, CSRF token, and app version into Jinja2 templates."""
+        import secrets
         from src.core.version import get_version_info
+        
+        token = session.get("admin_csrf_token") or session.get("user_csrf_token")
+        if not token:
+            token = secrets.token_hex(32)
+            session["user_csrf_token"] = token
+            session["admin_csrf_token"] = token
+
         return {
             "app_info": get_version_info(),
+            "csrf_token": token,
             "current_user": {
                 "id": session.get("user_id"),
                 "username": session.get("username", "Guest"),
@@ -124,7 +133,7 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
                 "username": session.get("admin_username", "Administrator"),
                 "role": session.get("admin_role", "Super Admin"),
                 "is_authenticated": bool(session.get("admin_authenticated")),
-                "csrf_token": session.get("admin_csrf_token", ""),
+                "csrf_token": token,
             },
         }
 
@@ -155,11 +164,11 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.tailwindcss.com; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://cdn.tailwindcss.com; "
             "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
-            "img-src 'self' data:; "
-            "connect-src 'self' https://cdn.jsdelivr.net;"
+            "img-src 'self' data: https:; "
+            "connect-src 'self' https://cdn.jsdelivr.net https://cdn.tailwindcss.com;"
         )
         response.headers.pop("Server", None)
         response.headers.pop("X-Powered-By", None)
@@ -174,10 +183,27 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
     @app.errorhandler(500)
     def handle_500_error(e):
         logger.exception(f"500 Internal Server Error on {request.path}: {e}")
-        err_msg = str(getattr(e, "original_exception", e))
         if request.path.startswith("/api/") or request.path.startswith("/admin/api/") or request.headers.get("Accept") == "application/json":
-            return jsonify({"status": "failed", "error": "Internal Server Error", "message": err_msg}), 400
-        return jsonify({"status": "failed", "error": "Internal Server Error", "message": err_msg}), 400
+            return jsonify({"status": "failed", "error": "Internal Server Error"}), 500
+        return jsonify({"status": "failed", "error": "An unexpected server error occurred. Please try again later."}), 500
+
+    @app.errorhandler(401)
+    def handle_401_error(e):
+        if request.path.startswith("/api/") or request.path.startswith("/admin/api/") or request.headers.get("Accept") == "application/json":
+            return jsonify({"status": "failed", "error": "Unauthorized. Authentication required."}), 401
+        return redirect(url_for("auth_ui.login", next=request.path))
+
+    @app.errorhandler(403)
+    def handle_403_error(e):
+        if request.path.startswith("/api/") or request.path.startswith("/admin/api/") or request.headers.get("Accept") == "application/json":
+            return jsonify({"status": "failed", "error": "Forbidden. Insufficient permissions."}), 403
+        return redirect(url_for("dashboard_ui.index"))
+
+    @app.errorhandler(409)
+    def handle_409_error(e):
+        if request.path.startswith("/api/") or request.path.startswith("/admin/api/") or request.headers.get("Accept") == "application/json":
+            return jsonify({"status": "failed", "error": "Conflict. A scan or process is already running."}), 409
+        return jsonify({"status": "failed", "error": "Conflict. Operation cannot be completed right now."}), 409
 
     @app.errorhandler(404)
     def handle_404_error(e):
@@ -187,7 +213,7 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
             or request.headers.get("Accept") == "application/json"
             or request.headers.get("X-Requested-With") == "XMLHttpRequest"
         ):
-            return jsonify({"status": "error", "error": "API endpoint not found"}), 404
+            return jsonify({"status": "error", "error": "Endpoint not found"}), 404
         if request.path.startswith("/static") or request.path == "/favicon.ico":
             return ("File Not Found", 404)
         return redirect(url_for("dashboard_ui.landing"))
