@@ -24,6 +24,7 @@ from dashboard.routes import (
     quality_bp,
     scheduler_bp,
     system_bp,
+    external_trigger_bp,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -92,11 +93,17 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
     app.register_blueprint(api_bp)
     app.register_blueprint(quality_bp)
     app.register_blueprint(production_bp)
+    app.register_blueprint(external_trigger_bp)
 
     @app.before_request
     def check_first_run_setup():
         """Redirects unconfigured application to /setup if no users exist."""
-        if request.endpoint and (request.endpoint in ("auth_ui.setup", "admin_ui.admin_login", "static", "health.health_status", "health.api_health") or request.path.startswith("/api/health")):
+        if request.endpoint and (
+            request.endpoint in ("auth_ui.setup", "admin_ui.admin_login", "static", "health.health_status", "health.api_health")
+            or request.path.startswith("/api/health")
+            or request.path.startswith("/api/external")
+            or request.path.startswith("/api/scheduler")
+        ):
             return None
         try:
             from src.database.user_repository import UserRepository

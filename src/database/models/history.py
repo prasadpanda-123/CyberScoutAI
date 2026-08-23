@@ -90,3 +90,16 @@ class SchemaVersionModel(Base):
     version = Column(Integer, primary_key=True)
     applied_at = Column(DateTime, nullable=False)
     description = Column(Text, nullable=True)
+
+
+class SchedulerWebhookRequestModel(Base):
+    __tablename__ = "scheduler_webhook_requests"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    request_id = Column(String(128), unique=True, nullable=False, index=True)
+    timestamp = Column(Integer, nullable=False)
+    received_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+    status = Column(String(32), nullable=False, default="accepted")
+    source = Column(String(64), nullable=False, default="google_apps_script")
+    execution_details = Column(Text, nullable=True)
+

@@ -151,12 +151,22 @@ class APIService:
             return {"status": "failed", "stage": "CONFIG", "reason": str(e), "is_healthy": False}
 
     def get_scheduler_status(self) -> Dict[str, Any]:
-        """Returns background scheduler & daily report scheduler status."""
+        """Returns background scheduler & external webhook trigger scheduler status."""
         from src.scheduler.daily_report_scheduler import DailyReportScheduler
+        from src.database.webhook_request_repository import WebhookRequestRepository
         daily_sched = DailyReportScheduler(db_manager=self.db_manager)
         status = daily_sched.get_status()
         status["background_daemon"] = self.automation_engine.scheduler_service.get_status()
+        
+        # Attach latest external webhook trigger metadata
+        try:
+            webhook_repo = WebhookRequestRepository(db_manager=self.db_manager)
+            latest_trig = webhook_repo.get_latest_trigger()
+            status["latest_external_trigger"] = latest_trig
+        except Exception:
+            status["latest_external_trigger"] = None
         return status
+
 
     def pause_scheduler(self) -> Dict[str, Any]:
         """Pauses scheduler background daemon service."""

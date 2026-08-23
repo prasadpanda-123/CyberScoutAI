@@ -134,6 +134,22 @@ MIGRATIONS: List[Migration] = [
         );
         """,
     ),
+    Migration(
+        version=6,
+        description="External Scheduler Webhook Request Idempotency & Tracking Table",
+        sql="""
+        CREATE TABLE IF NOT EXISTS scheduler_webhook_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            request_id TEXT UNIQUE NOT NULL,
+            timestamp INTEGER NOT NULL,
+            received_at TIMESTAMP NOT NULL,
+            status TEXT NOT NULL DEFAULT 'accepted',
+            source TEXT NOT NULL DEFAULT 'google_apps_script',
+            execution_details TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_webhook_req_id ON scheduler_webhook_requests(request_id);
+        """,
+    ),
 ]
 
 

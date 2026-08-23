@@ -22,7 +22,7 @@ def login_required(f):
                 or request.headers.get("X-Requested-With") == "XMLHttpRequest"
             ):
                 return jsonify({"status": "failed", "error": "Authentication required"}), 401
-            return redirect(url_for("dashboard_ui.landing"))
+            return redirect(url_for("auth_ui.login", next=request.path))
         return f(*args, **kwargs)
 
     return decorated_function
@@ -92,9 +92,14 @@ def admin_required(f):
         admin_role = session.get("admin_role") or session.get("role") or ("Admin" if admin_auth else None)
 
         if not admin_auth:
+            if session.get("user_id"):
+                if is_api:
+                    return jsonify({"status": "failed", "error": "Forbidden: Administrative privileges required"}), 403
+                return ("<div style='font-family:sans-serif; text-align:center; padding:50px;'><h1>403 Forbidden</h1><p>Access Denied: Administrative role required.</p></div>", 403)
             if is_api:
                 return jsonify({"status": "failed", "error": "Authentication required"}), 401
             return redirect(url_for("admin_ui.admin_login"))
+
 
         if str(admin_role).lower() not in ("admin", "super admin", "administrator"):
             if is_api:

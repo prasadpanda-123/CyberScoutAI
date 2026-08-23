@@ -287,4 +287,9 @@ class DailyReportScheduler:
             "last_pipeline_run": state.get("last_pipeline_run") or "Never",
             "send_empty_report": self.send_empty_report,
             "healthy": True,
+            "scheduler_mode": "external",
+            "trigger_provider": "Google Apps Script",
+            "trigger_endpoint": "/api/external/scheduler/trigger",
+            "status_badge": "External Trigger Active",
         }
+

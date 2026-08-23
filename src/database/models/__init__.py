@@ -16,6 +16,7 @@ from src.database.models.history import (
     StatisticModel,
     KeywordModel,
     SchemaVersionModel,
+    SchedulerWebhookRequestModel,
 )
 
 __all__ = [
@@ -33,4 +34,6 @@ __all__ = [
     "StatisticModel",
     "KeywordModel",
     "SchemaVersionModel",
+    "SchedulerWebhookRequestModel",
 ]
+
