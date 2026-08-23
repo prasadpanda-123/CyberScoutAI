@@ -242,6 +242,7 @@ class TestExternalSchedulerTrigger(unittest.TestCase):
         service.email_client.send_daily_digest.return_value = {"status": "failed", "error": "Brevo rate limit"}
 
         headers, body_str, req_id, ts = self._generate_signed_headers_and_body()
+        self.webhook_repo.record_request(request_id=req_id, timestamp=ts)
 
         with patch("src.scheduler.external_trigger_service.run_pipeline_once") as mock_pipeline:
             mock_pipeline.return_value = {
@@ -261,6 +262,84 @@ class TestExternalSchedulerTrigger(unittest.TestCase):
             self.assertEqual(summary["scan_status"], "success")
             self.assertEqual(summary["email_status"], "failed")
 
+            # Verify GET /api/scheduler/status telemetry
+            status_res = self.client.get("/api/scheduler/status")
+            self.assertEqual(status_res.status_code, 200)
+            status_data = status_res.get_json()
+            self.assertEqual(status_data.get("current_status"), "idle")
+            self.assertEqual(status_data.get("last_run_status"), "completed")
+            self.assertEqual(status_data.get("last_email_status"), "failed")
+
+    def test_successful_scan_and_email_status_telemetry(self):
+        """12. Successful scan and email reports completed run and success email status."""
+        service = ExternalTriggerService(db_manager=self.db_mgr)
+        service.email_client = MagicMock()
+        service.email_client.provider_name = "BrevoEmailProvider"
+        service.email_client.send_daily_digest.return_value = {"status": "success", "message_id": "brevo-msg-999"}
+
+        headers, body_str, req_id, ts = self._generate_signed_headers_and_body()
+        self.webhook_repo.record_request(request_id=req_id, timestamp=ts)
+
+        with patch("src.scheduler.external_trigger_service.run_pipeline_once") as mock_pipeline:
+            mock_pipeline.return_value = {
+                "status": "success",
+                "saved": 8,
+                "duration_seconds": 2.0,
+                "persistence_success": True,
+            }
+
+            summary = service._execute_scan_and_email_chain(
+                request_id=req_id,
+                source="google_apps_script",
+                source_ip="127.0.0.1",
+                dry_run=False,
+            )
+
+            self.assertEqual(summary["scan_status"], "success")
+            self.assertEqual(summary["email_status"], "success")
+
+            # Verify GET /api/scheduler/status telemetry
+            status_res = self.client.get("/api/scheduler/status")
+            self.assertEqual(status_res.status_code, 200)
+            status_data = status_res.get_json()
+            self.assertEqual(status_data.get("current_status"), "idle")
+            self.assertEqual(status_data.get("last_run_status"), "completed")
+            self.assertEqual(status_data.get("last_email_status"), "success")
+
+    def test_failed_scan_telemetry_reports_skipped_email(self):
+        """13. Failed scan reports failed run and skipped email status."""
+        service = ExternalTriggerService(db_manager=self.db_mgr)
+        service.email_client = MagicMock()
+
+        headers, body_str, req_id, ts = self._generate_signed_headers_and_body()
+        self.webhook_repo.record_request(request_id=req_id, timestamp=ts)
+
+        with patch("src.scheduler.external_trigger_service.run_pipeline_once") as mock_pipeline:
+            mock_pipeline.return_value = {
+                "status": "failed",
+                "saved": 0,
+                "duration_seconds": 0.5,
+                "persistence_success": False,
+            }
+
+            summary = service._execute_scan_and_email_chain(
+                request_id=req_id,
+                source="google_apps_script",
+                source_ip="127.0.0.1",
+                dry_run=False,
+            )
+
+            self.assertEqual(summary["scan_status"], "failed")
+            self.assertEqual(summary["email_status"], "skipped")
+
+            # Verify GET /api/scheduler/status telemetry
+            status_res = self.client.get("/api/scheduler/status")
+            self.assertEqual(status_res.status_code, 200)
+            status_data = status_res.get_json()
+            self.assertEqual(status_data.get("current_status"), "idle")
+            self.assertEqual(status_data.get("last_run_status"), "failed")
+            self.assertEqual(status_data.get("last_email_status"), "skipped")
+
     def test_non_json_content_type_rejected(self):
         """Non-JSON Content-Type returns HTTP 400."""
         headers, body, _, _ = self._generate_signed_headers_and_body()
@@ -272,3 +351,4 @@ class TestExternalSchedulerTrigger(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

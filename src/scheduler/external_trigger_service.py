@@ -370,6 +370,7 @@ class ExternalTriggerService:
                     request_id=request_id,
                     status="completed",
                     execution_details=f"Scan successful. Saved: {scan_result.get('saved', 0)}",
+                    email_status="pending",
                 )
                 self._log_audit(
                     action="SCAN_COMPLETED",
@@ -384,6 +385,7 @@ class ExternalTriggerService:
                     request_id=request_id,
                     status="failed",
                     execution_details="Scan failed or database persistence error",
+                    email_status="skipped",
                 )
                 self._log_audit(
                     action="SCAN_FAILED",
@@ -399,6 +401,7 @@ class ExternalTriggerService:
                 request_id=request_id,
                 status="failed",
                 execution_details=str(e),
+                email_status="skipped",
             )
             self._log_audit(
                 action="SCAN_FAILED",
@@ -421,13 +424,19 @@ class ExternalTriggerService:
             )
             try:
                 email_result = self.email_client.send_daily_digest(send_empty=send_empty_report)
-                email_status = email_result.get("status")
+                email_status = email_result.get("status") if isinstance(email_result, dict) else "failed"
 
                 if email_status == "success":
                     email_ok = True
                     self.scheduler_repo.update_last_email_sent(today_str, pipeline_run_time=now_iso)
                     logger.info("[ExternalTrigger] Server-side email report sent successfully.")
                     provider_name = getattr(self.email_client, "provider_name", None) or getattr(getattr(self.email_client, "email_sender", None), "provider_name", "BrevoEmailProvider")
+                    self.webhook_repo.update_status(
+                        request_id=request_id,
+                        status="completed",
+                        execution_details=f"Scan completed. Daily email digest sent successfully via {provider_name}.",
+                        email_status="success",
+                    )
                     self._log_audit(
                         action="EMAIL_DISPATCHED",
                         status="SUCCESS",
@@ -439,6 +448,12 @@ class ExternalTriggerService:
                     email_ok = True
                     self.scheduler_repo.update_last_email_sent(today_str, pipeline_run_time=now_iso)
                     logger.info("[ExternalTrigger] Email skipped (0 new opportunities and send_empty=False).")
+                    self.webhook_repo.update_status(
+                        request_id=request_id,
+                        status="completed",
+                        execution_details="Scan completed. Email digest skipped (0 new opportunities).",
+                        email_status="skipped",
+                    )
                     self._log_audit(
                         action="EMAIL_DISPATCHED",
                         status="SUCCESS",
@@ -448,8 +463,14 @@ class ExternalTriggerService:
                     )
                 else:
                     email_ok = False
-                    err_text = email_result.get("error", "Email dispatch error")
+                    err_text = email_result.get("error", "Email dispatch error") if isinstance(email_result, dict) else "Unknown email error"
                     logger.error(f"[ExternalTrigger] Server-side email delivery failed: {err_text}")
+                    self.webhook_repo.update_status(
+                        request_id=request_id,
+                        status="completed",
+                        execution_details=f"Scan completed. Email dispatch failed: {err_text}",
+                        email_status="failed",
+                    )
                     self._log_audit(
                         action="EMAIL_DISPATCH_FAILED",
                         status="FAILED",
@@ -459,6 +480,12 @@ class ExternalTriggerService:
                     )
             except Exception as e:
                 logger.error(f"[ExternalTrigger] Exception during server-side email dispatch: {e}", exc_info=True)
+                self.webhook_repo.update_status(
+                    request_id=request_id,
+                    status="completed",
+                    execution_details=f"Scan completed. Email dispatch exception: {e}",
+                    email_status="failed",
+                )
                 self._log_audit(
                     action="EMAIL_DISPATCH_FAILED",
                     status="FAILED",
@@ -469,6 +496,12 @@ class ExternalTriggerService:
                 email_ok = False
         elif not scan_ok:
             logger.info("[ExternalTrigger] Scan was not successful. Server-side email dispatch bypassed.")
+            self.webhook_repo.update_status(
+                request_id=request_id,
+                status="failed",
+                execution_details="Scan failed. Email dispatch bypassed.",
+                email_status="skipped",
+            )
 
         duration = round(time.time() - start_time, 2)
         logger.info(f"[ExternalTrigger] Workflow complete for request_id '{request_id}' in {duration}s. (Scan: {'OK' if scan_ok else 'FAIL'}, Email: {'OK' if email_ok else 'FAIL/SKIPPED'})")

@@ -154,17 +154,48 @@ class APIService:
         """Returns background scheduler & external webhook trigger scheduler status."""
         from src.scheduler.daily_report_scheduler import DailyReportScheduler
         from src.database.webhook_request_repository import WebhookRequestRepository
+        from src.automation.job_manager import scan_job_manager
+
         daily_sched = DailyReportScheduler(db_manager=self.db_manager)
         status = daily_sched.get_status()
         status["background_daemon"] = self.automation_engine.scheduler_service.get_status()
-        
+        is_running = scan_job_manager.is_scan_active()
+        status["is_running"] = is_running
+
         # Attach latest external webhook trigger metadata
         try:
             webhook_repo = WebhookRequestRepository(db_manager=self.db_manager)
             latest_trig = webhook_repo.get_latest_trigger()
             status["latest_external_trigger"] = latest_trig
+            if latest_trig:
+                raw_status = latest_trig.get("status", "idle")
+                if raw_status == "accepted" and is_running:
+                    status["last_run_status"] = "running"
+                elif raw_status in ("completed", "success"):
+                    status["last_run_status"] = "completed"
+                elif raw_status in ("failed", "error"):
+                    status["last_run_status"] = "failed"
+                else:
+                    status["last_run_status"] = raw_status
+
+                status["last_run_time"] = latest_trig.get("received_at")
+
+                raw_email = latest_trig.get("email_status")
+                if raw_email:
+                    status["last_email_status"] = str(raw_email).lower()
+                elif status["last_run_status"] == "completed":
+                    status["last_email_status"] = "success"
+                elif status["last_run_status"] == "failed":
+                    status["last_email_status"] = "skipped"
+                else:
+                    status["last_email_status"] = "idle"
+            else:
+                status["last_run_status"] = "idle"
+                status["last_email_status"] = "idle"
         except Exception:
             status["latest_external_trigger"] = None
+            status["last_run_status"] = "idle"
+            status["last_email_status"] = "idle"
         return status
 
 

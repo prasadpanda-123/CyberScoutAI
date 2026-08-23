@@ -32,13 +32,18 @@ class WebhookRequestRepository:
             received_at TIMESTAMP NOT NULL,
             status VARCHAR(32) NOT NULL DEFAULT 'accepted',
             source VARCHAR(64) NOT NULL DEFAULT 'google_apps_script',
-            execution_details TEXT
+            execution_details TEXT,
+            email_status VARCHAR(32) DEFAULT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_webhook_req_id ON scheduler_webhook_requests(request_id);
         """
         try:
             with self.db_manager.transaction() as cursor:
                 cursor.execute(sql)
+                try:
+                    cursor.execute("ALTER TABLE scheduler_webhook_requests ADD COLUMN email_status VARCHAR(32) DEFAULT NULL;")
+                except Exception:
+                    pass
         except Exception as e:
             logger.debug(f"WebhookRequestRepository: table initialization note: {e}")
 
@@ -51,7 +56,7 @@ class WebhookRequestRepository:
 
         clean_id = request_id.strip()
         sql = """
-        SELECT id, request_id, timestamp, received_at, status, source, execution_details
+        SELECT id, request_id, timestamp, received_at, status, source, execution_details, email_status
         FROM scheduler_webhook_requests
         WHERE request_id = ?
         LIMIT 1;
@@ -70,6 +75,7 @@ class WebhookRequestRepository:
                     "status": row["status"],
                     "source": row["source"],
                     "execution_details": row["execution_details"],
+                    "email_status": row["email_status"] if "email_status" in row.keys() else None,
                 }
         except Exception as e:
             logger.error(f"Error querying webhook request_id '{clean_id}': {e}")
@@ -82,6 +88,7 @@ class WebhookRequestRepository:
         source: str = "google_apps_script",
         status: str = "accepted",
         execution_details: Optional[str] = None,
+        email_status: Optional[str] = None,
     ) -> bool:
         """
         Registers a new incoming webhook trigger request.
@@ -94,14 +101,14 @@ class WebhookRequestRepository:
         now_dt = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
         sql = """
-        INSERT INTO scheduler_webhook_requests (request_id, timestamp, received_at, status, source, execution_details)
-        VALUES (?, ?, ?, ?, ?, ?);
+        INSERT INTO scheduler_webhook_requests (request_id, timestamp, received_at, status, source, execution_details, email_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?);
         """
         try:
             with self.db_manager.transaction() as cursor:
                 cursor.execute(
                     sql,
-                    (clean_id, int(timestamp), now_dt, status, source, execution_details),
+                    (clean_id, int(timestamp), now_dt, status, source, execution_details, email_status),
                 )
             logger.info(f"Registered external webhook trigger request '{clean_id}' from source '{source}'.")
             return True
@@ -114,23 +121,34 @@ class WebhookRequestRepository:
         request_id: str,
         status: str,
         execution_details: Optional[str] = None,
+        email_status: Optional[str] = None,
     ) -> bool:
         """
-        Updates execution status and details for an existing request_id.
+        Updates execution status, email_status, and details for an existing request_id.
         """
         if not request_id:
             return False
 
         clean_id = request_id.strip()
-        sql = """
-        UPDATE scheduler_webhook_requests
-        SET status = ?, execution_details = ?
-        WHERE request_id = ?;
-        """
+        if email_status is not None:
+            sql = """
+            UPDATE scheduler_webhook_requests
+            SET status = ?, execution_details = ?, email_status = ?
+            WHERE request_id = ?;
+            """
+            params = (status, execution_details, email_status, clean_id)
+        else:
+            sql = """
+            UPDATE scheduler_webhook_requests
+            SET status = ?, execution_details = ?
+            WHERE request_id = ?;
+            """
+            params = (status, execution_details, clean_id)
+
         try:
             with self.db_manager.transaction() as cursor:
-                cursor.execute(sql, (status, execution_details, clean_id))
-            logger.info(f"Updated webhook request '{clean_id}' status to '{status}'.")
+                cursor.execute(sql, params)
+            logger.info(f"Updated webhook request '{clean_id}' status to '{status}', email_status to '{email_status}'.")
             return True
         except Exception as e:
             logger.error(f"Failed to update webhook request '{clean_id}' status: {e}")
@@ -141,7 +159,7 @@ class WebhookRequestRepository:
         Returns the most recently recorded webhook trigger event.
         """
         sql = """
-        SELECT id, request_id, timestamp, received_at, status, source, execution_details
+        SELECT id, request_id, timestamp, received_at, status, source, execution_details, email_status
         FROM scheduler_webhook_requests
         ORDER BY id DESC
         LIMIT 1;
@@ -160,6 +178,7 @@ class WebhookRequestRepository:
                     "status": row["status"],
                     "source": row["source"],
                     "execution_details": row["execution_details"],
+                    "email_status": row["email_status"] if "email_status" in row.keys() else None,
                 }
         except Exception as e:
             logger.error(f"Error querying latest webhook trigger: {e}")

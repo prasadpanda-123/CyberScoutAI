@@ -62,17 +62,23 @@ def get_scheduler_status():
     GET /api/scheduler/status
     Returns safe telemetry regarding external scheduler trigger mode.
     """
+    from flask import current_app
     from dashboard.services.api_service import APIService
-    api_svc = APIService()
+    db_mgr = getattr(current_app, "db_manager", None) if current_app else None
+    api_svc = APIService(db_manager=db_mgr)
     status_info = api_svc.get_scheduler_status()
     latest_trigger = status_info.get("latest_external_trigger") or {}
+
+    current_status = "running" if status_info.get("is_running") else "idle"
+    last_run_status = status_info.get("last_run_status") or latest_trigger.get("status", "idle")
+    last_email_status = status_info.get("last_email_status", "idle")
 
     return jsonify({
         "scheduler_mode": "external",
         "trigger_source": "google_apps_script",
-        "current_status": "running" if status_info.get("is_running") else "idle",
+        "current_status": current_status,
         "last_run_id": latest_trigger.get("request_id"),
-        "last_run_status": latest_trigger.get("status", status_info.get("last_run_status", "idle")),
+        "last_run_status": last_run_status,
         "last_run_at": latest_trigger.get("received_at", status_info.get("last_run_time")),
-        "last_email_status": status_info.get("last_email_status", "idle"),
+        "last_email_status": last_email_status,
     }), 200

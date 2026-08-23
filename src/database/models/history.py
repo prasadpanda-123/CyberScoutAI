@@ -102,4 +102,9 @@ class SchedulerWebhookRequestModel(Base):
     status = Column(String(32), nullable=False, default="accepted")
     source = Column(String(64), nullable=False, default="google_apps_script")
     execution_details = Column(Text, nullable=True)
+    email_status = Column(String(32), nullable=True, default=None)
+
+
+SchedulerTriggerNonce = SchedulerWebhookRequestModel
+
 
