@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CyberScout AI — Opportunity Intelligence Platform</title>
   
+  <!-- CyberScout AI Favicon Suite -->
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon/favicon.svg') }}">
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -55,8 +62,8 @@
   <nav class="fixed top-0 w-full z-50 glass-panel border-b border-border-subtle">
     <div class="flex justify-between items-center h-16 px-6 max-w-[1400px] mx-auto">
       <div class="flex items-center gap-3">
-        <div class="h-9 w-9 rounded-lg bg-primary/10 border border-primary/30 flex items-center justify-center">
-          <span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">security</span>
+        <div class="h-9 w-9 rounded-lg bg-primary/10 border border-primary/30 flex items-center justify-center p-1">
+          <img src="{{ url_for('static', filename='images/cyberscout-icon.svg') }}" alt="CyberScout AI" class="w-full h-full object-contain">
         </div>
         <span class="text-base font-bold text-text-primary tracking-tight">CyberScout AI</span>
       </div>

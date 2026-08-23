@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 420" width="100%" height="100%" fill="none">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="sShieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f0ff" />
+      <stop offset="50%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#818cf8" />
+    </linearGradient>
+
+    <linearGradient id="sCyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f0ff" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+
+    <linearGradient id="sAiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f0ff" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+
+    <filter id="sGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- ==================== CENTERED ICON EMBLEM (Scale ~0.95, Center X: 250) ==================== -->
+  <g transform="translate(150, 15)">
+    <!-- Outer Shield Frame -->
+    <path d="M100 16 L175 46 V108 C175 152 142 190 100 210 C58 190 25 152 25 108 V46 L100 16 Z" 
+          stroke="url(#sShieldGrad)" 
+          stroke-width="5.5" 
+          stroke-linejoin="round" 
+          fill="#0a101d" />
+
+    <!-- Inset Shield Trim -->
+    <path d="M100 30 L162 55 V105 C162 142 135 174 100 191 C65 174 38 142 38 105 V55 L100 30 Z" 
+          stroke="#1e293b" 
+          stroke-width="2" 
+          fill="none" />
+
+    <!-- Lower Shield Neural Connections -->
+    <g stroke="#0284c7" stroke-width="1.8" opacity="0.6" stroke-linecap="round">
+      <line x1="100" y1="148" x2="100" y2="186" />
+      <line x1="100" y1="148" x2="70" y2="168" />
+      <line x1="100" y1="148" x2="130" y2="168" />
+      <line x1="70" y1="168" x2="52" y2="142" />
+      <line x1="130" y1="168" x2="148" y2="142" />
+    </g>
+    <!-- Neural Nodes -->
+    <g fill="#00f0ff" filter="url(#sGlow)">
+      <circle cx="100" cy="186" r="2.8" fill="#818cf8" />
+      <circle cx="70" cy="168" r="2.8" />
+      <circle cx="130" cy="168" r="2.8" />
+      <circle cx="52" cy="142" r="2.5" />
+      <circle cx="148" cy="142" r="2.5" />
+    </g>
+
+    <!-- Radar / Scout Center -->
+    <g filter="url(#sGlow)">
+      <circle cx="100" cy="98" r="41" stroke="#0284c7" stroke-width="2" stroke-dasharray="7 5" opacity="0.8" />
+      <circle cx="100" cy="98" r="31" stroke="url(#sCyanGrad)" stroke-width="3.2" />
+      
+      <line x1="100" y1="58" x2="100" y2="65" stroke="#00f0ff" stroke-width="2.5" stroke-linecap="round" />
+      <line x1="100" y1="131" x2="100" y2="138" stroke="#00f0ff" stroke-width="2.5" stroke-linecap="round" />
+      <line x1="60" y1="98" x2="67" y2="98" stroke="#00f0ff" stroke-width="2.5" stroke-linecap="round" />
+      <line x1="133" y1="98" x2="140" y2="98" stroke="#00f0ff" stroke-width="2.5" stroke-linecap="round" />
+
+      <path d="M100 98 L126 72 A 37 37 0 0 0 100 61 Z" fill="url(#sCyanGrad)" opacity="0.35" />
+      <line x1="100" y1="98" x2="126" y2="72" stroke="#00f0ff" stroke-width="2" stroke-linecap="round" />
+
+      <circle cx="100" cy="98" r="18" stroke="#6366f1" stroke-width="2.5" fill="#070b14" />
+      <circle cx="100" cy="98" r="10" fill="url(#sCyanGrad)" />
+      <circle cx="100" cy="98" r="4" fill="#ffffff" />
+    </g>
+  </g>
+
+  <!-- ==================== CENTERED WORDMARK ==================== -->
+  <!-- "CYBERSCOUT AI" -->
+  <g transform="translate(0, 270)">
+    <text x="210" y="40" 
+          text-anchor="middle"
+          font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Outfit', 'Inter', sans-serif" 
+          font-size="44" 
+          font-weight="800" 
+          letter-spacing="1.5" 
+          fill="#f8fafc">
+      CYBER<tspan fill="#38bdf8">SCOUT</tspan>
+    </text>
+
+    <!-- AI Badge Inline -->
+    <g transform="translate(355, 3)">
+      <rect x="0" y="0" width="60" height="46" rx="10" fill="#0f172a" stroke="url(#sAiGrad)" stroke-width="2" />
+      <text x="30" y="32" 
+            text-anchor="middle"
+            font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Outfit', 'Inter', sans-serif" 
+            font-size="24" 
+            font-weight="900" 
+            letter-spacing="1.5" 
+            fill="url(#sAiGrad)">
+        AI
+      </text>
+    </g>
+
+    <!-- Subtitle Line -->
+    <text x="250" y="80" 
+          text-anchor="middle"
+          font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Outfit', 'Inter', sans-serif" 
+          font-size="14" 
+          font-weight="600" 
+          letter-spacing="2.5" 
+          fill="#94a3b8">
+      OPPORTUNITY INTELLIGENCE PLATFORM
+    </text>
+
+    <!-- Tagline -->
+    <text x="250" y="112" 
+          text-anchor="middle"
+          font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Outfit', 'Inter', sans-serif" 
+          font-size="13" 
+          font-style="italic"
+          font-weight="400" 
+          letter-spacing="0.5" 
+          fill="#64748b">
+      “Never Miss a Cybersecurity Opportunity Again.”
+    </text>
+  </g>
+</svg>

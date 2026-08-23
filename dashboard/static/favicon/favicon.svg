@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="100%" height="100%" fill="none">
+  <defs>
+    <linearGradient id="favShieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f0ff" />
+      <stop offset="100%" stop-color="#6366f1" />
+    </linearGradient>
+    <linearGradient id="favCoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f0ff" />
+      <stop offset="100%" stop-color="#38bdf8" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background Base Container for Crisp Dark / Light Browser Tab Contrast -->
+  <rect width="64" height="64" rx="14" fill="#070b14" />
+
+  <!-- High-Contrast Bold Shield Silhouette -->
+  <path d="M32 8 L53 16 V32 C53 43.5 44 52.5 32 57 C20 52.5 11 43.5 11 32 V16 L32 8 Z" 
+        stroke="url(#favShieldGrad)" 
+        stroke-width="4.5" 
+        stroke-linejoin="round" 
+        fill="#0f172a" />
+
+  <!-- Bold Central Scout Radar Eye -->
+  <circle cx="32" cy="30" r="11" stroke="url(#favCoreGrad)" stroke-width="3" fill="#070b14" />
+  
+  <!-- Radar Sweep Crosshair & Pupil -->
+  <circle cx="32" cy="30" r="5" fill="#00f0ff" />
+  <circle cx="32" cy="30" r="2" fill="#ffffff" />
+  
+  <!-- High-Visibility Scout Ray Indicator -->
+  <path d="M32 30 L40 22" stroke="#00f0ff" stroke-width="2.5" stroke-linecap="round" />
+  
+  <!-- Bottom Neural Base Node -->
+  <circle cx="32" cy="48" r="2.5" fill="#818cf8" />
+</svg>

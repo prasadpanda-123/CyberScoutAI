@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 220" width="100%" height="100%" fill="none">
+  <!-- ==================== ICON EMBLEM (Monochrome Black) ==================== -->
+  <g transform="translate(15, 10)">
+    <!-- Outer Shield Frame -->
+    <path d="M100 16 L175 46 V108 C175 152 142 190 100 210 C58 190 25 152 25 108 V46 L100 16 Z" 
+          stroke="#000000" 
+          stroke-width="6" 
+          stroke-linejoin="round" 
+          fill="none" />
+
+    <!-- Inset Shield Trim -->
+    <path d="M100 30 L162 55 V105 C162 142 135 174 100 191 C65 174 38 142 38 105 V55 L100 30 Z" 
+          stroke="#000000" 
+          stroke-width="2" 
+          fill="none" />
+
+    <!-- Lower Shield Neural Connections -->
+    <g stroke="#000000" stroke-width="2" stroke-linecap="round">
+      <line x1="100" y1="148" x2="100" y2="186" />
+      <line x1="100" y1="148" x2="70" y2="168" />
+      <line x1="100" y1="148" x2="130" y2="168" />
+      <line x1="70" y1="168" x2="52" y2="142" />
+      <line x1="130" y1="168" x2="148" y2="142" />
+    </g>
+    <!-- Neural Nodes -->
+    <g fill="#000000">
+      <circle cx="100" cy="186" r="3" />
+      <circle cx="70" cy="168" r="3" />
+      <circle cx="130" cy="168" r="3" />
+      <circle cx="52" cy="142" r="2.8" />
+      <circle cx="148" cy="142" r="2.8" />
+    </g>
+
+    <!-- Radar / Scout Center -->
+    <g>
+      <!-- Outer Track -->
+      <circle cx="100" cy="98" r="41" stroke="#000000" stroke-width="2" stroke-dasharray="7 5" />
+      <!-- Middle Reticle Ring -->
+      <circle cx="100" cy="98" r="31" stroke="#000000" stroke-width="3.5" />
+      
+      <!-- Reticle Ticks -->
+      <line x1="100" y1="58" x2="100" y2="65" stroke="#000000" stroke-width="3" stroke-linecap="round" />
+      <line x1="100" y1="131" x2="100" y2="138" stroke="#000000" stroke-width="3" stroke-linecap="round" />
+      <line x1="60" y1="98" x2="67" y2="98" stroke="#000000" stroke-width="3" stroke-linecap="round" />
+      <line x1="133" y1="98" x2="140" y2="98" stroke="#000000" stroke-width="3" stroke-linecap="round" />
+
+      <!-- Scout Radar Sweep Arc -->
+      <path d="M100 98 L126 72 A 37 37 0 0 0 100 61 Z" fill="#000000" opacity="0.3" />
+      <line x1="100" y1="98" x2="126" y2="72" stroke="#000000" stroke-width="2" stroke-linecap="round" />
+
+      <!-- Central Aperture -->
+      <circle cx="100" cy="98" r="18" stroke="#000000" stroke-width="2.5" />
+      <circle cx="100" cy="98" r="10" fill="#000000" />
+      <circle cx="100" cy="98" r="4" fill="#ffffff" />
+    </g>
+  </g>
+
+  <!-- ==================== TYPOGRAPHY WORDMARK ==================== -->
+  <g transform="translate(225, 0)">
+    <text x="0" y="118" 
+          font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Outfit', 'Inter', sans-serif" 
+          font-size="64" 
+          font-weight="900" 
+          letter-spacing="1.5" 
+          fill="#000000">
+      CYBERSCOUT
+    </text>
+
+    <!-- "AI" Pill Badge Container -->
+    <g transform="translate(485, 62)">
+      <rect x="0" y="0" width="86" height="62" rx="14" fill="#ffffff" stroke="#000000" stroke-width="3" />
+      <text x="43" y="44" 
+            text-anchor="middle"
+            font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Outfit', 'Inter', sans-serif" 
+            font-size="34" 
+            font-weight="900" 
+            letter-spacing="2" 
+            fill="#000000">
+        AI
+      </text>
+    </g>
+
+    <!-- Subtitle -->
+    <g transform="translate(4, 162)">
+      <line x1="0" y1="-8" x2="38" y2="-8" stroke="#000000" stroke-width="2" stroke-linecap="round" />
+      <text x="48" y="-3" 
+            font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Outfit', 'Inter', sans-serif" 
+            font-size="18" 
+            font-weight="700" 
+            letter-spacing="2.2" 
+            fill="#000000">
+        OPPORTUNITY INTELLIGENCE PLATFORM
+      </text>
+    </g>
+
+    <!-- Tagline Footer -->
+    <text x="4" y="196" 
+          font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Outfit', 'Inter', sans-serif" 
+          font-size="14" 
+          font-style="italic"
+          font-weight="600" 
+          letter-spacing="0.5" 
+          fill="#333333">
+      “Never Miss a Cybersecurity Opportunity Again.”
+    </text>
+  </g>
+</svg>
