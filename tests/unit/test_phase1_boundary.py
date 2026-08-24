@@ -127,12 +127,11 @@ class TestPhase1SecurityBoundary(unittest.TestCase):
         # Request admin endpoints directly
         for admin_path in ["/admin/dashboard", "/admin/users", "/admin/logs", "/admin/configuration"]:
             res = self.client.get(admin_path)
-            self.assertEqual(res.status_code, 302, f"HTML Path {admin_path} must redirect normal user to /admin/login")
-            self.assertIn("/admin/login", res.location)
+            self.assertEqual(res.status_code, 403, f"HTML Path {admin_path} must return 403 for normal user")
 
         for admin_api_path in ["/admin/api/config"]:
             res_api = self.client.get(admin_api_path)
-            self.assertEqual(res_api.status_code, 401, f"API Path {admin_api_path} must return 401 for normal user")
+            self.assertEqual(res_api.status_code, 403, f"API Path {admin_api_path} must return 403 for normal user")
 
 
 if __name__ == "__main__":

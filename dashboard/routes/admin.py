@@ -549,3 +549,151 @@ def admin_email():
         active_page="admin_email",
         smtp_health=res,
     )
+
+
+@admin_bp.route("/profile", methods=["GET", "POST"])
+@admin_required
+def admin_profile():
+    """
+    Dedicated Administrator Profile View and Account Settings Management.
+    Accessible ONLY to authenticated administrators via @admin_required.
+    Queries the 'Admins' table exclusively.
+    """
+    client_ip = get_client_ip(request)
+    admin_id = session.get("admin_user_id")
+    admin_username = session.get("admin_username")
+
+    # Fetch admin data exclusively from Admins table
+    admin_record = None
+    if admin_id:
+        try:
+            admin_record = admin_repo.get_by_id(int(admin_id))
+        except Exception as e:
+            from src.core.logging import get_logger
+            get_logger(__name__).error(f"Error fetching admin profile by id {admin_id}: {e}")
+
+    if not admin_record and admin_username:
+        try:
+            admin_record = admin_repo.get_by_username(str(admin_username))
+        except Exception as e:
+            from src.core.logging import get_logger
+            get_logger(__name__).error(f"Error fetching admin profile by username {admin_username}: {e}")
+
+    if not admin_record and session.get("admin_email"):
+        try:
+            admin_record = admin_repo.get_by_email(str(session.get("admin_email")))
+        except Exception as e:
+            from src.core.logging import get_logger
+            get_logger(__name__).error(f"Error fetching admin profile by email: {e}")
+
+    if not admin_record or admin_record.get("id") is None:
+        flash("Could not retrieve administrator profile details. Please log in again.", "danger")
+        return redirect(url_for("admin_ui.admin_login"))
+
+    resolved_admin_id = int(admin_record["id"])
+    resolved_username = str(admin_record.get("username") or admin_username or "Administrator")
+    resolved_email = str(admin_record.get("email") or "")
+    is_active = bool(admin_record.get("is_active", True))
+    created_at = admin_record.get("created_at")
+    last_login = admin_record.get("last_login")
+
+    if request.method == "POST":
+        csrf_token = request.form.get("csrf_token", "").strip()
+        if not AdminSecurityManager.verify_csrf_token(session.get("admin_csrf_token"), csrf_token):
+            audit_repo.log_event(
+                "AUTH",
+                "ADMIN_PASSWORD_CHANGE",
+                "CSRF_FAILED",
+                user_id=None,
+                username=resolved_username,
+                source_ip=client_ip,
+                details="CSRF token validation failed on admin password change",
+            )
+            flash("CSRF validation failed. Please try again.", "danger")
+            return redirect(url_for("admin_ui.admin_profile"))
+
+        current_pw = request.form.get("current_password", "").strip()
+        new_pw = request.form.get("new_password", "").strip()
+        confirm_pw = request.form.get("confirm_password", "").strip()
+
+        if not current_pw or not new_pw or not confirm_pw:
+            flash("All password fields are required.", "warning")
+        elif new_pw != confirm_pw:
+            flash("New password and confirmation do not match.", "danger")
+        elif current_pw == new_pw:
+            flash("New password cannot be identical to your current password.", "warning")
+        else:
+            # Validate admin password strength (min 10 chars, uppercase, lowercase, digit, special char)
+            valid, strength_msg = AdminSecurityManager.validate_password_strength(new_pw)
+            if not valid:
+                flash(f"Password requirement not met: {strength_msg}", "danger")
+            elif not admin_repo.verify_password(resolved_admin_id, current_pw):
+                audit_repo.log_event(
+                    "AUTH",
+                    "ADMIN_PASSWORD_CHANGE",
+                    "INVALID_CURRENT_PW",
+                    user_id=None,
+                    username=resolved_username,
+                    source_ip=client_ip,
+                    details="Incorrect current password provided for admin account",
+                )
+                flash("Current password is incorrect.", "danger")
+            else:
+                try:
+                    admin_repo.update_password(resolved_admin_id, new_pw)
+                    audit_repo.log_event(
+                        "AUTH",
+                        "ADMIN_PASSWORD_CHANGE",
+                        "SUCCESS",
+                        user_id=None,
+                        username=resolved_username,
+                        source_ip=client_ip,
+                        details=f"Admin '{resolved_username}' password updated successfully",
+                    )
+                    flash("Administrator password updated successfully.", "success")
+                    return redirect(url_for("admin_ui.admin_profile"))
+                except Exception as e:
+                    from src.core.logging import get_logger
+                    get_logger(__name__).error(f"Error updating admin password: {e}")
+                    audit_repo.log_event(
+                        "AUTH",
+                        "ADMIN_PASSWORD_CHANGE",
+                        "FAILED",
+                        user_id=None,
+                        username=resolved_username,
+                        source_ip=client_ip,
+                        details=f"Database error during admin password update: {e}",
+                    )
+                    flash("Failed to update password. Please try again.", "danger")
+
+    # Log profile view (on GET)
+    if request.method == "GET":
+        try:
+            audit_repo.log_event(
+                "AUTH",
+                "ADMIN_PROFILE_VIEW",
+                "SUCCESS",
+                user_id=None,
+                username=resolved_username,
+                source_ip=client_ip,
+                details=f"Admin '{resolved_username}' viewed profile",
+            )
+        except Exception:
+            pass
+
+    admin_info = {
+        "username": resolved_username,
+        "email": resolved_email,
+        "is_active": is_active,
+        "created_at": created_at,
+        "last_login": last_login,
+        "role": "Administrator Account",
+    }
+
+    return render_template(
+        "admin/admin_profile.html",
+        active_page="admin_profile",
+        csrf_token=session.get("admin_csrf_token", ""),
+        admin_info=admin_info,
+    )
+

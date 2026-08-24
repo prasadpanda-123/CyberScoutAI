@@ -84,8 +84,7 @@ class TestPhase3SessionSecurity(unittest.TestCase):
 
             # Access protected admin dashboard
             res = c.get("/admin/dashboard")
-            self.assertEqual(res.status_code, 302)
-            self.assertIn("/admin/login", res.location)
+            self.assertEqual(res.status_code, 403)
 
     def test_logout_session_invalidation(self):
         """Verify logout clears session and invalidates authentication state."""

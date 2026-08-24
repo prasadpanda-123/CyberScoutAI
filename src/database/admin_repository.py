@@ -176,6 +176,71 @@ class AdminRepository:
         finally:
             cursor.close()
 
+    def get_by_username(self, username: str) -> Optional[Dict[str, Any]]:
+        """Retrieves administrator details by username."""
+        if not username or not isinstance(username, str):
+            return None
+        sql = 'SELECT id, username, email, role, is_active, created_at, last_login FROM "Admins" WHERE LOWER(username) = ?'
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(sql, (username.strip().lower(),))
+            row = cursor.fetchone()
+            if row:
+                return row_to_dict(row, cursor.description)
+            return None
+        finally:
+            conn.rollback()
+            cursor.close()
+
+    def verify_password(self, admin_id: int, password: str) -> bool:
+        """
+        Verifies whether submitted plaintext password matches the stored password_hash for admin_id in Admins table.
+        """
+        if not admin_id or not password or not isinstance(password, str):
+            return False
+        sql = 'SELECT id, password_hash, is_active FROM "Admins" WHERE id = ?'
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(sql, (admin_id,))
+            row = cursor.fetchone()
+            if not row:
+                return False
+            row_d = row_to_dict(row, cursor.description)
+            if not row_d.get("is_active"):
+                return False
+            pw_hash = row_d.get("password_hash")
+            if not pw_hash:
+                return False
+            return check_password_hash(pw_hash, password)
+        finally:
+            conn.rollback()
+            cursor.close()
+
+    def update_password(self, admin_id: int, new_password: str) -> bool:
+        """
+        Updates administrator password with PBKDF2 SHA-256 hash after validating admin password complexity.
+        """
+        if not admin_id or not new_password or not isinstance(new_password, str):
+            raise ValueError("Invalid admin_id or password.")
+        if len(new_password) < 10:
+            raise ValueError("Administrator password must be at least 10 characters long.")
+
+        password_hash = generate_password_hash(new_password, method="pbkdf2:sha256")
+        sql = 'UPDATE "Admins" SET password_hash = ? WHERE id = ?'
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(sql, (password_hash, admin_id))
+            conn.commit()
+            return True
+        except Exception as e:
+            conn.rollback()
+            raise ValueError(f"Could not update administrator password: {e}")
+        finally:
+            cursor.close()
+
     def has_admin(self) -> bool:
         """Returns True if at least one admin user exists in the Admins table."""
         conn = self.db_manager.get_connection()
@@ -187,3 +252,4 @@ class AdminRepository:
         finally:
             conn.rollback()
             cursor.close()
+

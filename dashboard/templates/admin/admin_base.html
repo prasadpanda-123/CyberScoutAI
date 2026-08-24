@@ -146,6 +146,11 @@
         <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_reports' %}text-admin-accent{% endif %}" {% if active_page == 'admin_reports' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>folder</span>
         <span>Reports Center</span>
       </a>
+
+      <a href="{{ url_for('admin_ui.admin_profile') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_profile' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_profile' %}text-admin-accent{% endif %}" {% if active_page == 'admin_profile' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>account_circle</span>
+        <span>Profile</span>
+      </a>
     </nav>
 
     <!-- Footer Exit Button -->
@@ -165,7 +170,7 @@
         <!-- Floating Expand / Toggle Button (Hidden on Desktop when Sidebar is Open) -->
         <button type="button" id="adminSidebarExpandBtn" class="sidebar-expand-btn" onclick="handleAdminSidebarOpen()" title="Open sidebar (Ctrl+\)">
           <svg class="w-4 h-4 text-text-secondary hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16" />
           </svg>
         </button>
         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-danger/10 border border-danger/30 text-[11px] font-mono text-danger font-bold">
@@ -175,11 +180,11 @@
       </div>
 
       <div class="flex items-center gap-4">
-        <div class="hidden sm:flex items-center gap-2 text-xs">
+        <a href="{{ url_for('admin_ui.admin_profile') }}" class="hidden sm:flex items-center gap-2 text-xs text-decoration-none hover:opacity-80 transition-opacity">
           <span class="text-text-muted">Operator:</span>
           <span class="font-bold text-text-primary font-mono">{{ current_admin.username }}</span>
           <span class="text-[10px] bg-surface-container-high border border-border-subtle px-2 py-0.5 rounded text-text-secondary uppercase">{{ current_admin.role }}</span>
-        </div>
+        </a>
         <a href="{{ url_for('admin_ui.admin_logout') }}" class="bg-danger/10 hover:bg-danger text-danger hover:text-white border border-danger/30 text-xs font-bold px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5">
           <span class="material-symbols-outlined text-[15px]">power_settings_new</span>
           <span>Logout</span>
