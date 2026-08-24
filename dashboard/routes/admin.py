@@ -597,6 +597,15 @@ def admin_profile():
     created_at = admin_record.get("created_at")
     last_login = admin_record.get("last_login")
 
+    pending_token = session.get("admin_pending_pw_token")
+    pending_state = AdminSecurityManager.get_pending_password_change(pending_token) if pending_token else None
+
+    # Auto-prune expired pending state on GET
+    if pending_state and (int(time.time()) > pending_state.get("expires_at", 0) or pending_state.get("account_id") != resolved_admin_id):
+        AdminSecurityManager.clear_pending_password_change(pending_token)
+        session.pop("admin_pending_pw_token", None)
+        pending_state = None
+
     if request.method == "POST":
         csrf_token = request.form.get("csrf_token", "").strip()
         if not AdminSecurityManager.verify_csrf_token(session.get("admin_csrf_token"), csrf_token):
@@ -612,59 +621,273 @@ def admin_profile():
             flash("CSRF validation failed. Please try again.", "danger")
             return redirect(url_for("admin_ui.admin_profile"))
 
-        current_pw = request.form.get("current_password", "").strip()
-        new_pw = request.form.get("new_password", "").strip()
-        confirm_pw = request.form.get("confirm_password", "").strip()
+        action = request.form.get("action", "request_pw_change")
 
-        if not current_pw or not new_pw or not confirm_pw:
-            flash("All password fields are required.", "warning")
-        elif new_pw != confirm_pw:
-            flash("New password and confirmation do not match.", "danger")
-        elif current_pw == new_pw:
-            flash("New password cannot be identical to your current password.", "warning")
-        else:
-            # Validate admin password strength (min 10 chars, uppercase, lowercase, digit, special char)
-            valid, strength_msg = AdminSecurityManager.validate_password_strength(new_pw)
-            if not valid:
-                flash(f"Password requirement not met: {strength_msg}", "danger")
-            elif not admin_repo.verify_password(resolved_admin_id, current_pw):
+        # Action 1: Cancel Pending OTP
+        if action == "cancel_pw_otp":
+            if pending_token:
+                AdminSecurityManager.clear_pending_password_change(pending_token)
+                session.pop("admin_pending_pw_token", None)
+            flash("Password change cancelled.", "info")
+            return redirect(url_for("admin_ui.admin_profile"))
+
+        # Action 2: Resend OTP Code
+        elif action == "resend_pw_otp":
+            if not pending_state or pending_state.get("target_type") != "admin" or pending_state.get("account_id") != resolved_admin_id:
+                flash("No active password change request found. Please initiate a new request.", "warning")
+                session.pop("admin_pending_pw_token", None)
+                return redirect(url_for("admin_ui.admin_profile"))
+
+            # Enforce 30-second resend cooldown
+            now = int(time.time())
+            last_resend = pending_state.get("last_resend_at", 0)
+            if now - last_resend < 30:
+                wait_sec = 30 - (now - last_resend)
+                flash(f"Please wait {wait_sec} seconds before requesting a new code.", "warning")
+                return redirect(url_for("admin_ui.admin_profile"))
+
+            new_otp = AdminSecurityManager.generate_otp_code()
+            new_otp_hash = AdminSecurityManager.hash_otp_code(new_otp)
+            new_expires_at = now + 300
+            AdminSecurityManager.update_pending_password_change_otp(pending_token, new_otp_hash, new_expires_at)
+
+            try:
+                from src.notifier.email_sender import EmailSender
+                sender = EmailSender()
+                subject = "CyberScout AI — Administrator Password Change Verification Code"
+                plain_body = f"Hello {resolved_username},\n\nYour new 6-digit administrator verification code is:\n\n   {new_otp}\n\nThis code is valid for 5 minutes. Do not share this code.\n\nCyberScout AI Security"
+                html_body = f"""<!DOCTYPE html><html><body style="font-family:sans-serif; background-color:#0f172a; color:#f8fafc; padding:30px;">
+                <div style="max-width:500px; margin:0 auto; background-color:#1e293b; padding:30px; border-radius:10px; border:1px solid #334155;">
+                  <h2 style="color:#ef4444; margin-top:0;">CyberScout AI Security</h2>
+                  <p>Administrator Password Change Verification Code:</p>
+                  <div style="background-color:#0f172a; border:1px solid #ef4444; color:#ef4444; font-size:32px; font-weight:bold; letter-spacing:5px; text-align:center; padding:15px; border-radius:8px; margin:20px 0;">
+                    {new_otp}
+                  </div>
+                  <p style="font-size:13px; color:#94a3b8;">This code is valid for 5 minutes. If you did not request this change, please notify system administrators immediately.</p>
+                </div>
+                </body></html>"""
+                msg_id = sender.send_email(
+                    html_content=html_body,
+                    plain_content=plain_body,
+                    subject=subject,
+                    recipient=resolved_email or os.getenv("EMAIL_TO") or "admin@cyberscout.ai",
+                )
                 audit_repo.log_event(
                     "AUTH",
-                    "ADMIN_PASSWORD_CHANGE",
-                    "INVALID_CURRENT_PW",
+                    "PASSWORD_CHANGE_OTP_REQUESTED",
+                    "SUCCESS",
                     user_id=None,
                     username=resolved_username,
                     source_ip=client_ip,
-                    details="Incorrect current password provided for admin account",
+                    details=f"Admin password change OTP resent to {AdminSecurityManager.mask_email(resolved_email)} (msg_id={msg_id})",
                 )
-                flash("Current password is incorrect.", "danger")
+                flash("A new verification code has been dispatched to your registered email.", "info")
+            except Exception as e:
+                audit_repo.log_event(
+                    "AUTH",
+                    "PASSWORD_CHANGE_OTP_REQUESTED",
+                    "DISPATCH_FAILED",
+                    user_id=None,
+                    username=resolved_username,
+                    source_ip=client_ip,
+                    details=f"Failed to resend admin password change OTP: {e}",
+                )
+                flash("Could not send verification code. Please try again.", "danger")
+            return redirect(url_for("admin_ui.admin_profile"))
+
+        # Action 3: Verify OTP Code and Finalize Password Update
+        elif action == "verify_pw_otp":
+            if not pending_state or pending_state.get("target_type") != "admin" or pending_state.get("account_id") != resolved_admin_id:
+                flash("No active password change request found or session expired. Please start again.", "warning")
+                session.pop("admin_pending_pw_token", None)
+                return redirect(url_for("admin_ui.admin_profile"))
+
+            # Check expiration
+            if int(time.time()) > pending_state.get("expires_at", 0):
+                AdminSecurityManager.clear_pending_password_change(pending_token)
+                session.pop("admin_pending_pw_token", None)
+                audit_repo.log_event(
+                    "AUTH",
+                    "PASSWORD_CHANGE_OTP_FAILED",
+                    "EXPIRED",
+                    user_id=None,
+                    username=resolved_username,
+                    source_ip=client_ip,
+                    details="Admin password change OTP expired",
+                )
+                flash("Verification code has expired. Please initiate the password change again.", "danger")
+                return redirect(url_for("admin_ui.admin_profile"))
+
+            # Increment and check attempt limit (max 5 attempts)
+            attempts = AdminSecurityManager.increment_pending_password_change_attempts(pending_token)
+            if attempts > 5:
+                AdminSecurityManager.clear_pending_password_change(pending_token)
+                session.pop("admin_pending_pw_token", None)
+                audit_repo.log_event(
+                    "AUTH",
+                    "PASSWORD_CHANGE_OTP_FAILED",
+                    "MAX_ATTEMPTS_EXCEEDED",
+                    user_id=None,
+                    username=resolved_username,
+                    source_ip=client_ip,
+                    details="Exceeded maximum OTP attempts for password change",
+                )
+                flash("Maximum verification attempts exceeded. Please request a new password change.", "danger")
+                return redirect(url_for("admin_ui.admin_profile"))
+
+            otp_input = request.form.get("otp_code", "").strip()
+            if not AdminSecurityManager.verify_otp_code(otp_input, pending_state["otp_hash"]):
+                audit_repo.log_event(
+                    "AUTH",
+                    "PASSWORD_CHANGE_OTP_FAILED",
+                    "INVALID_CODE",
+                    user_id=None,
+                    username=resolved_username,
+                    source_ip=client_ip,
+                    details=f"Invalid OTP entered for admin password change (attempt {attempts}/5)",
+                )
+                flash(f"Invalid verification code. {max(0, 5 - attempts)} attempts remaining.", "danger")
+                return redirect(url_for("admin_ui.admin_profile"))
+
+            # OTP Verified Successfully!
+            new_password_hash = pending_state["new_password_hash"]
+            try:
+                admin_repo.update_password_hash(resolved_admin_id, new_password_hash)
+                AdminSecurityManager.clear_pending_password_change(pending_token)
+                session.pop("admin_pending_pw_token", None)
+
+                audit_repo.log_event(
+                    "AUTH",
+                    "PASSWORD_CHANGE_OTP_VERIFIED",
+                    "SUCCESS",
+                    user_id=None,
+                    username=resolved_username,
+                    source_ip=client_ip,
+                    details="Admin password change OTP verified successfully",
+                )
+                audit_repo.log_event(
+                    "AUTH",
+                    "ADMIN_PASSWORD_CHANGE",
+                    "SUCCESS",
+                    user_id=None,
+                    username=resolved_username,
+                    source_ip=client_ip,
+                    details=f"Admin '{resolved_username}' password updated successfully after OTP verification",
+                )
+                flash("Administrator password updated successfully.", "success")
+                return redirect(url_for("admin_ui.admin_profile"))
+            except Exception as e:
+                from src.core.logging import get_logger
+                get_logger(__name__).error(f"Error updating admin password hash: {e}")
+                audit_repo.log_event(
+                    "AUTH",
+                    "ADMIN_PASSWORD_CHANGE",
+                    "FAILED",
+                    user_id=None,
+                    username=resolved_username,
+                    source_ip=client_ip,
+                    details=f"Database error during admin password update: {e}",
+                )
+                flash("Failed to update password. Please try again.", "danger")
+                return redirect(url_for("admin_ui.admin_profile"))
+
+        # Action 4 (Default): Validate Password Form & Initiate OTP Verification
+        else:
+            current_pw = request.form.get("current_password", "").strip()
+            new_pw = request.form.get("new_password", "").strip()
+            confirm_pw = request.form.get("confirm_password", "").strip()
+
+            if not current_pw or not new_pw or not confirm_pw:
+                flash("All password fields are required.", "warning")
+            elif new_pw != confirm_pw:
+                flash("New password and confirmation do not match.", "danger")
+            elif current_pw == new_pw:
+                flash("New password cannot be identical to your current password.", "warning")
             else:
-                try:
-                    admin_repo.update_password(resolved_admin_id, new_pw)
+                # Validate admin password strength (min 10 chars, uppercase, lowercase, digit, special char)
+                valid, strength_msg = AdminSecurityManager.validate_password_strength(new_pw)
+                if not valid:
+                    flash(f"Password requirement not met: {strength_msg}", "danger")
+                elif not admin_repo.verify_password(resolved_admin_id, current_pw):
                     audit_repo.log_event(
                         "AUTH",
                         "ADMIN_PASSWORD_CHANGE",
-                        "SUCCESS",
+                        "INVALID_CURRENT_PW",
                         user_id=None,
                         username=resolved_username,
                         source_ip=client_ip,
-                        details=f"Admin '{resolved_username}' password updated successfully",
+                        details="Incorrect current password provided for admin account",
                     )
-                    flash("Administrator password updated successfully.", "success")
+                    flash("Current password is incorrect.", "danger")
+                else:
+                    # Validated! Generate OTP and create pending transaction
+                    from werkzeug.security import generate_password_hash
+                    pw_hash = generate_password_hash(new_pw, method="pbkdf2:sha256")
+                    otp_code = AdminSecurityManager.generate_otp_code()
+                    otp_hash = AdminSecurityManager.hash_otp_code(otp_code)
+                    expires_at = int(time.time()) + 300  # 5 minutes
+
+                    new_pending_token = AdminSecurityManager.store_pending_password_change(
+                        target_type="admin",
+                        account_id=resolved_admin_id,
+                        username=resolved_username,
+                        email=resolved_email,
+                        new_password_hash=pw_hash,
+                        otp_hash=otp_hash,
+                        expires_at=expires_at,
+                    )
+                    session["admin_pending_pw_token"] = new_pending_token
+
+                    # Transmit OTP Code via Production Email Service
+                    try:
+                        from src.notifier.email_sender import EmailSender
+                        sender = EmailSender()
+                        subject = "CyberScout AI — Administrator Password Change Verification Code"
+                        plain_body = f"Hello {resolved_username},\n\nYour 6-digit administrator verification code is:\n\n   {otp_code}\n\nThis code is valid for 5 minutes. Do not share this code with anyone.\n\nCyberScout AI Security"
+                        html_body = f"""<!DOCTYPE html><html><body style="font-family:sans-serif; background-color:#0f172a; color:#f8fafc; padding:30px;">
+                        <div style="max-width:500px; margin:0 auto; background-color:#1e293b; padding:30px; border-radius:10px; border:1px solid #334155;">
+                          <h2 style="color:#ef4444; margin-top:0;">CyberScout AI Security</h2>
+                          <p>Administrator Password Change Verification Code:</p>
+                          <div style="background-color:#0f172a; border:1px solid #ef4444; color:#ef4444; font-size:32px; font-weight:bold; letter-spacing:5px; text-align:center; padding:15px; border-radius:8px; margin:20px 0;">
+                            {otp_code}
+                          </div>
+                          <p style="font-size:13px; color:#94a3b8;">This code is valid for 5 minutes. If you did not request this change, please inspect audit logs immediately.</p>
+                        </div>
+                        </body></html>"""
+
+                        dest_email = resolved_email or os.getenv("EMAIL_TO") or "admin@cyberscout.ai"
+                        msg_id = sender.send_email(
+                            html_content=html_body,
+                            plain_content=plain_body,
+                            subject=subject,
+                            recipient=dest_email,
+                        )
+                        audit_repo.log_event(
+                            "AUTH",
+                            "PASSWORD_CHANGE_OTP_REQUESTED",
+                            "SUCCESS",
+                            user_id=None,
+                            username=resolved_username,
+                            source_ip=client_ip,
+                            details=f"Admin password change OTP dispatched to {AdminSecurityManager.mask_email(dest_email)} (msg_id={msg_id})",
+                        )
+                        flash("A 6-digit verification code has been sent to your registered email address.", "info")
+                    except Exception as e:
+                        AdminSecurityManager.clear_pending_password_change(new_pending_token)
+                        session.pop("admin_pending_pw_token", None)
+                        from src.core.logging import get_logger
+                        get_logger(__name__).error(f"Failed to dispatch admin password change OTP: {e}")
+                        audit_repo.log_event(
+                            "AUTH",
+                            "PASSWORD_CHANGE_OTP_REQUESTED",
+                            "DISPATCH_FAILED",
+                            user_id=None,
+                            username=resolved_username,
+                            source_ip=client_ip,
+                            details=f"Failed to dispatch password change OTP email: {e}",
+                        )
+                        flash("Could not send verification code. Please try again.", "danger")
                     return redirect(url_for("admin_ui.admin_profile"))
-                except Exception as e:
-                    from src.core.logging import get_logger
-                    get_logger(__name__).error(f"Error updating admin password: {e}")
-                    audit_repo.log_event(
-                        "AUTH",
-                        "ADMIN_PASSWORD_CHANGE",
-                        "FAILED",
-                        user_id=None,
-                        username=resolved_username,
-                        source_ip=client_ip,
-                        details=f"Database error during admin password update: {e}",
-                    )
-                    flash("Failed to update password. Please try again.", "danger")
 
     # Log profile view (on GET)
     if request.method == "GET":
@@ -695,5 +918,7 @@ def admin_profile():
         active_page="admin_profile",
         csrf_token=session.get("admin_csrf_token", ""),
         admin_info=admin_info,
+        pending_otp=bool(pending_state),
+        masked_email=AdminSecurityManager.mask_email(pending_state.get("email") or resolved_email) if pending_state else "",
     )
 

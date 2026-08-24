@@ -192,7 +192,7 @@ class TestAdminProfile(unittest.TestCase):
             self.assertNotIn(b"secret_key", res.data)
 
     def test_admin_password_change_success_and_validation(self):
-        """Verify admin password change succeeds with valid current password and strong new password."""
+        """Verify admin password change initiates OTP and requires OTP verification before updating database."""
         ts = int(time.time() * 1000)
         username = f"admin_pw_{ts}"
         email = f"admin_pw_{ts}@cyberscout.ai"
@@ -212,6 +212,7 @@ class TestAdminProfile(unittest.TestCase):
                 sess["admin_authenticated"] = True
                 sess["admin_user_id"] = admin["id"]
                 sess["admin_username"] = username
+                sess["admin_email"] = email
                 sess["admin_role"] = "Admin"
                 sess["role"] = "Admin"
                 sess["admin_csrf_token"] = csrf_tok
@@ -219,33 +220,79 @@ class TestAdminProfile(unittest.TestCase):
             # 1. Attempt password change with incorrect current password
             res_bad_curr = c.post("/admin/profile", data={
                 "csrf_token": csrf_tok,
+                "action": "request_pw_change",
                 "current_password": "WrongPassword123!",
                 "new_password": new_pw,
                 "confirm_password": new_pw,
             }, follow_redirects=True)
             self.assertIn(b"Current password is incorrect", res_bad_curr.data)
+            self.assertTrue(self.admin_repo.verify_password(admin["id"], initial_pw))
 
             # 2. Attempt password change with weak new password (< 10 chars / no special chars)
             res_weak = c.post("/admin/profile", data={
                 "csrf_token": csrf_tok,
+                "action": "request_pw_change",
                 "current_password": initial_pw,
                 "new_password": "weak",
                 "confirm_password": "weak",
             }, follow_redirects=True)
             self.assertIn(b"Password requirement not met", res_weak.data)
+            self.assertTrue(self.admin_repo.verify_password(admin["id"], initial_pw))
 
-            # 3. Successful password change
-            res_success = c.post("/admin/profile", data={
+            # 3. Valid password form submission -> Generates OTP and does NOT change DB password yet
+            res_init = c.post("/admin/profile", data={
                 "csrf_token": csrf_tok,
+                "action": "request_pw_change",
                 "current_password": initial_pw,
                 "new_password": new_pw,
                 "confirm_password": new_pw,
             }, follow_redirects=True)
-            self.assertIn(b"Administrator password updated successfully", res_success.data)
+            self.assertIn(b"verification code has been sent", res_init.data)
+            # CRITICAL: Password in database must remain UNCHANGED before OTP verification
+            self.assertTrue(self.admin_repo.verify_password(admin["id"], initial_pw))
+            self.assertFalse(self.admin_repo.verify_password(admin["id"], new_pw))
 
-            # Verify password was updated in Admins table
+            # Verify pending token is in session
+            with c.session_transaction() as sess:
+                pending_token = sess.get("admin_pending_pw_token")
+                self.assertIsNotNone(pending_token)
+                pending_state = AdminSecurityManager.get_pending_password_change(pending_token)
+                self.assertIsNotNone(pending_state)
+                # Ensure plaintext new_password is NOT stored in pending state
+                self.assertNotIn("new_password", pending_state)
+                self.assertIn("new_password_hash", pending_state)
+
+            # 4. Attempt verification with incorrect OTP code
+            res_bad_otp = c.post("/admin/profile", data={
+                "csrf_token": csrf_tok,
+                "action": "verify_pw_otp",
+                "otp_code": "000000",
+            }, follow_redirects=True)
+            self.assertIn(b"Invalid verification code", res_bad_otp.data)
+            # Password must still remain UNCHANGED
+            self.assertTrue(self.admin_repo.verify_password(admin["id"], initial_pw))
+            self.assertFalse(self.admin_repo.verify_password(admin["id"], new_pw))
+
+            # 5. Verify with correct OTP code
+            # We obtain the valid OTP code by computing matching code for the test or updating pending state with known code
+            test_otp = "852963"
+            test_otp_hash = AdminSecurityManager.hash_otp_code(test_otp)
+            AdminSecurityManager.update_pending_password_change_otp(pending_token, test_otp_hash, int(time.time()) + 300)
+
+            res_good_otp = c.post("/admin/profile", data={
+                "csrf_token": csrf_tok,
+                "action": "verify_pw_otp",
+                "otp_code": test_otp,
+            }, follow_redirects=True)
+            self.assertIn(b"Administrator password updated successfully", res_good_otp.data)
+
+            # Now verify password was updated in Admins table
             self.assertTrue(self.admin_repo.verify_password(admin["id"], new_pw))
             self.assertFalse(self.admin_repo.verify_password(admin["id"], initial_pw))
+
+            # Verify pending token was cleaned up
+            with c.session_transaction() as sess:
+                self.assertNotIn("admin_pending_pw_token", sess)
 
     def test_admin_password_change_csrf_protection(self):
         """Verify password update fails if CSRF token is invalid or missing."""
@@ -267,6 +314,7 @@ class TestAdminProfile(unittest.TestCase):
 
             res = c.post("/admin/profile", data={
                 "csrf_token": "wrong_invalid_token",
+                "action": "request_pw_change",
                 "current_password": "AdminPassword2026!",
                 "new_password": "NewAdminPassword2026!",
                 "confirm_password": "NewAdminPassword2026!",

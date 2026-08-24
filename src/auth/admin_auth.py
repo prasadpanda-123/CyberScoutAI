@@ -185,3 +185,92 @@ class AdminSecurityManager:
         if pending_token and isinstance(pending_token, str):
             cls._pending_mfa_sessions.pop(pending_token, None)
 
+    # Server-managed store for pending password-change transactions: key=pending_token -> dict
+    _pending_pw_changes: Dict[str, dict] = {}
+
+    @staticmethod
+    def mask_email(email: Optional[str]) -> str:
+        """
+        Returns a masked representation of an email address (e.g. p***********@gmail.com).
+        """
+        if not email or "@" not in email:
+            return "******@*******.***"
+        local_part, domain = email.split("@", 1)
+        if len(local_part) <= 2:
+            masked_local = local_part[0] + "*"
+        else:
+            masked_local = local_part[0] + ("*" * (len(local_part) - 2)) + local_part[-1]
+        return f"{masked_local}@{domain}"
+
+    @classmethod
+    def store_pending_password_change(
+        cls,
+        target_type: str,
+        account_id: int,
+        username: str,
+        email: str,
+        new_password_hash: str,
+        otp_hash: str,
+        expires_at: int,
+    ) -> str:
+        """
+        Stores pending password change state in server memory and returns an opaque random token.
+        Never exposes plaintext passwords, password hashes, or OTP secrets to client cookies.
+        """
+        import time
+        pending_token = secrets.token_hex(32)
+        cls._pending_pw_changes[pending_token] = {
+            "target_type": target_type,
+            "account_id": account_id,
+            "username": username,
+            "email": email,
+            "new_password_hash": new_password_hash,
+            "otp_hash": otp_hash,
+            "expires_at": expires_at,
+            "attempts": 0,
+            "created_at": int(time.time()),
+            "last_resend_at": int(time.time()),
+        }
+        return pending_token
+
+    @classmethod
+    def get_pending_password_change(cls, pending_token: Optional[str]) -> Optional[dict]:
+        """Retrieves pending password change state for a given pending token."""
+        if not pending_token or not isinstance(pending_token, str):
+            return None
+        return cls._pending_pw_changes.get(pending_token)
+
+    @classmethod
+    def increment_pending_password_change_attempts(cls, pending_token: str) -> int:
+        """Increments attempt counter for target pending password change transaction."""
+        state = cls.get_pending_password_change(pending_token)
+        if state is not None:
+            state["attempts"] = state.get("attempts", 0) + 1
+            return state["attempts"]
+        return 0
+
+    @classmethod
+    def update_pending_password_change_otp(
+        cls,
+        pending_token: str,
+        new_otp_hash: str,
+        new_expires_at: int,
+    ) -> bool:
+        """Updates OTP hash and expiration upon resend request."""
+        import time
+        state = cls.get_pending_password_change(pending_token)
+        if state is not None:
+            state["otp_hash"] = new_otp_hash
+            state["expires_at"] = new_expires_at
+            state["attempts"] = 0
+            state["last_resend_at"] = int(time.time())
+            return True
+        return False
+
+    @classmethod
+    def clear_pending_password_change(cls, pending_token: Optional[str]) -> None:
+        """Clears pending password change transaction upon completion, cancellation, or failure."""
+        if pending_token and isinstance(pending_token, str):
+            cls._pending_pw_changes.pop(pending_token, None)
+
+

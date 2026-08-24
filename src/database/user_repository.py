@@ -240,6 +240,25 @@ class UserRepository:
         finally:
             cursor.close()
 
+    def update_password_hash(self, user_id: int, password_hash: str) -> bool:
+        """
+        Updates user password hash in Users table directly with precomputed PBKDF2 hash.
+        """
+        if not user_id or not password_hash or not isinstance(password_hash, str):
+            raise ValueError("Invalid user_id or password_hash.")
+        sql = 'UPDATE "Users" SET password_hash = %s WHERE id = %s'
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(sql, (password_hash, user_id))
+            conn.commit()
+            return True
+        except Exception as e:
+            conn.rollback()
+            raise ValueError(f"Could not update password hash: {e}")
+        finally:
+            cursor.close()
+
     def list_users(self) -> List[Dict[str, Any]]:
         """Lists all registered users."""
         sql = "SELECT id, username, email, role, is_active, created_at, last_login FROM Users ORDER BY id ASC"

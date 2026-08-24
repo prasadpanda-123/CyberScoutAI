@@ -241,6 +241,26 @@ class AdminRepository:
         finally:
             cursor.close()
 
+    def update_password_hash(self, admin_id: int, password_hash: str) -> bool:
+        """
+        Updates administrator password hash in Admins table directly.
+        Used when password hash was precomputed after OTP verification.
+        """
+        if not admin_id or not password_hash or not isinstance(password_hash, str):
+            raise ValueError("Invalid admin_id or password_hash.")
+        sql = 'UPDATE "Admins" SET password_hash = ? WHERE id = ?'
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(sql, (password_hash, admin_id))
+            conn.commit()
+            return True
+        except Exception as e:
+            conn.rollback()
+            raise ValueError(f"Could not update administrator password hash: {e}")
+        finally:
+            cursor.close()
+
     def has_admin(self) -> bool:
         """Returns True if at least one admin user exists in the Admins table."""
         conn = self.db_manager.get_connection()
