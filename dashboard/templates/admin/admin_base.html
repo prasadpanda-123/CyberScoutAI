@@ -146,12 +146,20 @@
         <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_reports' %}text-admin-accent{% endif %}" {% if active_page == 'admin_reports' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>folder</span>
         <span>Reports Center</span>
       </a>
-
-      <a href="{{ url_for('admin_ui.admin_profile') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_profile' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_profile' %}text-admin-accent{% endif %}" {% if active_page == 'admin_profile' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>account_circle</span>
-        <span>Profile</span>
-      </a>
     </nav>
+
+    <!-- Footer Profile Link -->
+    <div class="mt-auto pt-3 border-t border-border-subtle">
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors {% if active_page == 'admin_profile' %}text-admin-accent font-bold bg-surface-container-high border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-bg-card-hover hover:text-on-surface{% endif %}" href="{{ url_for('admin_ui.admin_profile') }}">
+        <div class="h-8 w-8 rounded-full bg-admin-accent/10 text-admin-accent flex items-center justify-center font-bold text-xs border border-admin-accent/20 shrink-0">
+          {{ (current_admin.username or session.get('admin_username') or 'A')[0]|upper }}
+        </div>
+        <div class="overflow-hidden text-left flex-1">
+          <div class="text-sm font-semibold text-text-primary truncate">{{ current_admin.username or session.get('admin_username') or 'Administrator' }}</div>
+        </div>
+        <span class="material-symbols-outlined text-text-muted text-[18px]">chevron_right</span>
+      </a>
+    </div>
   </aside>
 
   <!-- Top Bar & Main Canvas -->
