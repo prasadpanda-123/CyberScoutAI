@@ -141,6 +141,7 @@
     <form action="/profile" method="POST" class="space-y-4">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="action" value="request_pw_change">
+      <input type="text" id="username" name="username" value="{{ user_info.username }}" autocomplete="username" class="hidden" aria-hidden="true" tabindex="-1" style="display: none;">
 
       <div>
         <label for="current_password" class="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">Current Password</label>
