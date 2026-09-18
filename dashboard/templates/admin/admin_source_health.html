@@ -1,0 +1,119 @@
+{% extends "admin/admin_base.html" %}
+{% set active_page = "admin_source_health" %}
+
+{% block title %}Source Health Telemetry — Admin Portal{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border-subtle">
+    <div>
+      <h2 class="text-xl sm:text-2xl font-bold text-admin-accent tracking-tight flex items-center gap-2">
+        <span class="material-symbols-outlined text-admin-accent">monitor_heart</span>
+        <span>Source Health &amp; Freshness Telemetry</span>
+      </h2>
+      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">Real-time health state, harvest reliability, latency, and parser anomalies per collector.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
+      <span class="bg-surface-container px-3 py-1.5 rounded-lg border border-border-subtle text-text-muted">
+        Total: <strong class="text-text-primary">{{ total_sources }}</strong>
+      </span>
+      <span class="bg-success/10 text-success px-3 py-1.5 rounded-lg border border-success/20">
+        Healthy: <strong>{{ healthy_count }}</strong>
+      </span>
+      <span class="bg-amber-500/10 text-amber-400 px-3 py-1.5 rounded-lg border border-amber-500/20">
+        Degraded: <strong>{{ degraded_count }}</strong>
+      </span>
+      <span class="bg-error/10 text-error px-3 py-1.5 rounded-lg border border-error/20">
+        Failed: <strong>{{ failed_count }}</strong>
+      </span>
+    </div>
+  </div>
+
+  <!-- Source Health Table -->
+  <div class="bg-surface rounded-xl border border-border-subtle overflow-hidden">
+    <div class="hidden md:grid md:grid-cols-[1.5fr_110px_140px_140px_100px_90px_1fr] gap-4 p-3.5 border-b border-border-subtle bg-surface-container-low text-[11px] font-bold uppercase tracking-wider text-text-muted">
+      <div>Source ID</div>
+      <div>Health State</div>
+      <div>Last Success</div>
+      <div>Last Attempt</div>
+      <div>Failures</div>
+      <div>Latency</div>
+      <div>Telemetry / Items</div>
+    </div>
+
+    <div class="divide-y divide-border-subtle">
+      {% for rec in records %}
+        {% set status_str = rec.health_status.value if rec.health_status.value is defined else rec.health_status|string %}
+        {% set status_upper = status_str|upper %}
+        <div class="p-4 hover:bg-bg-card-hover transition-colors flex flex-col md:grid md:grid-cols-[1.5fr_110px_140px_140px_100px_90px_1fr] gap-3 md:gap-4 items-start md:items-center">
+          
+          <!-- Source ID -->
+          <div class="space-y-0.5">
+            <div class="text-sm font-bold text-text-primary font-mono">{{ rec.source_id }}</div>
+            <div class="text-[11px] text-text-muted font-mono">v{{ rec.parser_version|default('1.0.0') }}</div>
+          </div>
+
+          <!-- Health Status Badge -->
+          <div>
+            {% if status_upper == 'HEALTHY' %}
+              <span class="text-[10px] font-bold px-2.5 py-1 rounded bg-success/15 text-success border border-success/30 font-mono inline-flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-success"></span> HEALTHY
+              </span>
+            {% elif status_upper in ['DEGRADED', 'STALE'] %}
+              <span class="text-[10px] font-bold px-2.5 py-1 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 font-mono inline-flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> {{ status_upper }}
+              </span>
+            {% else %}
+              <span class="text-[10px] font-bold px-2.5 py-1 rounded bg-error/15 text-error border border-error/30 font-mono inline-flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-error"></span> FAILED
+              </span>
+            {% endif %}
+          </div>
+
+          <!-- Last Success -->
+          <div class="text-xs font-mono text-text-secondary">
+            <span class="md:hidden text-text-muted uppercase text-[10px] mr-1">Last Success:</span>
+            <span>{{ rec.last_success|default('Never', true) }}</span>
+          </div>
+
+          <!-- Last Attempt -->
+          <div class="text-xs font-mono text-text-secondary">
+            <span class="md:hidden text-text-muted uppercase text-[10px] mr-1">Last Attempt:</span>
+            <span>{{ rec.last_attempt|default('Never', true) }}</span>
+          </div>
+
+          <!-- Failures -->
+          <div class="text-xs font-mono">
+            <span class="md:hidden text-text-muted uppercase text-[10px] mr-1">Failures:</span>
+            <span class="{% if rec.failure_count > 0 %}text-error font-bold{% else %}text-text-muted{% endif %}">
+              {{ rec.failure_count }} {% if rec.consecutive_failures > 0 %}({{ rec.consecutive_failures }} cons.){% endif %}
+            </span>
+          </div>
+
+          <!-- Latency -->
+          <div class="text-xs font-mono text-text-muted">
+            <span class="md:hidden text-text-muted uppercase text-[10px] mr-1">Latency:</span>
+            <span>{{ rec.latency|round(2) }}s</span>
+          </div>
+
+          <!-- Telemetry / Items -->
+          <div class="text-xs font-mono text-text-muted space-y-0.5">
+            <div>Seen: <span class="text-text-primary font-bold">{{ rec.items_seen }}</span> | New: <span class="text-success font-bold">{{ rec.items_created }}</span> | Upd: <span class="text-primary font-bold">{{ rec.items_updated }}</span></div>
+            {% if rec.last_error_message %}
+              <div class="text-[11px] text-error truncate max-w-xs" title="{{ rec.last_error_message }}">{{ rec.last_error_message }}</div>
+            {% endif %}
+          </div>
+
+        </div>
+      {% else %}
+        <div class="p-8 text-center text-text-muted text-sm">
+          No source health records found. Telemetry is populated automatically during scheduled pipeline scans.
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

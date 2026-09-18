@@ -2,15 +2,20 @@
 REST API Blueprint for CyberScout AI Control Center.
 """
 
-from flask import Blueprint, jsonify, request, send_from_directory, Response
+from flask import Blueprint, jsonify, request, send_from_directory, Response, session
 import json
+import re
 from dashboard.services.analytics_service import AnalyticsService
 from dashboard.services.api_service import APIService
 from dashboard.services.dashboard_service import DashboardService
 from dashboard.services.statistics_service import StatisticsService
+from src.auth.admin_auth import AdminSecurityManager
 from src.auth.decorators import admin_required, login_required, roles_required
 from src.core.constants import REPORTS_DIR
 from src.core.version import get_version_info
+from src.database.audit_log_repository import AuditLogRepository
+from src.utils.ip_utils import get_client_ip
+from src.utils.pagination_utils import parse_pagination
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -18,6 +23,7 @@ dash_service = DashboardService()
 stats_service = StatisticsService()
 analytics_service = AnalyticsService()
 api_service = APIService()
+audit_repo = AuditLogRepository()
 
 
 def get_db_manager():
@@ -125,7 +131,9 @@ def get_statistics():
 def get_collectors():
     """GET /api/dashboard/collectors — Collector status list (Sensitive)."""
     collectors = dash_service.get_collectors_status()
-    return jsonify(collectors)
+    resp = jsonify(collectors)
+    resp.headers["Deprecation"] = "true"
+    return resp
 
 
 @api_bp.route("/dashboard/reports", methods=["GET"])
@@ -142,7 +150,9 @@ def get_reports():
 def get_system():
     """GET /api/system — System metadata (Sensitive)."""
     info = get_version_info()
-    return jsonify(info)
+    resp = jsonify(info)
+    resp.headers["Deprecation"] = "true"
+    return resp
 
 
 @api_bp.route("/system/smtp-health", methods=["GET"])
@@ -151,7 +161,9 @@ def get_system():
 def get_smtp_health():
     """GET /api/system/smtp-health — Returns email provider pre-flight diagnostics (Sensitive)."""
     res = api_service.check_smtp_health()
-    return jsonify(res)
+    resp = jsonify(res)
+    resp.headers["Deprecation"] = "true"
+    return resp
 
 
 @api_bp.route("/logs", methods=["GET"])
@@ -162,8 +174,7 @@ def get_logs():
     level = request.args.get("level")
     module = request.args.get("module")
     q = request.args.get("q")
-    page = int(request.args.get("page", 1))
-    limit = int(request.args.get("limit", 50))
+    page, limit = parse_pagination(request, default_page=1, default_limit=50, max_limit=200)
 
     data = api_service.get_logs(
         level=level,
@@ -172,7 +183,9 @@ def get_logs():
         page=page,
         limit=limit,
     )
-    return jsonify(data)
+    resp = jsonify(data)
+    resp.headers["Deprecation"] = "true"
+    return resp
 
 
 @api_bp.route("/logs/export", methods=["GET"])
@@ -184,16 +197,51 @@ def export_logs():
     return Response(
         json_bytes,
         mimetype="application/json",
-        headers={"Content-Disposition": "attachment;filename=cyberscout_logs.json"},
+        headers={
+            "Content-Disposition": "attachment;filename=cyberscout_logs.json",
+            "Deprecation": "true",
+        },
     )
 
 
 @api_bp.route("/config", methods=["GET"])
 @admin_required
 def get_config():
-    """GET /api/config — Application settings config (Sensitive)."""
+    """GET /api/config — Application settings config (Sanitized)."""
     from src.core.config import config
-    return jsonify(config.as_dict())
+    resp = jsonify(config.as_sanitized_dict())
+    resp.headers["Deprecation"] = "true"
+    return resp
+
+
+def _verify_legacy_api_csrf(admin_only: bool = True) -> bool:
+    """
+    Validates CSRF token for administrative state-changing operations under /api/*.
+    Checks X-CSRF-Token / X-CSRFToken headers, JSON body 'csrf_token', or form 'csrf_token'.
+    Requires valid matching session CSRF token. Rejects missing or invalid tokens with HTTP 403.
+    """
+    if admin_only:
+        session_token = session.get("admin_csrf_token")
+    else:
+        session_token = session.get("admin_csrf_token") or session.get("user_csrf_token")
+
+    if not session_token:
+        return False
+
+    submitted_token = None
+    if request.headers.get("X-CSRF-Token"):
+        submitted_token = request.headers.get("X-CSRF-Token").strip()
+    elif request.headers.get("X-CSRFToken"):
+        submitted_token = request.headers.get("X-CSRFToken").strip()
+    elif request.is_json and request.json and isinstance(request.json, dict) and "csrf_token" in request.json:
+        submitted_token = str(request.json.get("csrf_token", "")).strip()
+    elif request.form and "csrf_token" in request.form:
+        submitted_token = str(request.form.get("csrf_token", "")).strip()
+
+    if not submitted_token:
+        return False
+
+    return AdminSecurityManager.verify_csrf_token(session_token, submitted_token)
 
 
 # POST Action Commands with JSON error safety and Admin authentication
@@ -201,6 +249,8 @@ def get_config():
 @admin_required
 def trigger_run():
     """POST /api/run — Trigger asynchronous background scan job (Sensitive)."""
+    if not _verify_legacy_api_csrf():
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     from src.automation.job_manager import ScanInProgressError
     db_mgr = get_db_manager()
     if not db_mgr.ping():
@@ -212,15 +262,25 @@ def trigger_run():
         if request.is_json and request.json:
             dry_run = bool(request.json.get("dry_run", False))
         res = api_service.trigger_scan(dry_run=dry_run)
-        return jsonify({
+        try:
+            audit_repo.log_event("COLLECTORS", "TRIGGER_RUN", "SUCCESS", source_ip=get_client_ip(request), details=f"Scan job launched via /api/run (job_id={res.get('job_id')})")
+        except Exception:
+            pass
+        resp = jsonify({
             "status": "accepted",
             "success": True,
             "job_id": res.get("job_id"),
             "message": "Scan started successfully",
-        }), 202
+        })
+        resp.headers["Deprecation"] = "true"
+        return resp, 202
     except ScanInProgressError as err:
         return jsonify({"success": False, "error": str(err), "status": "running"}), 409
     except Exception as e:
+        try:
+            audit_repo.log_event("COLLECTORS", "TRIGGER_RUN", "FAILED", source_ip=get_client_ip(request), details=str(e))
+        except Exception:
+            pass
         return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
 
 
@@ -229,21 +289,31 @@ def trigger_run():
 @admin_required
 def get_job_status(job_id: str):
     """GET /api/jobs/<job_id> & GET /api/scan/status/<job_id> — Return scan job status telemetry."""
+    if not re.match(r"^[0-9a-fA-F-]{8,64}$", job_id):
+        return jsonify({"error": "Invalid job identifier format", "job_id": job_id}), 400
     job = api_service.get_job_status(job_id)
     if not job:
         return jsonify({"error": "Job not found", "job_id": job_id}), 404
-    return jsonify(job)
+    resp = jsonify(job)
+    resp.headers["Deprecation"] = "true"
+    return resp
 
 
 @api_bp.route("/email/test", methods=["POST"])
 @admin_required
 def email_test():
     """POST /api/email/test — Dispatch test HTML email (Sensitive)."""
+    if not _verify_legacy_api_csrf(admin_only=True):
+        return jsonify({"status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.send_test_email()
         status_code = 200 if res.get("success", True) else 400
-        return jsonify(res), status_code
+        audit_repo.log_event("EMAIL", "TEST_EMAIL", "SUCCESS" if res.get("success", True) else "FAILED", username=session.get("admin_username"), source_ip=get_client_ip(request), details="Test email dispatched via /api/email/test")
+        resp = jsonify(res)
+        resp.headers["Deprecation"] = "true"
+        return resp, status_code
     except Exception as e:
+        audit_repo.log_event("EMAIL", "TEST_EMAIL", "FAILED", username=session.get("admin_username"), source_ip=get_client_ip(request), details=f"Error sending test email: {e}")
         return jsonify({"status": "failed", "error": str(e)}), 400
 
 
@@ -251,10 +321,16 @@ def email_test():
 @admin_required
 def scheduler_pause():
     """POST /api/scheduler/pause — Pause scheduler (Sensitive)."""
+    if not _verify_legacy_api_csrf(admin_only=True):
+        return jsonify({"status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.pause_scheduler()
-        return jsonify(res)
+        audit_repo.log_event("SCHEDULER", "PAUSE_SCHEDULER", "SUCCESS", username=session.get("admin_username"), source_ip=get_client_ip(request), details="Scheduler paused via /api/scheduler/pause")
+        resp = jsonify(res)
+        resp.headers["Deprecation"] = "true"
+        return resp
     except Exception as e:
+        audit_repo.log_event("SCHEDULER", "PAUSE_SCHEDULER", "FAILED", username=session.get("admin_username"), source_ip=get_client_ip(request), details=f"Failed to pause scheduler: {e}")
         return jsonify({"status": "failed", "error": str(e)})
 
 
@@ -262,10 +338,16 @@ def scheduler_pause():
 @admin_required
 def scheduler_resume():
     """POST /api/scheduler/resume — Resume scheduler (Sensitive)."""
+    if not _verify_legacy_api_csrf(admin_only=True):
+        return jsonify({"status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.resume_scheduler()
-        return jsonify(res)
+        audit_repo.log_event("SCHEDULER", "RESUME_SCHEDULER", "SUCCESS", username=session.get("admin_username"), source_ip=get_client_ip(request), details="Scheduler resumed via /api/scheduler/resume")
+        resp = jsonify(res)
+        resp.headers["Deprecation"] = "true"
+        return resp
     except Exception as e:
+        audit_repo.log_event("SCHEDULER", "RESUME_SCHEDULER", "FAILED", username=session.get("admin_username"), source_ip=get_client_ip(request), details=f"Failed to resume scheduler: {e}")
         return jsonify({"status": "failed", "error": str(e)})
 
 
@@ -273,11 +355,16 @@ def scheduler_resume():
 @admin_required
 def scheduler_restart():
     """POST /api/scheduler/restart — Restart scheduler (Sensitive)."""
+    if not _verify_legacy_api_csrf(admin_only=True):
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     try:
-        api_service.pause_scheduler()
-        res = api_service.resume_scheduler()
-        return jsonify({"success": True, "status": "restarted", "message": "Scheduler service restarted successfully."})
+        res = api_service.restart_scheduler()
+        audit_repo.log_event("SCHEDULER", "RESTART_SCHEDULER", "SUCCESS", username=session.get("admin_username"), source_ip=get_client_ip(request), details="Scheduler restarted via /api/scheduler/restart")
+        resp = jsonify(res)
+        resp.headers["Deprecation"] = "true"
+        return resp
     except Exception as e:
+        audit_repo.log_event("SCHEDULER", "RESTART_SCHEDULER", "FAILED", username=session.get("admin_username"), source_ip=get_client_ip(request), details=f"Failed to restart scheduler: {e}")
         return jsonify({"success": False, "status": "failed", "error": str(e)})
 
 
@@ -285,10 +372,16 @@ def scheduler_restart():
 @admin_required
 def trigger_daily_report():
     """POST /api/report/trigger — Send Daily Report Now (Sensitive)."""
+    if not _verify_legacy_api_csrf(admin_only=True):
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.send_daily_report_now()
-        return jsonify(res)
+        audit_repo.log_event("REPORTS", "TRIGGER_REPORT", "SUCCESS", username=session.get("admin_username"), source_ip=get_client_ip(request), details="Daily report triggered via /api/report/trigger")
+        resp = jsonify(res)
+        resp.headers["Deprecation"] = "true"
+        return resp
     except Exception as e:
+        audit_repo.log_event("REPORTS", "TRIGGER_REPORT", "FAILED", username=session.get("admin_username"), source_ip=get_client_ip(request), details=f"Failed to trigger daily report: {e}")
         return jsonify({"success": False, "status": "failed", "error": str(e)})
 
 
@@ -296,13 +389,25 @@ def trigger_daily_report():
 @admin_required
 def clear_old_opportunities():
     """POST /api/opportunities/clear-old — Clear Old Opportunities (Sensitive)."""
+    if not _verify_legacy_api_csrf(admin_only=True):
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         days = 30
         if request.is_json and request.json:
-            days = int(request.json.get("days", 30))
+            try:
+                raw_days = request.json.get("days", 30)
+                days = int(raw_days)
+                if days < 1:
+                    days = 30
+            except (ValueError, TypeError):
+                days = 30
         res = api_service.clear_old_opportunities(days=days)
-        return jsonify(res)
+        audit_repo.log_event("OPPORTUNITIES", "CLEAR_OLD", "SUCCESS", username=session.get("admin_username"), source_ip=get_client_ip(request), details=f"Old opportunities cleared ({days} days) via /api/opportunities/clear-old")
+        resp = jsonify(res)
+        resp.headers["Deprecation"] = "true"
+        return resp
     except Exception as e:
+        audit_repo.log_event("OPPORTUNITIES", "CLEAR_OLD", "FAILED", username=session.get("admin_username"), source_ip=get_client_ip(request), details=f"Failed to clear old opportunities: {e}")
         return jsonify({"success": False, "status": "failed", "error": str(e)})
 
 
@@ -310,8 +415,15 @@ def clear_old_opportunities():
 @admin_required
 def refresh_analytics():
     """POST /api/analytics/refresh — Refresh Analytics (Sensitive)."""
+    if not _verify_legacy_api_csrf(admin_only=True):
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.refresh_analytics()
-        return jsonify(res)
+        audit_repo.log_event("ANALYTICS", "REFRESH", "SUCCESS", username=session.get("admin_username"), source_ip=get_client_ip(request), details="Analytics refreshed via /api/analytics/refresh")
+        resp = jsonify(res)
+        resp.headers["Deprecation"] = "true"
+        return resp
     except Exception as e:
+        audit_repo.log_event("ANALYTICS", "REFRESH", "FAILED", username=session.get("admin_username"), source_ip=get_client_ip(request), details=f"Failed to refresh analytics: {e}")
         return jsonify({"success": False, "status": "failed", "error": str(e)})
+

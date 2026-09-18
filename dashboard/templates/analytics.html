@@ -1,63 +1,341 @@
 {% extends 'base.html' %}
+
+{% block title %}Market & Platform Analytics — CyberScout AI{% endblock %}
+
 {% block content %}
-<h2 class="fw-bold mb-4"><i class="bi bi-graph-up text-primary me-2"></i> Intelligence & Growth Analytics</h2>
+<div class="space-y-8">
+  <!-- Page Header & Time Window Filter -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border-subtle pb-5">
+    <div>
+      <div class="flex items-center gap-2 mb-1">
+        <span class="material-symbols-outlined text-primary text-[28px]">bar_chart</span>
+        <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-text-primary">Market & Opportunity Analytics</h1>
+      </div>
+      <p class="text-sm text-text-muted">Deterministic intelligence, opportunity velocity, and market breakdown across the global cybersecurity ecosystem.</p>
+    </div>
 
-<div class="row g-4 mb-4">
-  <div class="col-md-4">
-    <div class="card p-3 text-center shadow-sm">
-      <div class="text-muted small">Daily Growth Rate</div>
-      <div class="fs-2 fw-bold text-success">+{{ growth.daily_growth_pct }}%</div>
+    <!-- Time Window Selector -->
+    <div class="flex items-center gap-1.5 p-1 bg-surface-container-high rounded-xl border border-border-subtle">
+      <a href="{{ url_for('analytics_ui.index', window='7d') }}" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all {% if window == '7d' %}bg-primary text-on-primary shadow-sm{% else %}text-text-muted hover:text-text-primary hover:bg-surface-container-highest{% endif %}">7 Days</a>
+      <a href="{{ url_for('analytics_ui.index', window='30d') }}" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all {% if window == '30d' %}bg-primary text-on-primary shadow-sm{% else %}text-text-muted hover:text-text-primary hover:bg-surface-container-highest{% endif %}">30 Days</a>
+      <a href="{{ url_for('analytics_ui.index', window='90d') }}" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all {% if window == '90d' %}bg-primary text-on-primary shadow-sm{% else %}text-text-muted hover:text-text-primary hover:bg-surface-container-highest{% endif %}">90 Days</a>
+      <a href="{{ url_for('analytics_ui.index', window='all') }}" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all {% if window == 'all' %}bg-primary text-on-primary shadow-sm{% else %}text-text-muted hover:text-text-primary hover:bg-surface-container-highest{% endif %}">All Time</a>
     </div>
   </div>
-  <div class="col-md-4">
-    <div class="card p-3 text-center shadow-sm">
-      <div class="text-muted small">Weekly Growth Rate</div>
-      <div class="fs-2 fw-bold text-primary">+{{ growth.weekly_growth_pct }}%</div>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="card p-3 text-center shadow-sm">
-      <div class="text-muted small">Monthly Growth Rate</div>
-      <div class="fs-2 fw-bold text-info">+{{ growth.monthly_growth_pct }}%</div>
-    </div>
-  </div>
-</div>
 
-<div class="row g-4">
-  <div class="col-md-6">
-    <div class="card p-3 shadow-sm">
-      <div class="card-header border-0 bg-transparent ps-0 fw-bold">Top Keyword Extraction Frequencies</div>
-      <ul class="list-group list-group-flush bg-transparent">
-        {% for kw, count in keywords.items() %}
-        <li class="list-group-item bg-transparent border-subtle d-flex justify-content-between align-items-center">
-          <span>{{ kw }}</span>
-          <span class="badge bg-primary rounded-pill">{{ count }} occurrences</span>
-        </li>
+  <!-- Primary Metric Cards -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+    <!-- Total Opportunities -->
+    <div class="p-5 rounded-2xl bg-surface border border-border-subtle shadow-sm flex flex-col justify-between hover:border-primary/40 transition-colors">
+      <div class="flex items-center justify-between text-text-muted mb-2">
+        <span class="text-xs font-semibold uppercase tracking-wider">Total Opportunities</span>
+        <span class="material-symbols-outlined text-[20px] text-primary">database</span>
+      </div>
+      <div class="text-3xl font-extrabold text-text-primary tracking-tight">{{ overview.total_opportunities }}</div>
+      <div class="text-xs text-text-muted mt-2 flex items-center gap-1">
+        <span class="text-emerald-500 font-semibold">{{ overview.active_opportunities }}</span> currently active
+      </div>
+    </div>
+
+    <!-- Discovery Velocity -->
+    <div class="p-5 rounded-2xl bg-surface border border-border-subtle shadow-sm flex flex-col justify-between hover:border-emerald-500/40 transition-colors">
+      <div class="flex items-center justify-between text-text-muted mb-2">
+        <span class="text-xs font-semibold uppercase tracking-wider">Discovery Velocity</span>
+        <span class="material-symbols-outlined text-[20px] text-emerald-500">trending_up</span>
+      </div>
+      <div class="text-3xl font-extrabold text-emerald-500 tracking-tight">+{{ overview.new_this_week_opportunities }}</div>
+      <div class="text-xs text-text-muted mt-2">
+        <span class="font-semibold text-text-primary">+{{ overview.new_this_month_opportunities }}</span> in the last 30 days
+      </div>
+    </div>
+
+    <!-- Closing Soon Radar -->
+    <div class="p-5 rounded-2xl bg-surface border border-border-subtle shadow-sm flex flex-col justify-between hover:border-amber-500/40 transition-colors">
+      <div class="flex items-center justify-between text-text-muted mb-2">
+        <span class="text-xs font-semibold uppercase tracking-wider">Closing Soon</span>
+        <span class="material-symbols-outlined text-[20px] text-amber-500">alarm</span>
+      </div>
+      <div class="text-3xl font-extrabold text-amber-500 tracking-tight">{{ overview.closing_soon_opportunities }}</div>
+      <div class="text-xs text-text-muted mt-2">
+        <span>{{ deadlines.due_within_7d }}</span> due within 7 days
+      </div>
+    </div>
+
+    <!-- Free & Funded -->
+    <div class="p-5 rounded-2xl bg-surface border border-border-subtle shadow-sm flex flex-col justify-between hover:border-indigo-500/40 transition-colors">
+      <div class="flex items-center justify-between text-text-muted mb-2">
+        <span class="text-xs font-semibold uppercase tracking-wider">100% Free / Stipends</span>
+        <span class="material-symbols-outlined text-[20px] text-indigo-400">monetization_on</span>
+      </div>
+      <div class="text-3xl font-extrabold text-indigo-400 tracking-tight">{{ overview.free_opportunities }}</div>
+      <div class="text-xs text-text-muted mt-2">
+        <span class="font-semibold text-text-primary">{{ overview.stipend_opportunities }}</span> programs offer stipends
+      </div>
+    </div>
+  </div>
+
+  <!-- Trends & Velocity Section -->
+  <div class="p-6 rounded-2xl bg-surface border border-border-subtle shadow-sm">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      <div>
+        <h2 class="text-base font-bold text-text-primary flex items-center gap-2">
+          <span class="material-symbols-outlined text-[20px] text-primary">show_chart</span>
+          Opportunity Ingestion Velocity (first_seen_at)
+        </h2>
+        <p class="text-xs text-text-muted mt-0.5">Chronological timeline of newly discovered cybersecurity programs.</p>
+      </div>
+      <div class="flex items-center gap-4 text-xs">
+        <div class="flex items-center gap-1.5">
+          <span class="text-text-muted">Current Window:</span>
+          <span class="font-bold text-text-primary">{{ trends.current_period_count }} items</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="text-text-muted">Prior Window:</span>
+          <span class="font-bold text-text-primary">{{ trends.previous_period_count }} items</span>
+        </div>
+        <div class="px-2.5 py-1 rounded-full text-xs font-bold {% if trends.percentage_change and trends.percentage_change > 0 %}bg-emerald-500/10 text-emerald-500 border border-emerald-500/30{% elif trends.percentage_change and trends.percentage_change < 0 %}bg-rose-500/10 text-rose-500 border border-rose-500/30{% else %}bg-surface-container-high text-text-muted border border-border-subtle{% endif %}">
+          {% if trends.percentage_change and trends.percentage_change > 0 %}+{% endif %}{{ trends.percentage_change }}% change
+        </div>
+      </div>
+    </div>
+
+    <!-- Trend Points Representation (Pure CSS Responsive Grid) -->
+    {% if trends.points %}
+    <div class="overflow-x-auto pb-2">
+      <div class="min-w-[640px] flex items-end gap-2 h-36 pt-4 px-2 border-b border-border-subtle">
+        {% set max_cnt = 1 %}
+        {% for pt in trends.points %}
+          {% if pt.count > max_cnt %}{% set max_cnt = pt.count %}{% endif %}
         {% endfor %}
-      </ul>
+        {% for pt in trends.points %}
+        <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative">
+          <div class="text-[10px] font-mono text-text-muted opacity-0 group-hover:opacity-100 transition-opacity absolute -top-4 bg-surface-container-highest px-1 rounded shadow">
+            {{ pt.count }}
+          </div>
+          <div class="w-full rounded-t-md bg-primary/30 group-hover:bg-primary transition-all duration-200"
+               {{ ('style="height: ' ~ [((pt.count / max_cnt) * 100)|round, 6]|max ~ '%;"')|safe }}></div>
+          <div class="text-[9px] font-mono text-text-muted truncate w-full text-center mt-1">
+            {{ pt.period_label[-5:] }}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <div class="p-8 text-center text-text-muted text-sm border border-dashed border-border-subtle rounded-xl">
+      No historical ingestion data in the selected window.
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Two-Column Breakdown: Categories & Types -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Category Distribution -->
+    <div class="p-6 rounded-2xl bg-surface border border-border-subtle shadow-sm flex flex-col">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-base font-bold text-text-primary flex items-center gap-2">
+          <span class="material-symbols-outlined text-[20px] text-primary">category</span>
+          Category Distribution
+        </h2>
+        <span class="text-xs text-text-muted font-mono">{{ categories|length }} Categories</span>
+      </div>
+
+      <div class="space-y-3.5 flex-1">
+        {% for cat in categories %}
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="font-medium text-text-primary capitalize">{{ cat.category|replace('_', ' ') }}</span>
+            <div class="flex items-center gap-2">
+              <span class="text-text-muted font-mono">{{ cat.count }} items</span>
+              <span class="text-[11px] font-semibold text-primary font-mono w-10 text-right">{{ cat.percentage }}%</span>
+            </div>
+          </div>
+          <div class="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
+            <div class="h-full bg-primary rounded-full transition-all duration-500" {{ ('style="width: ' ~ cat.percentage ~ '%;"')|safe }}></div>
+          </div>
+        </div>
+        {% else %}
+        <div class="p-6 text-center text-text-muted text-sm">No category distribution data available.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Opportunity Type Distribution -->
+    <div class="p-6 rounded-2xl bg-surface border border-border-subtle shadow-sm flex flex-col">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-base font-bold text-text-primary flex items-center gap-2">
+          <span class="material-symbols-outlined text-[20px] text-indigo-400">work</span>
+          Opportunity Type Breakdown
+        </h2>
+        <span class="text-xs text-text-muted font-mono">{{ opportunity_types|length }} Types</span>
+      </div>
+
+      <div class="space-y-3.5 flex-1">
+        {% for typ in opportunity_types %}
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="font-medium text-text-primary capitalize">{{ typ.opportunity_type|replace('_', ' ') }}</span>
+            <div class="flex items-center gap-2">
+              <span class="text-text-muted font-mono">{{ typ.count }} items</span>
+              <span class="text-[11px] font-semibold text-indigo-400 font-mono w-10 text-right">{{ typ.percentage }}%</span>
+            </div>
+          </div>
+          <div class="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
+            <div class="h-full bg-indigo-500 rounded-full transition-all duration-500" {{ ('style="width: ' ~ typ.percentage ~ '%;"')|safe }}></div>
+          </div>
+        </div>
+        {% else %}
+        <div class="p-6 text-center text-text-muted text-sm">No opportunity type data available.</div>
+        {% endfor %}
+      </div>
     </div>
   </div>
-  <div class="col-md-6">
-    <div class="card p-3 shadow-sm">
-      <div class="card-header border-0 bg-transparent ps-0 fw-bold">Provider Yield Comparison</div>
-      <table class="table table-striped table-hover mb-0">
-        <thead>
-          <tr>
-            <th>Provider</th>
-            <th>Yield</th>
-            <th>Avg Quality Score</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for p in providers %}
-          <tr>
-            <td class="fw-semibold">{{ p.provider }}</td>
-            <td>{{ p.yield_count }}</td>
-            <td><span class="badge bg-success">{{ p.avg_quality_score }}/100</span></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+
+  <!-- Deadline Intelligence & Freshness Health -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Deadline Urgency Radar -->
+    <div class="p-6 rounded-2xl bg-surface border border-border-subtle shadow-sm flex flex-col">
+      <h2 class="text-base font-bold text-text-primary mb-1 flex items-center gap-2">
+        <span class="material-symbols-outlined text-[20px] text-amber-500">pending_actions</span>
+        Deadline Urgency Radar
+      </h2>
+      <p class="text-xs text-text-muted mb-4">Urgent calendar horizons for active opportunities.</p>
+
+      <div class="space-y-3 flex-1">
+        <div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-high/60 border border-border-subtle">
+          <div class="flex items-center gap-2.5">
+            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+            <span class="text-xs font-semibold text-text-primary">Closing Today</span>
+          </div>
+          <span class="text-xs font-mono font-bold text-rose-500">{{ deadlines.due_today }}</span>
+        </div>
+
+        <div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-high/60 border border-border-subtle">
+          <div class="flex items-center gap-2.5">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            <span class="text-xs font-semibold text-text-primary">Within 3 Days</span>
+          </div>
+          <span class="text-xs font-mono font-bold text-amber-500">{{ deadlines.due_within_3d }}</span>
+        </div>
+
+        <div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-high/60 border border-border-subtle">
+          <div class="flex items-center gap-2.5">
+            <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+            <span class="text-xs font-semibold text-text-primary">Within 7 Days</span>
+          </div>
+          <span class="text-xs font-mono font-bold text-yellow-500">{{ deadlines.due_within_7d }}</span>
+        </div>
+
+        <div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-high/60 border border-border-subtle">
+          <div class="flex items-center gap-2.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span class="text-xs font-semibold text-text-primary">Within 30 Days</span>
+          </div>
+          <span class="text-xs font-mono font-bold text-emerald-500">{{ deadlines.due_within_30d }}</span>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 text-xs text-text-muted">
+          <span>Total Tracked Deadlines:</span>
+          <span class="font-mono font-semibold text-text-primary">{{ deadlines.total_with_deadlines }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Economic & Pricing Models -->
+    <div class="p-6 rounded-2xl bg-surface border border-border-subtle shadow-sm flex flex-col">
+      <h2 class="text-base font-bold text-text-primary mb-1 flex items-center gap-2">
+        <span class="material-symbols-outlined text-[20px] text-emerald-500">payments</span>
+        Economic & Pricing Models
+      </h2>
+      <p class="text-xs text-text-muted mb-4">Structured cost and funding distribution.</p>
+
+      <div class="space-y-3 flex-1">
+        <div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-high/40">
+          <span class="text-xs text-text-muted">100% Free Opportunities</span>
+          <span class="text-xs font-mono font-bold text-emerald-500">{{ economics.free_count }}</span>
+        </div>
+        <div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-high/40">
+          <span class="text-xs text-text-muted">Paid Programs</span>
+          <span class="text-xs font-mono font-bold text-amber-400">{{ economics.paid_count }}</span>
+        </div>
+        <div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-high/40">
+          <span class="text-xs text-text-muted">Freemium Access</span>
+          <span class="text-xs font-mono font-bold text-indigo-400">{{ economics.freemium_count }}</span>
+        </div>
+        <div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-high/40">
+          <span class="text-xs text-text-muted">Stipend Available</span>
+          <span class="text-xs font-mono font-bold text-primary">{{ economics.stipend_available_count }}</span>
+        </div>
+        <div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-high/40">
+          <span class="text-xs text-text-muted">Certificate of Completion</span>
+          <span class="text-xs font-mono font-bold text-teal-400">{{ economics.certificate_available_count }}</span>
+        </div>
+        {% if economics.average_stipend %}
+        <div class="pt-2 text-xs text-text-muted flex justify-between">
+          <span>Avg Stipend Amount:</span>
+          <span class="font-mono font-bold text-text-primary">${{ economics.average_stipend }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Freshness Health Breakdown -->
+    <div class="p-6 rounded-2xl bg-surface border border-border-subtle shadow-sm flex flex-col">
+      <h2 class="text-base font-bold text-text-primary mb-1 flex items-center gap-2">
+        <span class="material-symbols-outlined text-[20px] text-teal-400">pace</span>
+        Opportunity Pool Freshness
+      </h2>
+      <p class="text-xs text-text-muted mb-4">Phase 6 temporal freshness degradation status.</p>
+
+      <div class="space-y-3.5 flex-1">
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="font-semibold text-emerald-400 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Fresh (&lt; 3 days)
+            </span>
+            <span class="font-mono font-bold text-text-primary">{{ freshness.fresh_count }}</span>
+          </div>
+          <div class="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+            <div class="h-full bg-emerald-500 rounded-full" {{ ('style="width: ' ~ ([((freshness.fresh_count / [overview.active_opportunities, 1]|max) * 100)|round, 100]|min) ~ '%;"')|safe }}></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="font-semibold text-cyan-400 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-cyan-400"></span> Aging (3–7 days)
+            </span>
+            <span class="font-mono font-bold text-text-primary">{{ freshness.aging_count }}</span>
+          </div>
+          <div class="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+            <div class="h-full bg-cyan-400 rounded-full" {{ ('style="width: ' ~ ([((freshness.aging_count / [overview.active_opportunities, 1]|max) * 100)|round, 100]|min) ~ '%;"')|safe }}></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="font-semibold text-amber-400 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-amber-400"></span> Stale (7–30 days)
+            </span>
+            <span class="font-mono font-bold text-text-primary">{{ freshness.stale_count }}</span>
+          </div>
+          <div class="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+            <div class="h-full bg-amber-400 rounded-full" {{ ('style="width: ' ~ ([((freshness.stale_count / [overview.active_opportunities, 1]|max) * 100)|round, 100]|min) ~ '%;"')|safe }}></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="font-semibold text-rose-400 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-rose-400"></span> Severely Stale (&gt; 30 days)
+            </span>
+            <span class="font-mono font-bold text-text-primary">{{ freshness.severely_stale_count }}</span>
+          </div>
+          <div class="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+            <div class="h-full bg-rose-400 rounded-full" {{ ('style="width: ' ~ ([((freshness.severely_stale_count / [overview.active_opportunities, 1]|max) * 100)|round, 100]|min) ~ '%;"')|safe }}></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

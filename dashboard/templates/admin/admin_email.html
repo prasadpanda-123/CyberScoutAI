@@ -57,11 +57,88 @@
 
   <div id="emailFeedback" class="hidden p-4 rounded-xl border text-xs"></div>
 
+  <!-- Notification Outbox Observability (Phase 7) -->
+  <div class="bg-surface rounded-xl border border-border-subtle p-6 space-y-6">
+    <div class="flex items-center justify-between pb-4 border-b border-border-subtle">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+          <span class="material-symbols-outlined text-2xl">outbox</span>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-text-primary">Notification Outbox & Delivery State</h3>
+          <p class="text-xs text-text-muted">Persistent queue monitoring, idempotent dispatch metrics, and delivery health</p>
+        </div>
+      </div>
+      <div class="text-xs text-text-muted font-mono">
+        Total Recorded: <strong class="text-text-primary">{{ outbox_stats.total|default(0) }}</strong>
+      </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Pending Delivery</div>
+        <div class="text-lg font-bold text-warning font-mono">{{ outbox_stats.pending|default(0) }}</div>
+      </div>
+
+      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">In Processing</div>
+        <div class="text-lg font-bold text-info font-mono">{{ outbox_stats.processing|default(0) }}</div>
+      </div>
+
+      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Delivered (Sent)</div>
+        <div class="text-lg font-bold text-success font-mono">{{ outbox_stats.sent|default(0) }}</div>
+      </div>
+
+      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Delivery Failed</div>
+        <div class="text-lg font-bold {% if outbox_stats.failed and outbox_stats.failed > 0 %}text-danger{% else %}text-text-secondary{% endif %} font-mono">
+          {{ outbox_stats.failed|default(0) }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Delivery Failures -->
+    {% if outbox_stats.recent_failures %}
+    <div class="space-y-3 pt-2">
+      <h4 class="text-xs font-bold uppercase tracking-wider text-danger flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-sm">error</span>
+        <span>Recent Delivery Failures (Max Bounded Retries)</span>
+      </h4>
+      <div class="overflow-x-auto border border-border-subtle rounded-lg">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-surface-container-low text-text-muted text-[11px] uppercase border-b border-border-subtle">
+            <tr>
+              <th class="p-2.5">User ID</th>
+              <th class="p-2.5">Opportunity</th>
+              <th class="p-2.5">Attempts</th>
+              <th class="p-2.5">Last Error</th>
+              <th class="p-2.5">Failed At</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-subtle text-text-secondary font-mono text-[11px]">
+            {% for f in outbox_stats.recent_failures %}
+            <tr>
+              <td class="p-2.5 text-text-primary">{{ f.user_id }}</td>
+              <td class="p-2.5">{{ f.opportunity_id }}</td>
+              <td class="p-2.5 text-warning font-bold">{{ f.attempt_count }}</td>
+              <td class="p-2.5 text-danger font-sans max-w-xs truncate" title="{{ f.last_error }}">{{ f.last_error }}</td>
+              <td class="p-2.5">{{ f.failed_at[:19].replace('T', ' ') if f.failed_at else 'N/A' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
   async function sendTestEmail() {
     const btn = document.getElementById('btnTestEmail');
     const feedback = document.getElementById('emailFeedback');
@@ -79,7 +156,8 @@
         credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-Token': '{{ csrf_token }}'
         }
       });
       const data = await res.json();

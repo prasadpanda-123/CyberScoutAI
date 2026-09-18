@@ -19,7 +19,7 @@
         <span class="badge {% if c.enabled %}bg-success{% else %}bg-secondary{% endif %}">{{ c.status }}</span>
       </div>
       <div class="text-muted small mb-3">ID: <code>{{ c.id }}</code> | Method: {{ c.method|upper }} | Trust Score: {{ c.trust_score }}</div>
-      <div class="d-flex justify-content-between text-muted small border-top pt-2 mb-3" style="border-color: var(--border-subtle) !important;">
+      <div class="d-flex justify-content-between text-muted small border-top pt-2 mb-3 border-border-subtle">
         <span>Items Collected: <strong class="text-info">{{ c.items_collected }}</strong></span>
         <span>Last Run: {{ c.last_run }}</span>
       </div>
@@ -33,20 +33,27 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 function runCollectors() {
   const alertBox = document.getElementById('statusAlert');
   alertBox.className = 'alert alert-info mb-4';
   alertBox.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Initializing scan job...';
   alertBox.classList.remove('d-none');
 
-  fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dry_run: false }) })
+  fetch('/admin/api/run', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': '{{ csrf_token }}'
+    },
+    body: JSON.stringify({ dry_run: false, csrf_token: '{{ csrf_token }}' })
+  })
     .then(res => res.json())
     .then(data => {
       if (data.job_id) {
         const jobId = data.job_id;
         const poll = setInterval(() => {
-          fetch('/api/jobs/' + jobId)
+          fetch('/admin/api/jobs/' + jobId)
             .then(r => {
               if (!r.ok) {
                 clearInterval(poll);

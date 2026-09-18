@@ -76,6 +76,10 @@
   --on-primary-container: #FFFFFF;
 }
 
+.icon-fill {
+  font-variation-settings: 'FILL' 1;
+}
+
 /* ==========================================================================
    2. GLOBAL RESET & BASE STYLES
    ========================================================================== */
@@ -691,6 +695,7 @@ input:focus, select:focus {
 html.sidebar-collapsed-init #sidebar,
 html.sidebar-collapsed-init #adminSidebar {
   transform: translateX(-100%) !important;
+  --tw-translate-x: -100% !important;
 }
 
 .sidebar-collapsed #mainWrapper,

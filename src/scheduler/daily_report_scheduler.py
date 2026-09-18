@@ -180,7 +180,15 @@ class DailyReportScheduler:
         # Step 1: Run complete collection & ranking pipeline (without immediate email dispatch)
         logger.info("[Scheduler] Pipeline Started...")
         pipe_result = self.pipeline_runner.run_pipeline(dry_run=dry_run, send_email=False)
-        logger.info(f"[Scheduler] Pipeline Finished. Items collected: {pipe_result.get('items_collected', 0)}, Ranked: {pipe_result.get('items_ranked', 0)}")
+        items_coll = pipe_result.get("items_collected", 0)
+        items_new = pipe_result.get("items_new", 0)
+        items_upd = pipe_result.get("items_updated", 0)
+        items_unch = pipe_result.get("items_unchanged", 0)
+        items_dup = pipe_result.get("duplicates", 0)
+        logger.info(
+            f"[Scheduler] Pipeline Finished. Collected: {items_coll}, New: {items_new}, "
+            f"Updated: {items_upd}, Unchanged: {items_unch}, Duplicates: {items_dup}"
+        )
 
         # Step 2: STRICT PERSISTENCE VERIFICATION BEFORE EMAIL
         persistence_ok = pipe_result.get("persistence_success", True) if not dry_run else True
@@ -200,8 +208,12 @@ class DailyReportScheduler:
         # Step 3: Email Generation & Dispatch (Only after successful persistence)
         email_result = {"status": "skipped"}
         if not dry_run:
-            logger.info("[Scheduler] Generating and dispatching email report...")
-            email_result = self.email_client.send_daily_digest(send_empty=self.send_empty_report)
+            if items_new == 0 and items_upd == 0 and not self.send_empty_report:
+                logger.info("[Scheduler] Email notification skipped: No new or updated opportunities discovered.")
+                email_result = {"status": "skipped", "reason": "No new or updated opportunities"}
+            else:
+                logger.info("[Scheduler] Generating and dispatching email report...")
+                email_result = self.email_client.send_daily_digest(send_empty=self.send_empty_report)
 
         email_status = email_result.get("status")
 

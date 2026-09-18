@@ -101,7 +101,7 @@ class TestUserProfileOTP(unittest.TestCase):
                 pending_state = AdminSecurityManager.get_pending_password_change(pending_token)
                 self.assertIsNotNone(pending_state)
                 self.assertEqual(pending_state.get("target_type"), "user")
-                self.assertEqual(pending_state.get("account_id"), user_id)
+                self.assertEqual(str(pending_state.get("account_id")), str(user_id))
                 self.assertNotIn("new_password", pending_state)
 
             # 3. Attempt verification with incorrect OTP

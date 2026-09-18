@@ -93,7 +93,7 @@
         <tbody>
           {% for opp in rejected %}
           <tr>
-            <td><a href="{{ opp.url }}" target="_blank" class="text-truncate d-inline-block" style="max-width:250px;">{{ opp.title }}</a></td>
+            <td><a href="{{ opp.url }}" target="_blank" class="text-truncate d-inline-block max-w-[250px]">{{ opp.title }}</a></td>
             <td>{{ opp.source_id }}</td>
             <td><span class="badge bg-danger">{{ opp.rejection_reason }}</span></td>
             <td>{{ opp.confidence_score }}/100</td>
@@ -113,7 +113,7 @@
 
 {% block scripts %}
 {% if stats.top_rejection_reasons %}
-<script>
+<script nonce="{{ csp_nonce }}">
 const ctx = document.getElementById('rejectionChart').getContext('2d');
 const labels = {{ stats.top_rejection_reasons.keys()|list|tojson }};
 const data = {{ stats.top_rejection_reasons.values()|list|tojson }};

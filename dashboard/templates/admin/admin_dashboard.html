@@ -223,7 +223,7 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
   async function executeAdminAction(endpoint, btnId, origText, loadText, payload = {}) {
     const btn = document.getElementById(btnId);
     const alertBox = document.getElementById('adminActionAlert');
@@ -240,7 +240,8 @@
         credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-Token': '{{ csrf_token }}'
         },
         body: JSON.stringify(payload)
       });

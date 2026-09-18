@@ -10,43 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <script>
-    tailwind.config = {
-      darkMode: "class",
-      theme: {
-        extend: {
-          colors: {
-            "surface-bright": "#31394d",
-            "bg-card-hover": "#1E293B",
-            "outline": "#89929b",
-            "surface-container-lowest": "#060e20",
-            "text-muted": "#64748B",
-            "primary": "#93ccff",
-            "surface-container": "#171f33",
-            "info": "#06B6D4",
-            "primary-container": "#3198dc",
-            "surface-container-highest": "#2d3449",
-            "border-subtle": "#1E293B",
-            "surface-variant": "#2d3449",
-            "surface": "#0b1326",
-            "warning": "#F59E0B",
-            "text-secondary": "#94A3B8",
-            "bg-surface": "#0B0F19",
-            "surface-container-low": "#131b2e",
-            "bg-body": "#070B14",
-            "text-primary": "#F8FAFC",
-            "success": "#10B981",
-            "danger": "#EF4444"
-          },
-          fontFamily: {
-            "sans": ["Inter", "system-ui", "sans-serif"],
-            "mono": ["JetBrains Mono", "monospace"]
-          }
-        }
-      }
-    }
-  </script>
+  <!-- Precompiled Static Tailwind CSS & Theme -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
 </head>
 <body class="bg-bg-body text-text-primary font-sans antialiased min-h-screen flex flex-col justify-center items-center p-4">
@@ -56,7 +21,7 @@
     <div class="text-center mb-8">
       <div class="inline-flex items-center gap-3 mb-4">
         <div class="h-12 w-12 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center">
-          <span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">admin_panel_settings</span>
+          <span class="material-symbols-outlined text-primary text-3xl icon-fill">admin_panel_settings</span>
         </div>
       </div>
       <h1 class="text-xl font-bold text-text-primary tracking-tight">First-Run System Setup</h1>

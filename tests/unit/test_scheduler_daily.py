@@ -26,7 +26,12 @@ class TestDailyReportScheduler(unittest.TestCase):
         conn.commit()
         cursor.close()
 
+        # Isolate unit tests from live external background processes/locks
+        self.scan_patch = patch("src.automation.job_manager.scan_job_manager.is_scan_active", return_value=False)
+        self.scan_patch.start()
+
     def tearDown(self):
+        self.scan_patch.stop()
         self.db_mgr.close()
 
     def test_database_persistence_and_initialization(self):
@@ -180,6 +185,14 @@ class TestDailyReportScheduler(unittest.TestCase):
         self.assertIn("last_email_sent", status)
         self.assertIn("last_pipeline_run", status)
         self.assertIn("healthy", status)
+
+    @patch("src.automation.job_manager.scan_job_manager.is_scan_active", return_value=True)
+    def test_midnight_workflow_skips_when_scan_active(self, mock_is_active):
+        """Verify that when a scan is actively running, midnight workflow skips execution gracefully."""
+        sched = DailyReportScheduler(db_manager=self.db_mgr)
+        res = sched.run_midnight_workflow(force=True)
+        self.assertEqual(res["status"], "skipped")
+        self.assertIn("Another scan is already in progress", res["reason"])
 
 
 if __name__ == "__main__":

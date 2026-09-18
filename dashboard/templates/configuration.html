@@ -24,19 +24,9 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 function saveConfig() {
-  fetch('/api/config/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
-    .then(async r => {
-      const rawText = await r.text();
-      try {
-        return JSON.parse(rawText);
-      } catch (parseErr) {
-        return { status: 'failed', message: 'Server response error (HTTP ' + r.status + ')' };
-      }
-    })
-    .then(d => alert(d.message || d.status))
-    .catch(e => alert('Error saving config: ' + (e.message || e)));
+  alert('Configuration editing is centralized in the Admin Portal.');
 }
 </script>
 {% endblock %}

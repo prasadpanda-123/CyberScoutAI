@@ -3,7 +3,9 @@ SQLAlchemy ORM Models for Users and AuditLogs tables.
 """
 
 import datetime
+from uuid import uuid4
 from sqlalchemy import Column, DateTime, Integer, String, Text, func
+from sqlalchemy.dialects.postgresql import UUID
 
 from src.database.base import Base
 
@@ -11,7 +13,7 @@ from src.database.base import Base
 class UserModel(Base):
     __tablename__ = "Users"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     username = Column(String, nullable=False, unique=True, index=True)
     email = Column(String, nullable=False, unique=True, index=True)
     password_hash = Column(String, nullable=False)
@@ -22,7 +24,7 @@ class UserModel(Base):
 
     def to_dict(self) -> dict:
         return {
-            "id": self.id,
+            "id": str(self.id) if self.id else None,
             "username": self.username,
             "email": self.email,
             "role": self.role,
@@ -37,7 +39,7 @@ class AuditLogModel(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     timestamp = Column(DateTime, nullable=False, default=datetime.datetime.utcnow, index=True)
-    user_id = Column(Integer, nullable=True)
+    user_id = Column(UUID(as_uuid=True), nullable=True)
     username = Column(String, nullable=True)
     event_type = Column(String, nullable=False, index=True)
     action = Column(String, nullable=False)
@@ -49,7 +51,7 @@ class AuditLogModel(Base):
         return {
             "id": self.id,
             "timestamp": str(self.timestamp) if self.timestamp else None,
-            "user_id": self.user_id,
+            "user_id": str(self.user_id) if self.user_id else None,
             "username": self.username,
             "event_type": self.event_type,
             "action": self.action,
@@ -57,3 +59,4 @@ class AuditLogModel(Base):
             "status": self.status,
             "details": self.details,
         }
+

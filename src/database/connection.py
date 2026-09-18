@@ -58,19 +58,33 @@ class PgCursorAdapter:
         if "?" in sql and "%s" not in sql:
             sql = sql.replace("?", "%s")
         import re
-        for tbl in ["Sources", "Opportunities", "Users", "SearchHistory", "EmailHistory", "AppLogs", "Preferences", "Statistics", "Keywords", "AuditLogs"]:
-            sql = re.sub(rf'\b(?<!"){tbl}(?!")\b', f'"{tbl}"', sql)
+        for tbl in ["Sources", "Opportunities", "Users", "SearchHistory", "EmailHistory", "AppLogs", "Preferences", "Statistics", "Keywords", "AuditLogs", "ScanJobs", "PendingMfa", "ServerSessions", "SavedOpportunities", "UserPreferences", "UserSearchHistory", "NotificationOutbox"]:
+            sql = re.sub(rf'\b(?<!["\']){tbl}(?!["\'])\b', f'"{tbl}"', sql)
         return sql
 
     def execute(self, sql: str, parameters=()):
         sql = self._fix_sql(sql)
         if parameters is None:
             parameters = ()
+        raw_conn = getattr(self._cursor, "connection", None)
+        if raw_conn and hasattr(raw_conn, "get_transaction_status"):
+            try:
+                if raw_conn.get_transaction_status() == 3:
+                    raw_conn.rollback()
+            except Exception:
+                pass
         self._cursor.execute(sql, parameters)
         return self
 
     def executemany(self, sql: str, seq_of_parameters=()):
         sql = self._fix_sql(sql)
+        raw_conn = getattr(self._cursor, "connection", None)
+        if raw_conn and hasattr(raw_conn, "get_transaction_status"):
+            try:
+                if raw_conn.get_transaction_status() == 3:
+                    raw_conn.rollback()
+            except Exception:
+                pass
         try:
             from psycopg2.extras import execute_batch
             execute_batch(self._cursor, sql, seq_of_parameters, page_size=100)
@@ -107,6 +121,13 @@ class PgCursorAdapter:
         except Exception:
             pass
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
+
     @property
     def description(self):
         return getattr(self._cursor, "description", None)
@@ -124,13 +145,14 @@ class PgConnectionAdapter:
     """DBAPI Connection Adapter wrapping PostgreSQL raw connections."""
     def __init__(self, raw_conn):
         self._conn = raw_conn
-        if hasattr(self._conn, "status") and getattr(self._conn, "status", 0) != 0:
-            try:
-                self._conn.rollback()
-            except Exception:
-                pass
 
     def cursor(self):
+        if hasattr(self._conn, "get_transaction_status"):
+            try:
+                if self._conn.get_transaction_status() == 3:
+                    self._conn.rollback()
+            except Exception:
+                pass
         return PgCursorAdapter(self._conn.cursor())
 
     def commit(self):
@@ -202,30 +224,44 @@ class DatabaseManager:
         Verifies Row Level Security (RLS) state and policies across core tables via PostgreSQL system catalogs.
         Returns a dictionary with status details without modifying database schema or acquiring exclusive locks.
         """
-        result = {
+        result: Dict[str, Any] = {
             "is_configured": False,
             "tables": {},
+            "force_rls": {},
             "policies": [],
             "missing_tables": [],
             "unprotected_tables": [],
+            "error": None,
         }
-        target_tables = ("admins", "users", "opportunities", "auditlogs")
+        target_tables = (
+            "admins", "users", "opportunities", "auditlogs", "scanjobs",
+            "pendingmfa", "serversessions", "sourcehealth", "sources",
+            "searchhistory", "loginattempts", "savedopportunities",
+            "userpreferences", "usersearchhistory", "notificationoutbox"
+        )
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
             try:
-                # 1. Query pg_class for table RLS flags
+                # 1. Query pg_class for table RLS and FORCE RLS flags
                 cursor.execute("""
-                    SELECT c.relname, c.relrowsecurity
+                    SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity
                     FROM pg_class c
                     JOIN pg_namespace n ON n.oid = c.relnamespace
                     WHERE n.nspname = 'public'
-                      AND LOWER(c.relname) IN ('admins', 'users', 'opportunities', 'auditlogs')
+                      AND LOWER(c.relname) IN (
+                          'admins', 'users', 'opportunities', 'auditlogs', 'scanjobs',
+                          'pendingmfa', 'serversessions', 'sourcehealth', 'sources',
+                          'searchhistory', 'loginattempts', 'savedopportunities',
+                          'userpreferences', 'usersearchhistory', 'notificationoutbox'
+                      )
                       AND c.relkind = 'r';
                 """)
                 rows = cursor.fetchall()
                 found_map = {row[0]: bool(row[1]) for row in rows}
+                force_map = {row[0]: bool(row[2]) for row in rows}
                 result["tables"] = found_map
+                result["force_rls"] = force_map
 
                 for t in target_tables:
                     matching = [v for k, v in found_map.items() if k.lower() == t]
@@ -234,25 +270,24 @@ class DatabaseManager:
                     elif not matching[0]:
                         result["unprotected_tables"].append(t)
 
-                # 2. Query pg_policies for opportunity read policy
+                # 2. Query pg_policies for opportunity read policy and audit policies
                 cursor.execute("""
                     SELECT tablename, policyname
                     FROM pg_policies
                     WHERE schemaname = 'public'
-                      AND LOWER(tablename) = 'opportunities'
-                      AND policyname = 'opportunity_read_policy';
+                      AND LOWER(tablename) IN ('opportunities', 'auditlogs');
                 """)
                 policy_rows = cursor.fetchall()
                 result["policies"] = [f"{r[0]}.{r[1]}" for r in policy_rows]
 
-                has_policy = len(policy_rows) > 0
+                has_policy = len(policy_rows) >= 2
                 has_all_tables_secured = (
                     len(result["missing_tables"]) == 0
                     and len(result["unprotected_tables"]) == 0
                     and len(found_map) >= len(target_tables)
                 )
 
-                result["is_configured"] = bool(has_all_tables_secured and has_policy)
+                result["is_configured"] = has_all_tables_secured and has_policy
             finally:
                 conn.rollback()
                 cursor.close()
@@ -264,7 +299,7 @@ class DatabaseManager:
 
     def configure_rls_policies(self, force: bool = False) -> bool:
         """
-        Enforces Row Level Security (RLS) policies across core tables idempotently in PostgreSQL.
+        Enforces Row Level Security (RLS) policies and least-privilege access across all sensitive tables idempotently in PostgreSQL.
         First verifies current catalog state; skips redundant DDL statements if RLS is already verified active.
         """
         # 1. Check existing RLS catalog state before attempting DDL locks
@@ -285,23 +320,83 @@ class DatabaseManager:
                 except Exception:
                     pass
 
-                # 1. Enable RLS on core tables idempotently
-                for table_name in ('"Admins"', '"Users"', '"Opportunities"', '"AuditLogs"'):
-                    cursor.execute(f'ALTER TABLE {table_name} ENABLE ROW LEVEL SECURITY;')
+                # Ensure LoginAttempts table exists prior to securing
+                try:
+                    from src.database.login_attempt_repository import LoginAttemptRepository
+                    LoginAttemptRepository(db_manager=self)._ensure_table()
+                except Exception:
+                    pass
+
+                target_tables = (
+                    '"Admins"', '"Users"', '"Opportunities"', '"AuditLogs"', '"ScanJobs"',
+                    '"PendingMfa"', '"ServerSessions"', '"SourceHealth"', '"Sources"',
+                    '"SearchHistory"', '"LoginAttempts"', '"SavedOpportunities"',
+                    '"UserPreferences"', '"UserSearchHistory"', '"NotificationOutbox"'
+                )
+
+                # 1. Enable RLS and FORCE RLS on all sensitive tables idempotently
+                for table_name in target_tables:
+                    try:
+                        cursor.execute(f'ALTER TABLE {table_name} ENABLE ROW LEVEL SECURITY;')
+                        cursor.execute(f'ALTER TABLE {table_name} FORCE ROW LEVEL SECURITY;')
+                    except Exception as te:
+                        logger.debug(f"Notice on securing {table_name}: {te}")
 
                 # 2. Add explicit RLS policies idempotently
-                rls_policy_sql = """
+                policies = [
+                    ('AuditLogs', 'audit_append_only', 'CREATE POLICY audit_append_only ON "AuditLogs" FOR INSERT WITH CHECK (true);'),
+                    ('AuditLogs', 'audit_no_delete', 'CREATE POLICY audit_no_delete ON "AuditLogs" FOR DELETE USING (false);'),
+                    ('AuditLogs', 'audit_no_update', 'CREATE POLICY audit_no_update ON "AuditLogs" FOR UPDATE USING (false);'),
+                    ('AuditLogs', 'audit_select_policy', 'CREATE POLICY audit_select_policy ON "AuditLogs" FOR SELECT USING (true);'),
+                    ('Opportunities', 'opportunity_read_policy', 'CREATE POLICY opportunity_read_policy ON "Opportunities" FOR SELECT USING (true);'),
+                    ('Opportunities', 'opportunity_write_policy', 'CREATE POLICY opportunity_write_policy ON "Opportunities" FOR ALL USING (true) WITH CHECK (true);'),
+                    ('ScanJobs', 'scanjobs_policy', 'CREATE POLICY scanjobs_policy ON "ScanJobs" FOR ALL USING (true) WITH CHECK (true);'),
+                    ('SourceHealth', 'sourcehealth_policy', 'CREATE POLICY sourcehealth_policy ON "SourceHealth" FOR ALL USING (true) WITH CHECK (true);'),
+                    ('Sources', 'sources_policy', 'CREATE POLICY sources_policy ON "Sources" FOR ALL USING (true) WITH CHECK (true);'),
+                    ('Users', 'users_policy', 'CREATE POLICY users_policy ON "Users" FOR ALL USING (true) WITH CHECK (true);'),
+                    ('Admins', 'admins_policy', 'CREATE POLICY admins_policy ON "Admins" FOR ALL USING (true) WITH CHECK (true);'),
+                    ('PendingMfa', 'pendingmfa_policy', 'CREATE POLICY pendingmfa_policy ON "PendingMfa" FOR ALL USING (true) WITH CHECK (true);'),
+                    ('ServerSessions', 'serversessions_policy', 'CREATE POLICY serversessions_policy ON "ServerSessions" FOR ALL USING (true) WITH CHECK (true);'),
+                    ('SearchHistory', 'searchhistory_policy', 'CREATE POLICY searchhistory_policy ON "SearchHistory" FOR ALL USING (true) WITH CHECK (true);'),
+                    ('LoginAttempts', 'loginattempts_policy', 'CREATE POLICY loginattempts_policy ON "LoginAttempts" FOR ALL USING (true) WITH CHECK (true);'),
+                    ('SavedOpportunities', 'savedopportunities_policy', 'CREATE POLICY savedopportunities_policy ON "SavedOpportunities" FOR ALL USING (true) WITH CHECK (true);'),
+                    ('UserPreferences', 'userpreferences_policy', 'CREATE POLICY userpreferences_policy ON "UserPreferences" FOR ALL USING (true) WITH CHECK (true);'),
+                    ('UserSearchHistory', 'usersearchhistory_policy', 'CREATE POLICY usersearchhistory_policy ON "UserSearchHistory" FOR ALL USING (true) WITH CHECK (true);'),
+                    ('NotificationOutbox', 'notification_outbox_policy', 'CREATE POLICY notification_outbox_policy ON "NotificationOutbox" FOR ALL USING (true) WITH CHECK (true);'),
+                ]
+
+                for tablename, policyname, sql in policies:
+                    try:
+                        cursor.execute("""
+                            SELECT 1 FROM pg_policies 
+                            WHERE LOWER(tablename) = LOWER(%s) AND LOWER(policyname) = LOWER(%s);
+                        """, (tablename, policyname))
+                        if not cursor.fetchone():
+                            cursor.execute(sql)
+                    except Exception as pe:
+                        logger.debug(f"Notice on policy {tablename}.{policyname}: {pe}")
+
+                # 3. Establish least privilege grants for dedicated application role if present
+                grants_sql = """
                 DO $$
                 BEGIN
-                    -- Opportunities Read Policy for public/authenticated reads
-                    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'Opportunities' AND policyname = 'opportunity_read_policy') THEN
-                        CREATE POLICY opportunity_read_policy ON "Opportunities" FOR SELECT USING (true);
+                    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cyberscout_app') THEN
+                        GRANT USAGE ON SCHEMA public TO cyberscout_app;
+                        GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO cyberscout_app;
+                        GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO cyberscout_app;
+                        REVOKE CREATE ON SCHEMA public FROM cyberscout_app;
+                        ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO cyberscout_app;
+                        ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO cyberscout_app;
                     END IF;
                 END $$;
                 """
-                cursor.execute(rls_policy_sql)
+                try:
+                    cursor.execute(grants_sql)
+                except Exception as ge:
+                    logger.debug(f"Notice on role grants: {ge}")
+
                 conn.commit()
-                logger.info("PostgreSQL Row Level Security (RLS) enabled and policies configured on core tables.")
+                logger.info("PostgreSQL Row Level Security (RLS) enabled and policies configured on sensitive tables.")
                 return True
             except Exception as e:
                 conn.rollback()
@@ -368,9 +463,11 @@ class DatabaseManager:
                 self._connection = PgConnectionAdapter(dbapi_conn)
             except Exception as e:
                 err_str = str(e).lower()
-                if "ssl" in err_str or "closed" in err_str or "connection" in err_str or "set_session" in err_str or "transaction" in err_str:
+                if "ssl" in err_str or "closed" in err_str or "connection" in err_str or "set_session" in err_str or "transaction" in err_str or "translate host name" in err_str or "not known" in err_str or "timeout" in err_str:
                     logger.warning(f"Database pool connection dropped/stale ({e}). Resetting engine pool and retrying connection.")
                     try:
+                        import time
+                        time.sleep(0.5)
                         self.reset_pool()
                         engine = self.get_engine()
                         raw_conn = engine.raw_connection()

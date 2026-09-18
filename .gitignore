@@ -21,6 +21,11 @@ ENV/
 data/*.db
 data/*.sqlite
 data/*.sqlite3
+data/*.sql
+data/backups/
+
+# Scratch files
+scratch/
 
 # Logs and runtime artifacts
 logs/*.log
@@ -41,3 +46,5 @@ dist/
 .pytest_cache/
 .coverage
 htmlcov/
+node_modules/
+

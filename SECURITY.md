@@ -19,6 +19,7 @@ Only the latest release version receives security updates and patches.
 ## 🔒 Security Philosophy
 
 - **Zero Hardcoded Secrets**: Credentials, API tokens, and SMTP passwords must strictly be stored in environment variables (`.env`) and never committed to version control.
+- **Server-Side Session State & Opaque Cookies**: Browser cookies contain ONLY an opaque, cryptographically random identifier (256 bits entropy). All user identity, roles, emails, MFA state, and CSRF tokens are strictly persisted server-side in PostgreSQL and hashed at rest (SHA-256).
 - **SQL Injection Prevention**: All database queries strictly use parameterized SQL prepared statements.
 - **XSS & Input Sanitization**: HTML tags and malicious payloads in feeds are sanitized prior to storage and rendering.
 - **Path Safety**: File operations are restricted to `PROJECT_ROOT` boundaries.

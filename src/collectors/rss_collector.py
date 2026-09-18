@@ -14,6 +14,7 @@ from src.core.rss_diagnostics import RSSDiagnosticsManager
 from src.intelligence.planner_models import SearchTask
 from src.models.enums import OpportunityCategory, Status
 from src.models.opportunity import Opportunity
+from src.models.opportunity_dto import NormalizedOpportunityDTO
 
 logger = get_logger(__name__)
 
@@ -31,6 +32,55 @@ class GenericRSSCollector(BaseCollector):
     def collector_name(self) -> str:
         return "Generic RSS Collector"
 
+    def discover(self, task: Optional[SearchTask] = None) -> List[str]:
+        if task and task.target_url:
+            return [task.target_url]
+        return []
+
+    def fetch(self, target: str) -> Any:
+        status_code, content = self.context.http_client.get(target, source_id=self.source_id)
+        if status_code != 200:
+            RSSDiagnosticsManager().log_parser_error(
+                source_id=self.source_id,
+                collector_name=self.collector_name,
+                target_url=target,
+                http_status=status_code,
+                content_type="text/html",
+                payload=content or "",
+                exception_msg=f"HTTP status code {status_code} returned.",
+            )
+            return None
+        return content
+
+    def validate(self, raw_data: Any) -> bool:
+        return bool(raw_data and isinstance(raw_data, str) and len(raw_data.strip()) > 10)
+
+    def parse(self, raw_payload: Any) -> List[Dict[str, Any]]:
+        if not raw_payload:
+            return []
+        return parse_rss_xml_content(
+            content=raw_payload,
+            source_id=self.source_id,
+            url=self.source_id,
+            collector_name=self.collector_name,
+            status_code=200,
+        )
+
+    def normalize(self, raw_item: Dict[str, Any]) -> Optional[NormalizedOpportunityDTO]:
+        title = raw_item.get("title", "Untitled").strip()
+        url = raw_item.get("link", "").strip() or raw_item.get("url", "").strip()
+        if not title or title == "Untitled":
+            return None
+        return NormalizedOpportunityDTO(
+            title=title,
+            url=url,
+            source_id=self.source_id,
+            description=raw_item.get("description", "").strip(),
+            opportunity_type=raw_item.get("category", "other"),
+            categories=[raw_item.get("category", "other")],
+            raw_payload=raw_item,
+        )
+
     def collect(self, task: SearchTask) -> CollectorResult:
         """
         Executes RSS collection for target SearchTask URL.
@@ -46,30 +96,15 @@ class GenericRSSCollector(BaseCollector):
         opportunities: List[Dict[str, Any]] = []
 
         try:
-            status_code, content = self.context.http_client.get(url, source_id=self.source_id)
-            if status_code != 200:
-                RSSDiagnosticsManager().log_parser_error(
-                    source_id=self.source_id,
-                    collector_name=self.collector_name,
-                    target_url=url,
-                    http_status=status_code,
-                    content_type="text/html",
-                    payload=content or "",
-                    exception_msg=f"HTTP status code {status_code} returned.",
-                )
+            content = self.fetch(url)
+            if content is None:
                 return CollectorResult(
                     source_id=self.source_id,
                     status="failed",
-                    errors=[f"HTTP {status_code} returned for RSS feed '{url}'."],
+                    errors=[f"Failed to fetch RSS feed '{url}'."],
                 )
 
-            raw_items = parse_rss_xml_content(
-                content=content,
-                source_id=self.source_id,
-                url=url,
-                collector_name=self.collector_name,
-                status_code=status_code,
-            )
+            raw_items = self.parse(content)
             for item in raw_items:
                 normalized = self.normalize_item(item, task)
                 if normalized:

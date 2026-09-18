@@ -5,7 +5,7 @@ Scheduler service for background daemon loop execution.
 from pathlib import Path
 import threading
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 import yaml
 
 from src.core.constants import CONFIG_DIR
@@ -51,7 +51,7 @@ class SchedulerService:
             except Exception as e:
                 logger.warning(f"Could not load scheduler.yaml: {e}")
 
-    def add_job(self, name: str, callback: callable) -> None:
+    def add_job(self, name: str, callback: Callable[..., Any]) -> None:
         """Registers a background execution task job."""
         job = ScheduledJob(
             name=name,

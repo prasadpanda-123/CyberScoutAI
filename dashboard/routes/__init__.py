@@ -20,6 +20,7 @@ from dashboard.routes.api import api_bp
 from dashboard.routes.quality import quality_bp
 from dashboard.routes.production import production_bp
 from dashboard.routes.external_trigger import external_trigger_bp
+from dashboard.routes.insights import insights_bp
 
 __all__ = [
     "auth_bp",
@@ -40,5 +41,6 @@ __all__ = [
     "quality_bp",
     "production_bp",
     "external_trigger_bp",
+    "insights_bp",
 ]
 

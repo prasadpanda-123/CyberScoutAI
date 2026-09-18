@@ -1,12 +1,12 @@
 <!-- Mobile-Only Compact Header (Hidden on Desktop) -->
-<div class="mobile-header d-flex d-md-none align-items-center justify-content-between px-3 py-2 border-bottom border-secondary-subtle sticky-top" style="background-color: var(--bg-navbar);">
+<div class="mobile-header d-flex d-md-none align-items-center justify-content-between px-3 py-2 border-bottom border-secondary-subtle sticky-top bg-surface">
   <div class="d-flex align-items-center">
     <!-- Mobile Sidebar Toggle -->
     <button class="btn btn-outline-secondary btn-sm me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle Navigation">
       <i class="bi bi-list fs-5"></i>
     </button>
     <a class="navbar-brand d-flex align-items-center fw-bold mb-0 text-primary" href="/dashboard">
-      <img src="{{ url_for('static', filename='images/cyberscout-icon.svg') }}" alt="CyberScout AI" style="width: 24px; height: 24px; object-fit: contain;" class="me-2"> CyberScout AI
+      <img src="{{ url_for('static', filename='images/cyberscout-icon.svg') }}" alt="CyberScout AI" class="w-6 h-6 object-contain me-2"> CyberScout AI
     </a>
   </div>
   {% if session.get('role') in ['Admin', 'Super Admin', 'Administrator'] or session.get('admin_authenticated') %}
@@ -20,26 +20,26 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title fw-bold" id="scanModalLabel"><i class="bi bi-cpu text-primary me-2"></i> CyberScout AI Scan Execution</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="scanModalCloseBtn" style="display: none;"></button>
+        <button type="button" class="btn-close d-none" data-bs-dismiss="modal" aria-label="Close" id="scanModalCloseBtn"></button>
       </div>
       <div class="modal-body py-4 text-center">
-        <div id="scanSpinner" class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
+        <div id="scanSpinner" class="spinner-border text-primary mb-3 w-12 h-12" role="status">
           <span class="visually-hidden">Loading...</span>
         </div>
-        <div id="scanSuccessIcon" class="mb-3 text-success fs-1" style="display: none;">
+        <div id="scanSuccessIcon" class="mb-3 text-success fs-1 d-none">
           <i class="bi bi-check-circle-fill"></i>
         </div>
         <h5 id="scanStatusTitle" class="fw-bold mb-2">Starting scan...</h5>
         <p id="scanStatusSub" class="text-muted small mb-0">Initializing search planner and collectors...</p>
       </div>
       <div class="modal-footer justify-content-center">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" id="scanModalFooterBtn" style="display: none;" onclick="window.location.reload();">Close & Refresh</button>
+        <button type="button" class="btn btn-secondary btn-sm d-none" data-bs-dismiss="modal" id="scanModalFooterBtn" onclick="window.location.reload();">Close & Refresh</button>
       </div>
     </div>
   </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function triggerScan() {
   const btn = document.getElementById('runScanBtn');
   const modalEl = document.getElementById('scanModal');
@@ -55,10 +55,11 @@ function triggerScan() {
     btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Scanning...';
   }
 
-  spinner.style.display = 'inline-block';
-  icon.style.display = 'none';
-  closeBtn.style.display = 'none';
-  footerBtn.style.display = 'none';
+  spinner.classList.remove('d-none');
+  spinner.classList.add('d-inline-block');
+  icon.classList.add('d-none');
+  closeBtn.classList.add('d-none');
+  footerBtn.classList.add('d-none');
 
   title.innerText = 'Starting scan...';
   sub.innerText = 'Initializing search planner and collectors...';
@@ -66,10 +67,13 @@ function triggerScan() {
   const modal = new bootstrap.Modal(modalEl);
   modal.show();
 
-  fetch('/api/run', {
+  fetch('/admin/api/run', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ dry_run: false })
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': '{{ csrf_token }}'
+    },
+    body: JSON.stringify({ dry_run: false, csrf_token: '{{ csrf_token }}' })
   })
     .then(async r => {
       const data = await r.json();
@@ -87,16 +91,16 @@ function triggerScan() {
       sub.innerText = 'Job ID: ' + jobId;
 
       const pollInterval = setInterval(() => {
-        fetch('/api/jobs/' + jobId)
+        fetch('/admin/api/jobs/' + jobId)
           .then(res => {
             if (!res.ok) {
               clearInterval(pollInterval);
               title.innerText = 'Scan Completed';
               sub.innerText = 'Job ' + jobId + ' is complete.';
-              spinner.style.display = 'none';
-              icon.style.display = 'block';
-              closeBtn.style.display = 'block';
-              footerBtn.style.display = 'block';
+              spinner.classList.add('d-none');
+              icon.classList.remove('d-none');
+              closeBtn.classList.remove('d-none');
+              footerBtn.classList.remove('d-none');
               if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="bi bi-play-circle me-1"></i> Run Scan Now';
@@ -121,10 +125,10 @@ function triggerScan() {
               sub.innerText = `✔ Scan Complete! Found ${job.opportunities_found} opportunities in ${job.elapsed_time}s.`;
               sub.className = 'text-success fw-bold fs-6 mb-0';
 
-              spinner.style.display = 'none';
-              icon.style.display = 'block';
-              closeBtn.style.display = 'block';
-              footerBtn.style.display = 'block';
+              spinner.classList.add('d-none');
+              icon.classList.remove('d-none');
+              closeBtn.classList.remove('d-none');
+              footerBtn.classList.remove('d-none');
 
               if (btn) {
                 btn.disabled = false;
@@ -141,9 +145,9 @@ function triggerScan() {
               sub.innerText = 'Error: ' + errText;
               sub.className = 'text-danger mb-0';
 
-              spinner.style.display = 'none';
-              closeBtn.style.display = 'block';
-              footerBtn.style.display = 'block';
+              spinner.classList.add('d-none');
+              closeBtn.classList.remove('d-none');
+              footerBtn.classList.remove('d-none');
 
               if (btn) {
                 btn.disabled = false;
@@ -161,9 +165,9 @@ function triggerScan() {
       sub.innerText = String(e.message || e);
       sub.className = 'text-warning fw-bold mb-0';
 
-      spinner.style.display = 'none';
-      closeBtn.style.display = 'block';
-      footerBtn.style.display = 'block';
+      spinner.classList.add('d-none');
+      closeBtn.classList.remove('d-none');
+      footerBtn.classList.remove('d-none');
 
       if (btn) {
         btn.disabled = false;

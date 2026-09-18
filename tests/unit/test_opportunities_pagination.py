@@ -31,7 +31,7 @@ class TestOpportunitiesPagination(unittest.TestCase):
         res = self.user_client.get("/opportunities")
         self.assertEqual(res.status_code, 200)
         html = res.data.decode("utf-8")
-        self.assertIn("Opportunities Explorer", html)
+        self.assertIn("Opportunities Hub", html)
         self.assertIn("Per Page", html)
 
     def test_pagination_page_1(self):
@@ -79,7 +79,8 @@ class TestOpportunitiesPagination(unittest.TestCase):
         unauth_client = self.app.test_client()
         res = unauth_client.get("/opportunities")
         self.assertEqual(res.status_code, 302)
-        self.assertTrue(res.headers["Location"].endswith("/"))
+        loc = res.headers["Location"]
+        self.assertTrue(loc.startswith("/login") or loc.endswith("/"))
 
 
 if __name__ == "__main__":

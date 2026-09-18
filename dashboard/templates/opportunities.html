@@ -1,200 +1,460 @@
 {% extends "base.html" %}
 {% set active_page = "opportunities" %}
 
-{% block title %}Opportunities Hub — CyberScout AI{% endblock %}
+{% block title %}Opportunity Intelligence — CyberScout AI{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
 
-  <!-- Header -->
+  <!-- Page Header -->
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border-subtle">
     <div>
-      <h2 class="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">Opportunities Hub</h2>
-      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">Explore, search, filter, and bookmark cybersecurity opportunities.</p>
+      <h1 class="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">Opportunities Discovery</h1>
+      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">
+        Server-rendered cybersecurity opportunities intelligence, verified feeds, and career discovery.
+      </p>
     </div>
-    <div class="flex items-center gap-2">
-      <span class="text-xs font-mono text-text-muted bg-surface-container px-3 py-1.5 rounded-lg border border-border-subtle">
-        Total: <span class="font-bold text-primary">{{ total_count }}</span>
+    <div class="flex items-center gap-2.5">
+      <span class="text-xs font-mono text-text-muted bg-surface px-3 py-1.5 rounded-lg border border-border-subtle">
+        Total: <strong class="text-primary font-bold">{{ result.total_count }}</strong>
       </span>
+      {% if filter_dto.saved_only %}
+        <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-warning/10 text-warning border border-warning/20">
+          Saved View Active
+        </span>
+      {% endif %}
     </div>
   </div>
 
-  <!-- Search & Filter Controls -->
-  <form method="GET" action="/opportunities" class="bg-surface p-4 sm:p-5 rounded-xl border border-border-subtle space-y-4 shadow-sm">
-    <!-- Search Bar -->
-    <div class="relative">
-      <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted text-[18px]">search</span>
-      <input type="text" name="q" value="{{ search_query }}" placeholder="Search by title, provider, skills, tags, keywords..." class="w-full bg-bg-body border border-border-subtle rounded-lg py-2.5 pl-10 pr-4 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-primary transition-colors">
+  <!-- Search & Multi-Facet Filter Form -->
+  <form id="opportunityFilterForm" method="GET" action="{{ url_for('opportunities_ui.index') }}" class="bg-surface p-4 sm:p-5 rounded-xl border border-border-subtle space-y-4 shadow-sm">
+    
+    <!-- Keyword Search Bar -->
+    <div class="flex flex-col sm:flex-row gap-2.5">
+      <div class="relative flex-1">
+        <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted text-[18px]">search</span>
+        <input 
+          type="text" 
+          name="keyword" 
+          id="keywordInput"
+          value="{{ filter_dto.keyword or '' }}" 
+          placeholder="Search by keywords, title, skills, certs (e.g. 'security analyst', 'OSCP', 'CTF')..." 
+          class="w-full bg-bg-body border border-border-subtle rounded-lg py-2.5 pl-10 pr-4 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-primary transition-colors"
+        >
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button type="submit" class="px-4 py-2.5 rounded-lg bg-primary hover:bg-primary-hover text-surface-container-lowest text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm">
+          <span class="material-symbols-outlined text-[16px]">tune</span>
+          <span>Search</span>
+        </button>
+        <a href="{{ url_for('opportunities_ui.index') }}" class="px-3.5 py-2.5 rounded-lg border border-border-subtle hover:bg-surface-container text-xs font-semibold text-text-secondary hover:text-text-primary transition-colors flex items-center gap-1" title="Reset all search filters">
+          <span class="material-symbols-outlined text-[16px]">refresh</span>
+          <span>Reset</span>
+        </a>
+      </div>
     </div>
 
-    <!-- Filter Dropdowns & View Mode -->
-    <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
-      <div class="flex flex-wrap items-center gap-2.5">
-        <!-- Category Filter -->
-        <select name="category" onchange="this.form.submit()" class="bg-bg-body border border-border-subtle rounded-lg px-3 py-2 text-xs font-semibold text-text-primary focus:border-primary focus:outline-none cursor-pointer">
-          <option value="all" {% if selected_category == 'all' or not selected_category %}selected{% endif %}>All Categories</option>
-          <option value="internship" {% if selected_category == 'internship' %}selected{% endif %}>Internships</option>
-          <option value="ctf" {% if selected_category == 'ctf' %}selected{% endif %}>CTFs & Challenges</option>
-          <option value="certification" {% if selected_category == 'certification' %}selected{% endif %}>Certifications</option>
-          <option value="bug_bounty" {% if selected_category == 'bug_bounty' %}selected{% endif %}>Bug Bounties</option>
-          <option value="course" {% if selected_category == 'course' %}selected{% endif %}>Courses & Training</option>
-          <option value="job" {% if selected_category == 'job' %}selected{% endif %}>Full-Time Jobs</option>
-          <option value="hackathon" {% if selected_category == 'hackathon' %}selected{% endif %}>Hackathons</option>
-          <option value="scholarship" {% if selected_category == 'scholarship' %}selected{% endif %}>Scholarships</option>
-          <option value="github_repository" {% if selected_category == 'github_repository' %}selected{% endif %}>GitHub Repositories</option>
-          <option value="security_tool" {% if selected_category == 'security_tool' %}selected{% endif %}>Security Tools</option>
-        </select>
-
-        <!-- Deadline Filter -->
-        <select name="deadline" onchange="this.form.submit()" class="bg-bg-body border border-border-subtle rounded-lg px-3 py-2 text-xs font-semibold text-text-primary focus:border-primary focus:outline-none cursor-pointer">
-          <option value="all" {% if selected_deadline == 'all' or not selected_deadline %}selected{% endif %}>Any Deadline</option>
-          <option value="closing_soon" {% if selected_deadline == 'closing_soon' %}selected{% endif %}>Closing Soon (&le; 7 Days)</option>
-          <option value="active" {% if selected_deadline == 'active' %}selected{% endif %}>Active / Future</option>
-          <option value="no_deadline" {% if selected_deadline == 'no_deadline' %}selected{% endif %}>No Fixed Deadline</option>
-          <option value="passed" {% if selected_deadline == 'passed' %}selected{% endif %}>Expired Deadlines</option>
-        </select>
-
-        <!-- Sort Filter -->
-        <select name="sort" onchange="this.form.submit()" class="bg-bg-body border border-border-subtle rounded-lg px-3 py-2 text-xs font-semibold text-text-primary focus:border-primary focus:outline-none cursor-pointer">
-          <option value="relevance" {% if selected_sort == 'relevance' or not selected_sort %}selected{% endif %}>Sort: Relevance Score</option>
-          <option value="newest" {% if selected_sort == 'newest' %}selected{% endif %}>Sort: Newest Ingestion</option>
-          <option value="deadline_soonest" {% if selected_sort == 'deadline_soonest' %}selected{% endif %}>Sort: Deadline (Soonest)</option>
-        </select>
-
-        <!-- Per Page -->
-        <select name="per_page" onchange="this.form.submit()" class="bg-bg-body border border-border-subtle rounded-lg px-3 py-2 text-xs font-semibold text-text-primary focus:border-primary focus:outline-none cursor-pointer">
-          <option value="20" {% if per_page == 20 %}selected{% endif %}>20 / page</option>
-          <option value="50" {% if per_page == 50 %}selected{% endif %}>50 / page</option>
-          <option value="100" {% if per_page == 100 %}selected{% endif %}>100 / page</option>
+    <!-- Filter Select Controls Grid -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 pt-1">
+      
+      <!-- Category Filter -->
+      <div>
+        <label for="filterCategory" class="block text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1">Category</label>
+        <select id="filterCategory" name="category" onchange="this.form.submit()" class="w-full bg-bg-body border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs text-text-primary focus:border-primary focus:outline-none cursor-pointer">
+          <option value="" {% if not filter_dto.category %}selected{% endif %}>All Categories</option>
+          <option value="internship" {% if filter_dto.category == 'internship' %}selected{% endif %}>Internships</option>
+          <option value="ctf" {% if filter_dto.category == 'ctf' %}selected{% endif %}>CTFs & Challenges</option>
+          <option value="certification" {% if filter_dto.category == 'certification' %}selected{% endif %}>Certifications</option>
+          <option value="course" {% if filter_dto.category == 'course' %}selected{% endif %}>Courses & Training</option>
+          <option value="job" {% if filter_dto.category == 'job' %}selected{% endif %}>Full-Time Jobs</option>
+          <option value="hackathon" {% if filter_dto.category == 'hackathon' %}selected{% endif %}>Hackathons</option>
+          <option value="bug_bounty" {% if filter_dto.category == 'bug_bounty' %}selected{% endif %}>Bug Bounties</option>
+          <option value="scholarship" {% if filter_dto.category == 'scholarship' %}selected{% endif %}>Scholarships</option>
         </select>
       </div>
 
-      <!-- View Switcher (All vs Saved) -->
-      <div class="flex bg-bg-body rounded-lg p-1 border border-border-subtle">
-        <a href="/opportunities" class="px-3 py-1 rounded text-xs font-semibold transition-all {% if view_mode != 'saved' %}bg-primary text-surface-container-lowest font-bold{% else %}text-text-muted hover:text-text-primary{% endif %}">
-          All
+      <!-- Opportunity Type Filter -->
+      <div>
+        <label for="filterType" class="block text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1">Type</label>
+        <select id="filterType" name="opportunity_type" onchange="this.form.submit()" class="w-full bg-bg-body border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs text-text-primary focus:border-primary focus:outline-none cursor-pointer">
+          <option value="" {% if not filter_dto.opportunity_type %}selected{% endif %}>All Types</option>
+          <option value="internship" {% if filter_dto.opportunity_type == 'internship' %}selected{% endif %}>Internship</option>
+          <option value="full_time" {% if filter_dto.opportunity_type == 'full_time' %}selected{% endif %}>Full-Time</option>
+          <option value="challenge" {% if filter_dto.opportunity_type == 'challenge' %}selected{% endif %}>Challenge / CTF</option>
+          <option value="training" {% if filter_dto.opportunity_type == 'training' %}selected{% endif %}>Training</option>
+          <option value="other" {% if filter_dto.opportunity_type == 'other' %}selected{% endif %}>Other</option>
+        </select>
+      </div>
+
+      <!-- Pricing Filter -->
+      <div>
+        <label for="filterPricing" class="block text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1">Pricing</label>
+        <select id="filterPricing" name="pricing_type" onchange="this.form.submit()" class="w-full bg-bg-body border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs text-text-primary focus:border-primary focus:outline-none cursor-pointer">
+          <option value="" {% if not filter_dto.pricing_type %}selected{% endif %}>Any Pricing</option>
+          <option value="free" {% if filter_dto.pricing_type == 'free' %}selected{% endif %}>Free Access</option>
+          <option value="paid" {% if filter_dto.pricing_type == 'paid' %}selected{% endif %}>Paid</option>
+          <option value="freemium" {% if filter_dto.pricing_type == 'freemium' %}selected{% endif %}>Freemium</option>
+        </select>
+      </div>
+
+      <!-- Remote Filter -->
+      <div>
+        <label for="filterRemote" class="block text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1">Location / Remote</label>
+        <select id="filterRemote" name="remote" onchange="this.form.submit()" class="w-full bg-bg-body border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs text-text-primary focus:border-primary focus:outline-none cursor-pointer">
+          <option value="" {% if filter_dto.remote is none %}selected{% endif %}>All Arrangements</option>
+          <option value="true" {% if filter_dto.remote is sameas true %}selected{% endif %}>Fully Remote</option>
+          <option value="false" {% if filter_dto.remote is sameas false %}selected{% endif %}>On-site Only</option>
+        </select>
+      </div>
+
+      <!-- Deadline Filter -->
+      <div>
+        <label for="filterDeadline" class="block text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1">Deadline</label>
+        <select id="filterDeadline" name="deadline" onchange="this.form.submit()" class="w-full bg-bg-body border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs text-text-primary focus:border-primary focus:outline-none cursor-pointer">
+          <option value="" {% if not filter_dto.deadline %}selected{% endif %}>Any Deadline</option>
+          <option value="active" {% if filter_dto.deadline == 'active' %}selected{% endif %}>Active / Future</option>
+          <option value="upcoming" {% if filter_dto.deadline == 'upcoming' %}selected{% endif %}>Closing Soon (&le; 14 Days)</option>
+          <option value="past" {% if filter_dto.deadline == 'past' %}selected{% endif %}>Past Deadlines</option>
+        </select>
+      </div>
+
+      <!-- Sorting -->
+      <div>
+        <label for="filterSort" class="block text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1">Sort Order</label>
+        <select id="filterSort" name="sort" onchange="this.form.submit()" class="w-full bg-bg-body border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs text-text-primary focus:border-primary focus:outline-none cursor-pointer">
+          <option value="recommended" {% if filter_dto.sort == 'recommended' %}selected{% endif %}>Recommended / Best Match</option>
+          <option value="relevance" {% if filter_dto.sort == 'relevance' %}selected{% endif %}>Relevance Rank</option>
+          <option value="newest" {% if filter_dto.sort == 'newest' %}selected{% endif %}>Newest Indexed</option>
+          <option value="deadline" {% if filter_dto.sort == 'deadline' %}selected{% endif %}>Deadline (Soonest)</option>
+          <option value="score" {% if filter_dto.sort == 'score' %}selected{% endif %}>Quality Score</option>
+        </select>
+      </div>
+
+    </div>
+
+    <!-- Secondary Filter Bar: View Switcher (All vs Saved) & Page Size -->
+    <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border-subtle">
+      <!-- All vs Saved View Buttons -->
+      <div class="flex items-center gap-1.5 bg-bg-body rounded-lg p-1 border border-border-subtle">
+        <a href="{{ url_for('opportunities_ui.index') }}" class="px-3 py-1 rounded text-xs font-semibold transition-all {% if not filter_dto.saved_only %}bg-primary text-surface-container-lowest font-bold{% else %}text-text-muted hover:text-text-primary{% endif %}">
+          All Opportunities
         </a>
-        <a href="/opportunities?view=saved" class="px-3 py-1 rounded text-xs font-semibold transition-all flex items-center gap-1.5 {% if view_mode == 'saved' %}bg-warning text-surface-container-lowest font-bold{% else %}text-text-muted hover:text-text-primary{% endif %}">
+        <a href="{{ url_for('opportunities_ui.index', saved_only='true') }}" class="px-3 py-1 rounded text-xs font-semibold transition-all flex items-center gap-1.5 {% if filter_dto.saved_only %}bg-warning text-surface-container-lowest font-bold{% else %}text-text-muted hover:text-text-primary{% endif %}">
           <span class="material-symbols-outlined text-[14px]">bookmark</span>
-          <span>Saved</span>
-          <span id="savedCountBadge" class="text-[10px] bg-surface-container-high px-1.5 py-0.2 rounded font-mono">0</span>
+          <span>Saved Bookmarks</span>
+          <span id="savedCountBadge" class="text-[10px] bg-surface-container-high px-1.5 py-0.2 rounded font-mono">{{ saved_count }}</span>
         </a>
       </div>
+
+      <!-- Hidden flag for saved_only if currently active in form -->
+      {% if filter_dto.saved_only %}
+        <input type="hidden" name="saved_only" value="true">
+      {% endif %}
+
+      <!-- Per Page Selector -->
+      <div class="flex items-center gap-2 text-xs text-text-muted">
+        <span>Items per page:</span>
+        <select name="per_page" onchange="this.form.submit()" class="bg-bg-body border border-border-subtle rounded px-2 py-1 text-xs text-text-primary focus:outline-none">
+          <option value="12" {% if filter_dto.per_page == 12 %}selected{% endif %}>12</option>
+          <option value="24" {% if filter_dto.per_page == 24 %}selected{% endif %}>24</option>
+          <option value="48" {% if filter_dto.per_page == 48 %}selected{% endif %}>48</option>
+          <option value="96" {% if filter_dto.per_page == 96 %}selected{% endif %}>96</option>
+        </select>
+      </div>
     </div>
+
   </form>
 
-  <!-- Opportunity List / Table Container -->
+  <!-- Active Filters Pills -->
+  {% if active_filters %}
+    <div class="flex flex-wrap items-center gap-2 p-3 bg-surface rounded-xl border border-border-subtle text-xs">
+      <span class="text-text-muted font-bold text-[11px] uppercase tracking-wider mr-1">Active Filters:</span>
+      {% for af in active_filters %}
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container border border-border-subtle text-text-primary font-medium">
+          <span>{{ af.label }}</span>
+          <a href="{{ url_for('opportunities_ui.index') }}{{ af.reset_url }}" class="text-text-muted hover:text-error transition-colors" title="Remove filter">
+            <span class="material-symbols-outlined text-[14px]">close</span>
+          </a>
+        </span>
+      {% endfor %}
+      <a href="{{ url_for('opportunities_ui.index') }}" class="text-xs text-primary hover:underline font-semibold ml-auto">
+        Clear All Filters
+      </a>
+    </div>
+  {% endif %}
+
+  <!-- Recommended for You Highlight Section (Phase 5 SSR) -->
+  {% if recommendations and not filter_dto.saved_only and filter_dto.page == 1 %}
+    <div class="bg-gradient-to-r from-primary/5 via-surface to-accent/5 rounded-xl border border-primary/20 p-5 space-y-4">
+      <div class="flex items-center justify-between pb-2 border-b border-primary/10">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary text-xl">auto_awesome</span>
+          <div>
+            <h3 class="text-sm font-bold text-text-primary uppercase tracking-wider">Recommended for You</h3>
+            <p class="text-xs text-text-secondary">Personalized based on your skills, career preferences, and verified relevance</p>
+          </div>
+        </div>
+        <a href="{{ url_for('auth_ui.profile') }}" class="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1">
+          <span class="material-symbols-outlined text-[14px]">tune</span>
+          <span>Tune Preferences</span>
+        </a>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-4">
+        {% for rec in recommendations %}
+          <div class="bg-surface rounded-lg border border-border-subtle hover:border-primary/40 p-3.5 flex flex-col justify-between space-y-2 transition-all shadow-sm">
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between gap-1 text-[10px]">
+                <span class="font-bold px-1.5 py-0.2 rounded bg-primary/15 text-primary border border-primary/25 font-mono uppercase">
+                  {{ rec.opportunity_type|replace('_', ' ') }}
+                </span>
+                {% if rec.remote %}
+                  <span class="text-success font-semibold flex items-center gap-0.5">
+                    <span class="material-symbols-outlined text-[11px]">home_work</span> Remote
+                  </span>
+                {% endif %}
+              </div>
+              <a href="{{ url_for('opportunities_ui.detail', opportunity_id=rec.id) }}" class="text-xs font-bold text-text-primary hover:text-primary transition-colors line-clamp-2 leading-snug">
+                {{ rec.title }}
+              </a>
+              <div class="text-[11px] text-text-muted font-medium truncate">{{ rec.organization }}</div>
+            </div>
+
+            <!-- Recommendation Reasons -->
+            {% if rec.recommendation_explanation and rec.recommendation_explanation.reasons %}
+              <div class="pt-1.5 border-t border-border-subtle/50 space-y-1">
+                {% for reason in rec.recommendation_explanation.reasons[:2] %}
+                  <div class="text-[10px] text-text-secondary flex items-center gap-1 font-medium">
+                    <span class="text-success font-bold text-[11px]">&check;</span>
+                    <span class="truncate">{{ reason }}</span>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Opportunity Items Table/Container -->
   <div class="bg-surface rounded-xl border border-border-subtle overflow-hidden">
-    <!-- Table Header (Desktop) -->
-    <div class="hidden md:grid md:grid-cols-[1fr_130px_130px_130px_60px] gap-4 p-3.5 border-b border-border-subtle bg-surface-container-low text-[11px] font-bold uppercase tracking-wider text-text-muted">
-      <div>Opportunity Details</div>
-      <div>Source / Org</div>
-      <div>Ingested</div>
+    
+    <!-- Table Column Headers (Desktop) -->
+    <div class="hidden md:grid md:grid-cols-[1fr_150px_130px_130px_60px] gap-4 p-3.5 border-b border-border-subtle bg-surface-container-low text-[11px] font-bold uppercase tracking-wider text-text-muted">
+      <div>Opportunity Intelligence</div>
+      <div>Organization & Source</div>
+      <div>Format / Pricing</div>
       <div>Deadline</div>
       <div class="text-center">Save</div>
     </div>
 
-    <!-- Rows -->
+    <!-- Opportunity Rows -->
     <div class="divide-y divide-border-subtle">
-      {% for opp in opportunities %}
-        <div data-opp-id="{{ opp.id }}" data-deadline="{{ opp.deadline or '' }}" class="p-4 hover:bg-bg-card-hover transition-colors flex flex-col md:grid md:grid-cols-[1fr_130px_130px_130px_60px] gap-3 md:gap-4 items-start md:items-center">
-          <!-- Details Column -->
+      {% for opp in result.items %}
+        <div data-opp-id="{{ opp.id }}" class="p-4 hover:bg-bg-card-hover transition-colors flex flex-col md:grid md:grid-cols-[1fr_150px_130px_130px_60px] gap-3 md:gap-4 items-start md:items-center">
+          
+          <!-- Column 1: Details & Badges -->
           <div class="space-y-1.5 w-full">
             <div class="flex flex-wrap items-center gap-2">
               <span class="text-[10px] font-bold px-2 py-0.5 rounded font-mono uppercase {% if opp.category == 'internship' %}badge-category-internship{% elif opp.category == 'ctf' %}badge-category-ctf{% elif opp.category == 'certification' %}badge-category-certification{% elif opp.category == 'course' %}badge-category-course{% elif opp.category == 'job' %}badge-category-job{% else %}badge-category-default{% endif %}">
                 {{ opp.category|replace('_', ' ') }}
               </span>
-              <a href="{{ opp.url }}" target="_blank" rel="noopener" class="text-sm font-bold text-text-primary hover:text-primary transition-colors flex items-center gap-1">
-                <span>{{ opp.title }}</span>
-                <span class="material-symbols-outlined text-[14px] opacity-60">open_in_new</span>
-              </a>
+              {% if opp.remote %}
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-success/10 text-success border border-success/20 inline-flex items-center gap-0.5">
+                  <span class="material-symbols-outlined text-[12px]">home_work</span> Remote
+                </span>
+              {% endif %}
+              {% if opp.is_verified %}
+                <span class="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-primary/10 text-primary border border-primary/20 inline-flex items-center gap-0.5">
+                  <span class="material-symbols-outlined text-[12px]">verified</span> Verified
+                </span>
+              {% endif %}
+              {% if opp.is_closing_soon or opp.lifecycle_status == 'closing_soon' %}
+                <span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 inline-flex items-center gap-0.5">
+                  🔥 Closing Soon
+                </span>
+              {% endif %}
+              {% if opp.recently_updated %}
+                <span class="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                  Recently Updated
+                </span>
+              {% endif %}
+              {% if opp.is_free %}
+                <span class="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-primary/10 text-primary border border-primary/20">Free</span>
+              {% endif %}
+              {% if opp.match_strength == 'strong' %}
+                <span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-accent/15 text-accent border border-accent/30 font-mono">
+                  ★ Strong Match
+                </span>
+              {% endif %}
+              {% if opp.eligibility_status == 'ELIGIBLE' %}
+                <span class="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-success/10 text-success border border-success/20 inline-flex items-center gap-0.5">
+                  <span class="material-symbols-outlined text-[12px]">check_circle</span> Eligible
+                </span>
+              {% elif opp.eligibility_status == 'INELIGIBLE' %}
+                <span class="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-error/10 text-error border border-error/20 inline-flex items-center gap-0.5">
+                  <span class="material-symbols-outlined text-[12px]">block</span> Ineligible
+                </span>
+              {% endif %}
+              {% if opp.relevance_rank %}
+                <span class="text-[10px] font-mono font-semibold text-accent px-1.5 py-0.2 rounded bg-accent/10" title="Full-text search relevance rank">
+                  Rank: {{ opp.relevance_rank|round(3) }}
+                </span>
+              {% endif %}
             </div>
 
-            {% if opp.description %}
+            <!-- Title (Links to SSR Detail View) -->
+            <div class="flex items-start gap-1.5">
+              <a href="{{ url_for('opportunities_ui.detail', opportunity_id=opp.id) }}" class="text-sm font-bold text-text-primary hover:text-primary transition-colors leading-snug">
+                {{ opp.title }}
+              </a>
+              {% if opp.url %}
+                <a href="{{ opp.url }}" target="_blank" rel="noopener noreferrer" class="text-text-muted hover:text-text-primary transition-colors mt-0.5" title="Open official external source in new tab">
+                  <span class="material-symbols-outlined text-[15px] opacity-70">open_in_new</span>
+                </a>
+              {% endif %}
+            </div>
+
+            <!-- Description Snippet -->
+            {% if opp.description_snippet %}
               <p class="text-xs text-text-secondary line-clamp-2 leading-relaxed">
-                {{ opp.description }}
+                {{ opp.description_snippet }}
               </p>
             {% endif %}
 
-            <div class="flex flex-wrap items-center gap-3 text-[11px] text-text-muted pt-0.5">
-              {% if opp.location %}
-                <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">location_on</span> {{ opp.location }}</span>
-              {% endif %}
-              {% if opp.price_normalized %}
-                <span class="font-mono text-text-primary bg-surface-container px-1.5 py-0.2 rounded">{{ opp.price_normalized }}</span>
-              {% endif %}
+            <!-- Recommendation Explanation Chips -->
+            {% if opp.recommendation_explanation and opp.recommendation_explanation.reasons %}
+              <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
+                {% for r in opp.recommendation_explanation.reasons %}
+                  <span class="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                    <span class="text-success font-bold text-[10px]">&check;</span> {{ r }}
+                  </span>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <!-- Tags & Score Pill -->
+            <div class="flex flex-wrap items-center gap-2 pt-0.5 text-[11px] text-text-muted">
               {% if opp.score %}
-                <span class="text-primary font-mono font-semibold">Score: {{ opp.score }}/100</span>
+                <span class="text-primary font-mono font-semibold">Score: {{ opp.score|round(1) }}/100</span>
               {% endif %}
+              {% for tag in opp.tags %}
+                <a href="{{ url_for('opportunities_ui.index', keyword=tag) }}" class="px-1.5 py-0.2 rounded bg-surface-container hover:bg-surface-container-high text-[10px] font-mono text-text-secondary hover:text-text-primary transition-colors">
+                  #{{ tag }}
+                </a>
+              {% endfor %}
             </div>
           </div>
 
-          <!-- Source Column -->
-          <div class="text-xs text-text-secondary font-medium w-full md:w-auto">
-            <span class="md:hidden text-text-muted text-[11px] uppercase mr-1">Source:</span>
-            <span class="truncate block">{{ opp.provider|default(opp.source_id|default('Direct Feed')) }}</span>
+          <!-- Column 2: Organization & Source -->
+          <div class="w-full md:w-auto text-xs">
+            <span class="md:hidden text-text-muted text-[11px] uppercase mr-1">Organization:</span>
+            <div class="font-semibold text-text-primary truncate">{{ opp.organization }}</div>
+            <div class="text-[11px] text-text-muted flex items-center gap-1 mt-0.5">
+              <span class="material-symbols-outlined text-[13px]">sensors</span>
+              <span class="truncate">{{ opp.source_name }}</span>
+            </div>
           </div>
 
-          <!-- Discovered Column -->
-          <div class="text-xs text-text-muted font-mono w-full md:w-auto">
-            <span class="md:hidden text-text-muted text-[11px] uppercase mr-1">Discovered:</span>
-            <span>{{ opp.discovered_date|default('Recent') }}</span>
-          </div>
-
-          <!-- Deadline Column -->
-          <div class="w-full md:w-auto">
-            <span class="md:hidden text-text-muted text-[11px] uppercase mr-1">Deadline:</span>
-            {% if opp.deadline %}
-              <span class="deadline-badge inline-flex items-center gap-1 text-xs font-mono px-2 py-0.5 rounded bg-warning/10 text-warning border border-warning/20">
-                <span class="material-symbols-outlined text-[13px]">timer</span>
-                <span>{{ opp.deadline }}</span>
-              </span>
-            {% else %}
-              <span class="text-xs text-text-muted font-mono">Ongoing</span>
+          <!-- Column 3: Format / Pricing -->
+          <div class="w-full md:w-auto text-xs space-y-0.5">
+            <span class="md:hidden text-text-muted text-[11px] uppercase mr-1">Pricing:</span>
+            <div class="text-text-primary font-medium capitalize">{{ opp.pricing_type|default('Standard') }}</div>
+            {% if opp.has_stipend %}
+              <div class="text-[11px] font-semibold text-success flex items-center gap-0.5">
+                <span class="material-symbols-outlined text-[13px]">payments</span>
+                <span>{{ opp.stipend_type|replace('_', ' ')|capitalize if opp.stipend_type else 'Stipend' }}</span>
+              </div>
             {% endif %}
           </div>
 
-          <!-- Save / Star Button -->
-          <div class="w-full md:w-auto flex justify-end md:justify-center">
-            <button type="button" onclick="toggleBookmark('{{ opp.id }}')" class="p-1 text-text-muted hover:text-warning transition-colors" title="Bookmark Opportunity">
-              <span id="star-{{ opp.id }}" class="material-symbols-outlined text-[20px]">star_border</span>
-            </button>
+          <!-- Column 4: Deadline -->
+          <div class="w-full md:w-auto">
+            <span class="md:hidden text-text-muted text-[11px] uppercase mr-1">Deadline:</span>
+            {% if opp.deadline %}
+              <div class="inline-flex items-center gap-1 text-xs font-mono px-2 py-0.5 rounded {% if opp.is_expired %}bg-error/10 text-error border border-error/20{% elif opp.days_until_deadline is not none and opp.days_until_deadline <= 7 %}bg-warning/10 text-warning border border-warning/20{% else %}bg-surface-container text-text-primary border border-border-subtle{% endif %}">
+                <span class="material-symbols-outlined text-[13px]">timer</span>
+                <span>{{ opp.deadline }}</span>
+              </div>
+              {% if opp.days_until_deadline is not none %}
+                <div class="text-[10px] text-text-muted mt-0.5">
+                  {% if opp.is_expired %}Expired{% elif opp.days_until_deadline == 0 %}Closing Today{% else %}{{ opp.days_until_deadline }}d remaining{% endif %}
+                </div>
+              {% endif %}
+            {% else %}
+              <span class="text-xs text-text-muted font-mono">Rolling</span>
+            {% endif %}
           </div>
+
+          <!-- Column 5: Bookmark Save Form (Non-JS fallback + Progressive Enhancement) -->
+          <div class="w-full md:w-auto flex justify-end md:justify-center">
+            <form method="POST" action="/opportunities/{{ opp.id }}/toggle-save" class="bookmark-form inline-block" data-opp-id="{{ opp.id }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
+              <button 
+                type="submit" 
+                class="bookmark-btn p-1.5 rounded-lg hover:bg-surface-container text-text-muted hover:text-warning transition-colors" 
+                title="{% if opp.is_saved %}Remove bookmark{% else %}Save to bookmarks{% endif %}"
+                aria-label="Bookmark Opportunity"
+              >
+                <span class="material-symbols-outlined text-[20px] {% if opp.is_saved %}text-warning icon-fill{% endif %}">
+                  {% if opp.is_saved %}star{% else %}star_border{% endif %}
+                </span>
+              </button>
+            </form>
+          </div>
+
         </div>
       {% else %}
-        <div class="p-12 text-center text-text-muted space-y-2">
-          <span class="material-symbols-outlined text-4xl text-text-muted">search_off</span>
-          <h4 class="text-sm font-bold text-text-primary">No opportunities found</h4>
-          <p class="text-xs text-text-secondary max-w-sm mx-auto">Try broadening your search keywords or resetting your category and deadline filters.</p>
+        <!-- Empty Results State -->
+        <div class="p-12 text-center text-text-muted space-y-3">
+          <div class="w-12 h-12 mx-auto rounded-full bg-surface-container flex items-center justify-center text-text-muted">
+            <span class="material-symbols-outlined text-2xl">search_off</span>
+          </div>
+          <h4 class="text-sm font-bold text-text-primary">No matching opportunities found</h4>
+          <p class="text-xs text-text-secondary max-w-sm mx-auto">
+            {% if filter_dto.saved_only %}
+              You haven't bookmarked any opportunities yet. Browse active opportunities and click the star icon to save them.
+            {% else %}
+              No active opportunities match your specific search criteria. Try broadening your keywords or clearing selected filters.
+            {% endif %}
+          </p>
+          <div class="pt-1">
+            <a href="{{ url_for('opportunities_ui.index') }}" class="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-lg border border-border-subtle bg-surface hover:bg-surface-container text-xs font-semibold text-text-primary transition-colors">
+              <span>View All Opportunities</span>
+            </a>
+          </div>
         </div>
       {% endfor %}
     </div>
 
-    <!-- Pagination Footer -->
-    {% if total_pages > 1 %}
+    <!-- Server-Side Pagination Footer -->
+    {% if result.total_pages > 1 %}
       <div class="p-4 border-t border-border-subtle bg-surface-container-lowest flex flex-col sm:flex-row justify-between items-center gap-3">
         <div class="text-xs text-text-muted">
-          Showing <span class="font-bold text-text-primary">{{ start_item }}</span> to <span class="font-bold text-text-primary">{{ end_item }}</span> of <span class="font-bold text-text-primary">{{ total_count }}</span> items
+          Showing <span class="font-bold text-text-primary">{{ start_item }}</span> to <span class="font-bold text-text-primary">{{ end_item }}</span> of <span class="font-bold text-text-primary">{{ result.total_count }}</span> items
         </div>
 
         <div class="flex items-center gap-1.5">
-          {% if has_prev %}
-            <a href="{{ url_for('opportunities_ui.index', page=page-1, q=search_query, category=selected_category, deadline=selected_deadline, sort=selected_sort, per_page=per_page, view=view_mode) }}" class="px-2.5 py-1.5 rounded-lg border border-border-subtle text-xs font-semibold text-text-secondary hover:bg-surface-container hover:text-text-primary transition-colors flex items-center gap-1">
+          {% if result.has_prev %}
+            <a href="{{ url_for('opportunities_ui.index') }}{{ filter_dto.to_query_string(page=result.page-1) }}" class="px-2.5 py-1.5 rounded-lg border border-border-subtle text-xs font-semibold text-text-secondary hover:bg-surface-container hover:text-text-primary transition-colors flex items-center gap-1">
               <span class="material-symbols-outlined text-[14px]">chevron_left</span>
               <span>Prev</span>
             </a>
           {% endif %}
 
           {% for p in page_numbers %}
-            {% if p == page %}
+            {% if p == result.page %}
               <span class="w-8 h-8 rounded-lg bg-primary text-surface-container-lowest font-bold text-xs flex items-center justify-center">{{ p }}</span>
             {% else %}
-              <a href="{{ url_for('opportunities_ui.index', page=p, q=search_query, category=selected_category, deadline=selected_deadline, sort=selected_sort, per_page=per_page, view=view_mode) }}" class="w-8 h-8 rounded-lg border border-border-subtle hover:bg-surface-container text-xs font-semibold text-text-secondary hover:text-text-primary flex items-center justify-center transition-colors">{{ p }}</a>
+              <a href="{{ url_for('opportunities_ui.index') }}{{ filter_dto.to_query_string(page=p) }}" class="w-8 h-8 rounded-lg border border-border-subtle hover:bg-surface-container text-xs font-semibold text-text-secondary hover:text-text-primary flex items-center justify-center transition-colors">{{ p }}</a>
             {% endif %}
           {% endfor %}
 
-          {% if has_next %}
-            <a href="{{ url_for('opportunities_ui.index', page=page+1, q=search_query, category=selected_category, deadline=selected_deadline, sort=selected_sort, per_page=per_page, view=view_mode) }}" class="px-2.5 py-1.5 rounded-lg border border-border-subtle text-xs font-semibold text-text-secondary hover:bg-surface-container hover:text-text-primary transition-colors flex items-center gap-1">
+          {% if result.has_next %}
+            <a href="{{ url_for('opportunities_ui.index') }}{{ filter_dto.to_query_string(page=result.page+1) }}" class="px-2.5 py-1.5 rounded-lg border border-border-subtle text-xs font-semibold text-text-secondary hover:bg-surface-container hover:text-text-primary transition-colors flex items-center gap-1">
               <span>Next</span>
               <span class="material-symbols-outlined text-[14px]">chevron_right</span>
             </a>
@@ -202,75 +462,65 @@
         </div>
       </div>
     {% endif %}
+
   </div>
 
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
-  function getBookmarks() {
-    try {
-      return JSON.parse(localStorage.getItem('cyberscout_bookmarks') || '[]');
-    } catch(e) {
-      return [];
-    }
-  }
+<script nonce="{{ csp_nonce }}">
+  // Progressive Enhancement for Bookmark Toggling
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.bookmark-form').forEach(form => {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const oppId = form.getAttribute('data-opp-id');
+        const csrfToken = form.querySelector('input[name="csrf_token"]').value;
+        const btn = form.querySelector('.bookmark-btn');
+        const star = btn.querySelector('.material-symbols-outlined');
 
-  function saveBookmarks(arr) {
-    localStorage.setItem('cyberscout_bookmarks', JSON.stringify(arr));
-    updateBookmarkUI();
-  }
+        try {
+          const res = await fetch(`/api/opportunities/${oppId}/bookmark`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': csrfToken
+            },
+            body: JSON.stringify({ csrf_token: csrfToken })
+          });
 
-  function toggleBookmark(id) {
-    let b = getBookmarks();
-    const idx = b.indexOf(id);
-    if (idx >= 0) {
-      b.splice(idx, 1);
-    } else {
-      b.push(id);
-    }
-    saveBookmarks(b);
-  }
+          if (res.ok) {
+            const data = await res.json();
+            if (data.saved) {
+              star.innerText = 'star';
+              star.classList.add('text-warning', 'icon-fill');
+              btn.setAttribute('title', 'Remove bookmark');
+            } else {
+              star.innerText = 'star_border';
+              star.classList.remove('text-warning', 'icon-fill');
+              btn.setAttribute('title', 'Save to bookmarks');
+            }
 
-  function updateBookmarkUI() {
-    const b = getBookmarks();
-    const badge = document.getElementById('savedCountBadge');
-    const navBadge = document.getElementById('navSavedBadge');
-    if (badge) badge.innerText = b.length;
-    if (navBadge) navBadge.innerText = b.length;
-
-    // Update star icons
-    document.querySelectorAll('[data-opp-id]').forEach(el => {
-      const oppId = el.getAttribute('data-opp-id');
-      const star = document.getElementById('star-' + oppId);
-      const isSaved = b.includes(oppId);
-
-      if (star) {
-        if (isSaved) {
-          star.innerText = 'star';
-          star.classList.add('text-warning');
-          star.style.fontVariationSettings = "'FILL' 1";
-        } else {
-          star.innerText = 'star_border';
-          star.classList.remove('text-warning');
-          star.style.fontVariationSettings = "'FILL' 0";
+            // Update badge counts if present
+            const badge = document.getElementById('savedCountBadge');
+            if (badge && data.saved_count !== undefined) {
+              badge.innerText = data.saved_count;
+            }
+            const navBadge = document.getElementById('navSavedBadge');
+            if (navBadge && data.saved_count !== undefined) {
+              navBadge.innerText = data.saved_count;
+            }
+          } else {
+            // Fallback to standard form submission
+            form.submit();
+          }
+        } catch (err) {
+          // Fallback to standard form submission
+          form.submit();
         }
-      }
-
-      // If in saved view mode, filter rows
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('view') === 'saved') {
-        if (!isSaved) {
-          el.style.display = 'none';
-        } else {
-          el.style.display = '';
-        }
-      }
+      });
     });
-  }
-
-  // Initialize Bookmark States on load
-  document.addEventListener('DOMContentLoaded', updateBookmarkUI);
+  });
 </script>
 {% endblock %}

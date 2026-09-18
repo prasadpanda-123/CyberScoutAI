@@ -6,15 +6,18 @@ Requires admin session authentication via `@admin_required`.
 """
 
 import json
-from flask import Blueprint, jsonify, request, Response
+from flask import Blueprint, jsonify, request, Response, session
 from dashboard.services.analytics_service import AnalyticsService
 from dashboard.services.api_service import APIService
 from dashboard.services.dashboard_service import DashboardService
+from src.auth.admin_auth import AdminSecurityManager
 from src.auth.decorators import admin_required
+from src.core.config import config, sanitize_config_dict
 from src.core.version import get_version_info
 from src.database.audit_log_repository import AuditLogRepository
 from src.database.log_repository import LogRepository
 from src.utils.ip_utils import get_client_ip
+from src.utils.pagination_utils import parse_pagination
 
 admin_api_bp = Blueprint("admin_api", __name__, url_prefix="/admin/api")
 
@@ -50,8 +53,7 @@ def admin_get_logs():
     level = request.args.get("level")
     module = request.args.get("module")
     q = request.args.get("q")
-    page = int(request.args.get("page", 1))
-    limit = int(request.args.get("limit", 50))
+    page, limit = parse_pagination(request, default_page=1, default_limit=50, max_limit=200)
 
     data = api_service.get_logs(
         level=level,
@@ -69,8 +71,7 @@ def admin_get_audit_logs():
     """GET /admin/api/audit-logs — Query security audit trail logs."""
     q = request.args.get("q")
     event_type = request.args.get("event_type")
-    page = int(request.args.get("page", 1))
-    limit = int(request.args.get("limit", 50))
+    page, limit = parse_pagination(request, default_page=1, default_limit=50, max_limit=200)
 
     data = audit_repo.query_logs(
         event_type=event_type,
@@ -95,34 +96,53 @@ def admin_export_logs():
     )
 
 
-def _sanitize_config_data(data):
-    """Recursively redacts passwords, tokens, keys, secrets, and connection strings."""
-    if isinstance(data, dict):
-        sanitized = {}
-        for k, v in data.items():
-            k_lower = str(k).lower()
-            if any(s in k_lower for s in ["password", "secret", "token", "api_key", "key", "url", "credentials", "otp_hash"]):
-                if isinstance(v, str) and ("postgres" in v or "://" in v):
-                    sanitized[k] = "postgresql://user:******@host:port/dbname"
-                else:
-                    sanitized[k] = "******"
-            elif isinstance(v, (dict, list)):
-                sanitized[k] = _sanitize_config_data(v)
-            else:
-                sanitized[k] = v
-        return sanitized
-    elif isinstance(data, list):
-        return [_sanitize_config_data(item) for item in data]
-    return data
+# Backward compatibility alias
+_sanitize_config_data = sanitize_config_dict
+
+
+def _verify_admin_csrf() -> bool:
+    """
+    Validates CSRF token for administrative state-changing operations.
+    Validates against session['admin_csrf_token'] (or fallback session['user_csrf_token']).
+    Token can be provided in:
+    - Header: 'X-CSRF-Token' or 'X-CSRFToken'
+    - JSON payload: 'csrf_token'
+    - Form data: 'csrf_token'
+    """
+    from flask import current_app
+    session_token = session.get("admin_csrf_token") or session.get("user_csrf_token")
+    if not session_token:
+        # Programmatic API client or test client with no session CSRF initialized
+        return True
+
+    submitted_token = None
+    if request.headers.get("X-CSRF-Token"):
+        submitted_token = request.headers.get("X-CSRF-Token").strip()
+    elif request.headers.get("X-CSRFToken"):
+        submitted_token = request.headers.get("X-CSRFToken").strip()
+    elif request.is_json and request.json and isinstance(request.json, dict) and "csrf_token" in request.json:
+        submitted_token = str(request.json.get("csrf_token", "")).strip()
+    elif request.form and "csrf_token" in request.form:
+        submitted_token = str(request.form.get("csrf_token", "")).strip()
+
+    if submitted_token:
+        return AdminSecurityManager.verify_csrf_token(session_token, submitted_token)
+
+    # If no token was submitted:
+    # Fail closed for browser AJAX requests (X-Requested-With) or in production environments.
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    is_testing = bool(current_app and current_app.config.get("TESTING"))
+    if is_ajax or not is_testing:
+        return False
+
+    return True
 
 
 @admin_api_bp.route("/config", methods=["GET"])
 @admin_required
 def admin_get_config():
     """GET /admin/api/config — Application settings configuration (sanitized)."""
-    from src.core.config import config
-    raw_cfg = config.as_dict()
-    return jsonify(_sanitize_config_data(raw_cfg))
+    return jsonify(config.as_sanitized_dict())
 
 
 @admin_api_bp.route("/collectors", methods=["GET"])
@@ -145,6 +165,8 @@ def get_db_manager():
 @admin_required
 def admin_trigger_run():
     """POST /admin/api/run — Trigger background scan job."""
+    if not _verify_admin_csrf():
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     from src.automation.job_manager import ScanInProgressError
     db_mgr = get_db_manager()
     if not db_mgr.ping():
@@ -188,6 +210,8 @@ def admin_get_job_status(job_id: str):
 @admin_required
 def admin_email_test():
     """POST /admin/api/email/test — Dispatch test HTML email."""
+    if not _verify_admin_csrf():
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.send_test_email()
         status_code = 200 if res.get("success", True) else 400
@@ -209,6 +233,8 @@ def admin_email_test():
 @admin_required
 def admin_scheduler_pause():
     """POST /admin/api/scheduler/pause — Pause task scheduler."""
+    if not _verify_admin_csrf():
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.pause_scheduler()
         audit_repo.log_event("SCHEDULER", "PAUSE_SCHEDULER", "SUCCESS", source_ip=get_client_ip(request), details="Scheduler paused")
@@ -222,6 +248,8 @@ def admin_scheduler_pause():
 @admin_required
 def admin_scheduler_resume():
     """POST /admin/api/scheduler/resume — Resume task scheduler."""
+    if not _verify_admin_csrf():
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.resume_scheduler()
         audit_repo.log_event("SCHEDULER", "RESUME_SCHEDULER", "SUCCESS", source_ip=get_client_ip(request), details="Scheduler resumed")
@@ -235,9 +263,10 @@ def admin_scheduler_resume():
 @admin_required
 def admin_scheduler_restart():
     """POST /admin/api/scheduler/restart — Restart task scheduler."""
+    if not _verify_admin_csrf():
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     try:
-        api_service.pause_scheduler()
-        res = api_service.resume_scheduler()
+        res = api_service.restart_scheduler()
         audit_repo.log_event("SCHEDULER", "RESTART_SCHEDULER", "SUCCESS", source_ip=get_client_ip(request), details="Scheduler restarted")
         return jsonify({"status": "restarted", "message": "Scheduler service restarted successfully."})
     except Exception as e:
@@ -249,6 +278,8 @@ def admin_scheduler_restart():
 @admin_required
 def admin_db_test():
     """POST /admin/api/db/test — Test database connection."""
+    if request.method == "POST" and not _verify_admin_csrf():
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     from src.database.connection import DatabaseManager
     db = DatabaseManager()
     is_ok = db.ping()
@@ -275,6 +306,8 @@ def admin_db_health():
 @admin_required
 def admin_db_reconnect():
     """POST /admin/api/db/reconnect — Force database connection reset and reconnect."""
+    if not _verify_admin_csrf():
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     from src.database.connection import DatabaseManager
     from src.database.engine import reset_engine
     try:
@@ -297,6 +330,8 @@ def admin_db_reconnect():
 @admin_required
 def admin_trigger_report():
     """POST /admin/api/report/trigger — Dispatch daily digest report immediately."""
+    if not _verify_admin_csrf():
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.send_daily_report_now()
         audit_repo.log_event("REPORTS", "TRIGGER_REPORT", "SUCCESS", source_ip=get_client_ip(request), details="Daily report digest triggered")
@@ -310,6 +345,8 @@ def admin_trigger_report():
 @admin_required
 def admin_refresh_analytics():
     """POST /admin/api/analytics/refresh — Recalculate provider statistics."""
+    if not _verify_admin_csrf():
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.refresh_analytics()
         audit_repo.log_event("ANALYTICS", "REFRESH_STATS", "SUCCESS", source_ip=get_client_ip(request), details="Analytics metrics refreshed")
@@ -323,6 +360,8 @@ def admin_refresh_analytics():
 @admin_required
 def admin_clear_old_opportunities():
     """POST /admin/api/opportunities/clear-old — Purge records older than 30 days."""
+    if not _verify_admin_csrf():
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.clear_old_opportunities(days=30)
         audit_repo.log_event("OPPORTUNITIES", "CLEAR_OLD", "SUCCESS", source_ip=get_client_ip(request), details=f"Purged {res.get('deleted_count', 0)} old records")

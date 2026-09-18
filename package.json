@@ -1,0 +1,15 @@
+{
+  "name": "cyberscout-ai",
+  "version": "2.2.0",
+  "private": true,
+  "description": "CyberScout AI — Frontend Asset Pipeline",
+  "scripts": {
+    "build:css": "tailwindcss -i ./dashboard/static/css/tailwind-input.css -o ./dashboard/static/css/tailwind.css --minify",
+    "watch:css": "tailwindcss -i ./dashboard/static/css/tailwind-input.css -o ./dashboard/static/css/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/container-queries": "^0.1.1",
+    "@tailwindcss/forms": "^0.5.10",
+    "tailwindcss": "^3.4.17"
+  }
+}

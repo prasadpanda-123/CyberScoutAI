@@ -1,0 +1,171 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Reliability & Disaster Recovery Telemetry — CyberScout AI{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-border-subtle">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-text-primary flex items-center gap-2.5">
+        <span class="material-symbols-outlined text-admin-accent text-[28px]">health_and_safety</span>
+        Production Reliability & Disaster Recovery Telemetry
+      </h1>
+      <p class="text-sm text-text-secondary mt-1">
+        PostgreSQL-native resilience, connection pool telemetry, worker recovery, and disaster recovery status (Phase 10).
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold {% if db_metrics.connected %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20{% else %}bg-red-500/10 text-red-400 border border-red-500/20{% endif %}">
+        <span class="h-2 w-2 rounded-full {% if db_metrics.connected %}bg-emerald-400 animate-pulse{% else %}bg-red-400{% endif %}"></span>
+        {% if db_metrics.connected %}Systems Ready{% else %}Database Degraded{% endif %}
+      </span>
+    </div>
+  </div>
+
+  <!-- Telemetry Metrics Grid -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- Liveness / Process -->
+    <div class="bg-surface-container rounded-xl p-4 border border-border-subtle shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between text-text-secondary text-xs uppercase tracking-wider font-semibold">
+        <span>Application Liveness</span>
+        <span class="material-symbols-outlined text-emerald-400 text-lg">check_circle</span>
+      </div>
+      <div class="mt-2 text-2xl font-bold text-text-primary">ALIVE</div>
+      <div class="mt-2 text-xs text-text-muted">Process responsive on HTTP /health/live</div>
+    </div>
+
+    <!-- Readiness / DB -->
+    <div class="bg-surface-container rounded-xl p-4 border border-border-subtle shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between text-text-secondary text-xs uppercase tracking-wider font-semibold">
+        <span>Database Readiness</span>
+        <span class="material-symbols-outlined {% if db_metrics.connected %}text-emerald-400{% else %}text-red-400{% endif %} text-lg">database</span>
+      </div>
+      <div class="mt-2 text-2xl font-bold {% if db_metrics.connected %}text-emerald-400{% else %}text-red-400{% endif %}">
+        {% if db_metrics.connected %}READY{% else %}DOWN{% endif %}
+      </div>
+      <div class="mt-2 text-xs text-text-muted">Latency: {{ db_metrics.latency_ms if db_metrics.latency_ms else 0 }}ms | Host: {{ db_metrics.database_host }}</div>
+    </div>
+
+    <!-- Sources Health -->
+    <div class="bg-surface-container rounded-xl p-4 border border-border-subtle shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between text-text-secondary text-xs uppercase tracking-wider font-semibold">
+        <span>Source Health</span>
+        <span class="material-symbols-outlined text-blue-400 text-lg">hub</span>
+      </div>
+      <div class="mt-2 text-2xl font-bold text-text-primary">{{ healthy_sources }} / {{ total_sources }}</div>
+      <div class="mt-2 text-xs text-text-muted">{{ degraded_sources }} degraded or failing sources</div>
+    </div>
+
+    <!-- Outbox Recovery -->
+    <div class="bg-surface-container rounded-xl p-4 border border-border-subtle shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between text-text-secondary text-xs uppercase tracking-wider font-semibold">
+        <span>Notification Outbox</span>
+        <span class="material-symbols-outlined text-amber-400 text-lg">mark_email_unread</span>
+      </div>
+      <div class="mt-2 text-2xl font-bold text-text-primary">{{ outbox_stats.get('pending', 0) }} Pending</div>
+      <div class="mt-2 text-xs text-text-muted">{{ outbox_stats.get('sent', 0) }} sent | {{ outbox_stats.get('processing', 0) }} processing</div>
+    </div>
+  </div>
+
+  <!-- Active Scan Job & Concurrency Protection -->
+  <div class="bg-surface-container rounded-xl p-5 border border-border-subtle shadow-sm">
+    <h2 class="text-base font-semibold text-text-primary flex items-center gap-2 mb-3">
+      <span class="material-symbols-outlined text-admin-accent text-lg">sync</span>
+      Scan Worker State & Concurrency Lock
+    </h2>
+    {% if active_job %}
+    <div class="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+      <div>
+        <div class="font-bold text-amber-300">Active Job: {{ active_job.job_id }}</div>
+        <div class="text-xs text-text-secondary mt-1">Status: {{ active_job.status|upper }} | Collector: {{ active_job.current_collector }} | Progress: {{ active_job.progress }}%</div>
+      </div>
+      <span class="px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 text-xs font-semibold">Lock Active</span>
+    </div>
+    {% else %}
+    <div class="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/15 text-sm flex items-center justify-between">
+      <div class="text-text-secondary">No active scan jobs. Lock is idle; ready for scheduled or manual triggers.</div>
+      <span class="px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 text-xs font-semibold">Lock Idle</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Database Backups & Disaster Recovery Status -->
+  <div class="bg-surface-container rounded-xl p-5 border border-border-subtle shadow-sm">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold text-text-primary flex items-center gap-2">
+        <span class="material-symbols-outlined text-admin-accent text-lg">backup</span>
+        PostgreSQL Database Backups & Artifact Verification
+      </h2>
+      <span class="text-xs text-text-muted">Native SQL / pg_dump Exports</span>
+    </div>
+
+    {% if backups %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead class="text-xs uppercase bg-surface-container-high text-text-secondary">
+          <tr>
+            <th class="px-4 py-2.5 rounded-l-lg">Backup File</th>
+            <th class="px-4 py-2.5">Created At (UTC)</th>
+            <th class="px-4 py-2.5">File Size</th>
+            <th class="px-4 py-2.5 rounded-r-lg">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border-subtle">
+          {% for b in backups %}
+          <tr class="hover:bg-surface-container-high/50 transition-colors">
+            <td class="px-4 py-3 font-mono text-xs text-text-primary">{{ b.file_name }}</td>
+            <td class="px-4 py-3 text-text-secondary text-xs">{{ b.created_at }}</td>
+            <td class="px-4 py-3 text-text-secondary text-xs">{{ (b.size_bytes / 1024 / 1024)|round(2) }} MB</td>
+            <td class="px-4 py-3">
+              <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Verified</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="p-6 text-center text-sm text-text-muted">
+      No local database backups detected in <code>data/backups/</code>. Use <code>python scripts/backup_database.py</code> to generate a verified backup.
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Recent Scan Jobs Audit Table -->
+  <div class="bg-surface-container rounded-xl p-5 border border-border-subtle shadow-sm">
+    <h2 class="text-base font-semibold text-text-primary flex items-center gap-2 mb-4">
+      <span class="material-symbols-outlined text-admin-accent text-lg">history</span>
+      Recent Scan Job Executions & Failure Isolation
+    </h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead class="text-xs uppercase bg-surface-container-high text-text-secondary">
+          <tr>
+            <th class="px-4 py-2.5 rounded-l-lg">Job ID</th>
+            <th class="px-4 py-2.5">Status</th>
+            <th class="px-4 py-2.5">Opportunities Found</th>
+            <th class="px-4 py-2.5">Started At</th>
+            <th class="px-4 py-2.5 rounded-r-lg">Finished At</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border-subtle">
+          {% for j in recent_jobs %}
+          <tr class="hover:bg-surface-container-high/50 transition-colors">
+            <td class="px-4 py-3 font-mono text-xs text-text-primary">{{ j.job_id }}</td>
+            <td class="px-4 py-3">
+              <span class="px-2 py-0.5 rounded text-xs font-semibold {% if j.status == 'completed' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20{% elif j.status == 'failed' %}bg-red-500/10 text-red-400 border border-red-500/20{% else %}bg-amber-500/10 text-amber-400 border border-amber-500/20{% endif %}">
+                {{ j.status|upper }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-text-secondary text-xs">{{ j.opportunities_found }}</td>
+            <td class="px-4 py-3 text-text-secondary text-xs">{{ j.started_at or j.created_at }}</td>
+            <td class="px-4 py-3 text-text-secondary text-xs">{{ j.finished_at or 'In Flight' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

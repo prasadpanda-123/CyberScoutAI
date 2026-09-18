@@ -47,6 +47,11 @@ class AdminRepository:
         if not password or not isinstance(password, str) or not password.strip():
             raise ValueError("Password cannot be empty or null.")
 
+        from src.auth.admin_auth import AdminSecurityManager
+        is_strong, strength_err = AdminSecurityManager.validate_password_strength(password)
+        if not is_strong:
+            raise ValueError(f"Administrator password policy violation: {strength_err}")
+
         if not username or not isinstance(username, str) or not username.strip():
             raise ValueError("Username cannot be empty or null.")
 
@@ -269,6 +274,19 @@ class AdminRepository:
             cursor.execute('SELECT COUNT(*) FROM "Admins"')
             res = cursor.fetchone()
             return res[0] > 0 if res else False
+        finally:
+            conn.rollback()
+            cursor.close()
+
+    def get_all(self) -> List[Dict[str, Any]]:
+        """Retrieves all administrator records from the Admins table."""
+        sql = 'SELECT id, username, email, role, is_active, created_at, last_login FROM "Admins" ORDER BY id ASC'
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+            return [row_to_dict(r, cursor.description) for r in rows]
         finally:
             conn.rollback()
             cursor.close()

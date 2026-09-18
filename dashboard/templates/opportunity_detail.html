@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+{% set active_page = "opportunities" %}
+
+{% block title %}{{ opportunity.title if opportunity else "Opportunity Not Found" }} — CyberScout AI{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-5xl mx-auto">
+
+  <!-- Breadcrumbs & Navigation -->
+  <div class="flex items-center justify-between">
+    <a href="{{ url_for('opportunities_ui.index') }}" class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-text-secondary hover:text-primary transition-colors">
+      <span class="material-symbols-outlined text-[16px]">arrow_back</span>
+      <span>Back to Opportunities Discovery</span>
+    </a>
+
+    {% if opportunity %}
+      <form method="POST" action="/opportunities/{{ opportunity.id }}/toggle-save" class="bookmark-form inline-block" data-opp-id="{{ opportunity.id }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
+        <button type="submit" class="bookmark-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-subtle bg-surface hover:bg-surface-container text-xs font-semibold {% if opportunity.is_saved %}text-warning border-warning/30{% else %}text-text-secondary hover:text-text-primary{% endif %} transition-colors">
+          <span class="material-symbols-outlined text-[18px] {% if opportunity.is_saved %}text-warning icon-fill{% endif %}">
+            {% if opportunity.is_saved %}star{% else %}star_border{% endif %}
+          </span>
+          <span class="save-label">{% if opportunity.is_saved %}Saved to Bookmarks{% else %}Save Opportunity{% endif %}</span>
+        </button>
+      </form>
+    {% endif %}
+  </div>
+
+  {% if not opportunity %}
+    <!-- Error / Not Found State -->
+    <div class="bg-surface rounded-xl border border-border-subtle p-12 text-center space-y-4">
+      <div class="w-16 h-16 mx-auto rounded-full bg-error/10 text-error flex items-center justify-center">
+        <span class="material-symbols-outlined text-3xl">error_outline</span>
+      </div>
+      <h3 class="text-lg font-bold text-text-primary">{{ error_message|default("Opportunity Unavailable") }}</h3>
+      <p class="text-xs sm:text-sm text-text-secondary max-w-md mx-auto">
+        The requested opportunity could not be found, has expired, or has been archived during deduplication maintenance.
+      </p>
+      <div class="pt-2">
+        <a href="{{ url_for('opportunities_ui.index') }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-surface-container-lowest text-xs font-bold hover:bg-primary-hover transition-colors">
+          <span class="material-symbols-outlined text-[16px]">search</span>
+          <span>Explore Active Opportunities</span>
+        </a>
+      </div>
+    </div>
+  {% else %}
+
+    <!-- Main Opportunity Header Card -->
+    <div class="bg-surface rounded-xl border border-border-subtle p-6 sm:p-8 space-y-5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-[11px] font-bold px-2.5 py-1 rounded font-mono uppercase tracking-wider {% if opportunity.category == 'internship' %}badge-category-internship{% elif opportunity.category == 'ctf' %}badge-category-ctf{% elif opportunity.category == 'certification' %}badge-category-certification{% elif opportunity.category == 'course' %}badge-category-course{% elif opportunity.category == 'job' %}badge-category-job{% else %}badge-category-default{% endif %}">
+            {{ opportunity.category|replace('_', ' ') }}
+          </span>
+          <span class="text-[11px] font-semibold px-2.5 py-1 rounded bg-surface-container text-text-secondary border border-border-subtle uppercase">
+            {{ opportunity.opportunity_type|replace('_', ' ') }}
+          </span>
+          {% if opportunity.remote %}
+            <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-success/10 text-success border border-success/20 inline-flex items-center gap-1">
+              <span class="material-symbols-outlined text-[13px]">home_work</span> Remote
+            </span>
+          {% endif %}
+          {% if opportunity.is_free %}
+            <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">Free</span>
+          {% endif %}
+          {% if opportunity.is_verified %}
+            <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 inline-flex items-center gap-1">
+              <span class="material-symbols-outlined text-[13px]">verified</span> Verified
+            </span>
+          {% endif %}
+          {% if opportunity.is_closing_soon or opportunity.lifecycle_status == 'closing_soon' %}
+            <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 inline-flex items-center gap-1">
+              🔥 Closing Soon
+            </span>
+          {% endif %}
+          {% if opportunity.recently_updated %}
+            <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">
+              Recently Updated
+            </span>
+          {% endif %}
+        </div>
+
+        <div class="flex items-center gap-2 text-xs font-mono text-text-muted">
+          <span>Score: <strong class="text-primary">{{ opportunity.score|round(1) }}</strong>/100</span>
+        </div>
+      </div>
+
+      <div>
+        <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-text-primary tracking-tight leading-snug">
+          {{ opportunity.title }}
+        </h1>
+        <div class="flex flex-wrap items-center gap-3 mt-2 text-xs sm:text-sm text-text-secondary">
+          <span class="font-semibold text-text-primary flex items-center gap-1">
+            <span class="material-symbols-outlined text-[16px] text-text-muted">corporate_fare</span>
+            {{ opportunity.organization }}
+          </span>
+          {% if opportunity.location %}
+            <span class="flex items-center gap-1 text-text-muted">
+              <span class="material-symbols-outlined text-[15px]">location_on</span>
+              {{ opportunity.location }}
+            </span>
+          {% endif %}
+          <span class="text-text-muted flex items-center gap-1">
+            <span class="material-symbols-outlined text-[15px]">sensors</span>
+            Source: <span class="font-mono text-text-primary">{{ opportunity.source_name }}</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Action CTA Bar -->
+      <div class="pt-3 border-t border-border-subtle flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-2 text-xs text-text-muted">
+          {% if opportunity.deadline %}
+            <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono {% if opportunity.is_expired %}bg-error/10 text-error border border-error/20{% elif opportunity.days_until_deadline is not none and opportunity.days_until_deadline <= 7 %}bg-warning/10 text-warning border border-warning/20{% else %}bg-surface-container text-text-primary border border-border-subtle{% endif %}">
+              <span class="material-symbols-outlined text-[16px]">timer</span>
+              <span>Deadline: {{ opportunity.deadline }}</span>
+              {% if opportunity.days_until_deadline is not none %}
+                <span class="text-[10px] opacity-80 font-sans">
+                  ({% if opportunity.is_expired %}Expired {{ opportunity.days_until_deadline|abs }}d ago{% elif opportunity.days_until_deadline == 0 %}Closing Today{% else %}{{ opportunity.days_until_deadline }}d remaining{% endif %})
+                </span>
+              {% endif %}
+            </div>
+          {% else %}
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container text-text-muted text-xs">
+              <span class="material-symbols-outlined text-[15px]">all_inclusive</span> Open / Rolling Deadline
+            </span>
+          {% endif %}
+        </div>
+
+        {% if opportunity.url %}
+          <a href="{{ opportunity.url }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-hover text-surface-container-lowest text-xs sm:text-sm font-bold shadow-sm transition-colors">
+            <span>Apply on Official Source</span>
+            <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+          </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Details Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Left 2 Cols: Match Intelligence, Description & Eligibility -->
+      <div class="lg:col-span-2 space-y-6">
+        
+        <!-- Phase 9: Explainable Match Intelligence (Authenticated Users) -->
+        {% if is_authenticated and match_analysis and (match_analysis.reasons or match_analysis.matched_skills or match_analysis.missing_skills) %}
+          <div class="bg-surface rounded-xl border border-primary/30 p-6 space-y-4 shadow-sm relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl pointer-events-none"></div>
+
+            <div class="flex items-center justify-between gap-3 border-b border-border-subtle pb-3">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-[20px]">auto_awesome</span>
+                <h2 class="text-sm font-bold uppercase tracking-wider text-text-primary">Why This Matches You</h2>
+              </div>
+              {% if match_analysis.status != 'UNKNOWN' %}
+                <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full font-mono uppercase {% if match_analysis.status == 'MATCHED' %}bg-success/15 text-success border border-success/30{% elif match_analysis.status == 'PARTIAL_MATCH' %}bg-primary/15 text-primary border border-primary/30{% else %}bg-surface-container text-text-muted border border-border-subtle{% endif %}">
+                  {{ match_analysis.status|replace('_', ' ') }}
+                </span>
+              {% endif %}
+            </div>
+
+            <!-- Factual Evidence Bullets -->
+            {% if match_analysis.reasons %}
+              <ul class="space-y-2 text-xs sm:text-sm text-text-secondary">
+                {% for reason in match_analysis.reasons %}
+                  <li class="flex items-start gap-2">
+                    <span class="text-success font-bold select-none text-base leading-none mt-0.5">✓</span>
+                    <span>{{ reason }}</span>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+
+            <!-- Skill Coverage Analysis -->
+            {% if match_analysis.matched_skills or match_analysis.missing_skills %}
+              <div class="pt-3 border-t border-border-subtle space-y-3">
+                <div class="flex items-center justify-between text-xs font-semibold text-text-muted">
+                  <span>Skill Coverage</span>
+                  {% if match_analysis.skill_coverage_ratio is not none %}
+                    <span class="font-mono text-primary">{{ (match_analysis.skill_coverage_ratio * 100)|round|int }}% matched</span>
+                  {% endif %}
+                </div>
+
+                <!-- Matched Skills -->
+                {% if match_analysis.matched_skills %}
+                  <div class="space-y-1.5">
+                    <div class="text-[11px] font-bold text-success uppercase tracking-wider flex items-center gap-1">
+                      <span>✓</span> Matched Profile Skills
+                    </div>
+                    <div class="flex flex-wrap gap-1.5">
+                      {% for skill in match_analysis.matched_skills %}
+                        <span class="px-2.5 py-1 rounded-md bg-success/10 text-success border border-success/20 text-xs font-mono font-medium flex items-center gap-1">
+                          <span>✓</span> {{ skill }}
+                        </span>
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endif %}
+
+                <!-- Missing Skills: Strictly phrased as "Skills not currently listed in your profile" -->
+                {% if match_analysis.missing_skills %}
+                  <div class="space-y-1.5 pt-1">
+                    <div class="text-[11px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1">
+                      <span>○</span> Skills not currently listed in your profile
+                    </div>
+                    <div class="flex flex-wrap gap-1.5">
+                      {% for skill in match_analysis.missing_skills %}
+                        <span class="px-2.5 py-1 rounded-md bg-surface-container text-text-muted border border-border-subtle text-xs font-mono">
+                          ○ {{ skill }}
+                        </span>
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        <!-- Description -->
+        <div class="bg-surface rounded-xl border border-border-subtle p-6 space-y-3">
+          <h2 class="text-sm font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px] text-primary">description</span>
+            Opportunity Overview
+          </h2>
+          <div class="text-sm text-text-primary leading-relaxed whitespace-pre-line break-words space-y-3">
+            {{ opportunity.description }}
+          </div>
+        </div>
+
+        <!-- Eligibility & Requirements -->
+        {% if opportunity.eligibility or opportunity.duration %}
+          <div class="bg-surface rounded-xl border border-border-subtle p-6 space-y-3">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-accent">rule</span>
+              Eligibility & Format
+            </h2>
+            <div class="space-y-3 text-xs sm:text-sm text-text-secondary">
+              {% if opportunity.eligibility %}
+                <div>
+                  <h3 class="font-bold text-text-primary text-xs uppercase mb-1">Eligibility Criteria</h3>
+                  <p class="leading-relaxed">{{ opportunity.eligibility }}</p>
+                </div>
+              {% endif %}
+              {% if opportunity.duration %}
+                <div class="pt-2 border-t border-border-subtle">
+                  <h3 class="font-bold text-text-primary text-xs uppercase mb-1">Expected Duration</h3>
+                  <p class="font-mono text-text-primary">{{ opportunity.duration }}</p>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+
+        <!-- Tags & Topics -->
+        {% if opportunity.tags %}
+          <div class="bg-surface rounded-xl border border-border-subtle p-6 space-y-3">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-warning">label</span>
+              Associated Skills & Tags
+            </h2>
+            <div class="flex flex-wrap gap-2">
+              {% for tag in opportunity.tags %}
+                <a href="{{ url_for('opportunities_ui.index', keyword=tag) }}" class="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high border border-border-subtle text-xs font-mono text-text-secondary hover:text-text-primary transition-colors">
+                  #{{ tag }}
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
+      </div>
+
+      <!-- Right 1 Col: Structured Facts Sidebar -->
+      <div class="space-y-6">
+
+        <!-- Facts Box -->
+        <div class="bg-surface rounded-xl border border-border-subtle p-5 space-y-4">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-text-muted border-b border-border-subtle pb-2.5">
+            Key Information
+          </h2>
+
+          <div class="space-y-3.5 text-xs">
+            <div>
+              <div class="text-text-muted mb-0.5">Pricing Model</div>
+              <div class="font-semibold text-text-primary capitalize">{{ opportunity.pricing_type|default('Unknown') }}</div>
+            </div>
+
+            {% if opportunity.has_stipend %}
+              <div>
+                <div class="text-text-muted mb-0.5">Stipend / Compensation</div>
+                <div class="font-semibold text-success flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[15px]">payments</span>
+                  {% if opportunity.stipend_amount %}
+                    {{ opportunity.currency }} {{ opportunity.stipend_amount|round(2) }} ({{ opportunity.stipend_type|replace('_', ' ')|capitalize }})
+                  {% else %}
+                    {{ opportunity.stipend_type|replace('_', ' ')|capitalize }}
+                  {% endif %}
+                </div>
+              </div>
+            {% endif %}
+
+            {% if opportunity.difficulty %}
+              <div>
+                <div class="text-text-muted mb-0.5">Target Difficulty</div>
+                <div class="font-semibold text-text-primary capitalize">{{ opportunity.difficulty }}</div>
+              </div>
+            {% endif %}
+
+            <div>
+              <div class="text-text-muted mb-0.5">Work Arrangement</div>
+              <div class="font-semibold text-text-primary">
+                {% if opportunity.remote %}Fully Remote{% else %}{{ opportunity.location|default('On-site / Unspecified') }}{% endif %}
+              </div>
+            </div>
+
+            <div>
+              <div class="text-text-muted mb-0.5">Intelligence Telemetry</div>
+              <div class="space-y-1 font-mono text-[11px] text-text-muted pt-1">
+                <div>First Indexed: <span class="text-text-primary">{{ opportunity.created_at[:10] if opportunity.created_at else 'Unknown' }}</span></div>
+                <div>Last Verified: <span class="text-text-primary">{{ opportunity.last_harvested[:10] if opportunity.last_harvested else 'Recent' }}</span></div>
+                <div>Opportunity ID: <span class="text-text-secondary select-all">{{ opportunity.id }}</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Verification Guarantee Card -->
+        <div class="bg-surface rounded-xl border border-border-subtle p-5 space-y-2.5 text-xs">
+          <div class="flex items-center gap-2 text-primary font-bold">
+            <span class="material-symbols-outlined text-[18px]">verified_user</span>
+            <span>CyberScout Verified Source</span>
+          </div>
+          <p class="text-text-secondary leading-relaxed">
+            This opportunity was harvested from the canonical feed <span class="font-mono text-text-primary font-semibold">{{ opportunity.source_name }}</span>.
+            All canonical links point directly to authentic cybersecurity organizations.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Phase 9: Similar Opportunities (Rendered Server-Side for All Users) -->
+    <div class="space-y-4 pt-6 border-t border-border-subtle">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h2 class="text-lg sm:text-xl font-bold text-text-primary tracking-tight flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-[22px]">hub</span>
+            <span>Similar Opportunities</span>
+          </h2>
+          <p class="text-xs text-text-secondary mt-0.5">
+            Discovered based on shared skill requirements, domain category, and opportunity format.
+          </p>
+        </div>
+      </div>
+
+      {% if similar_opportunities %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {% for sim in similar_opportunities %}
+            <div class="bg-surface rounded-xl border border-border-subtle hover:border-primary/40 p-4 flex flex-col justify-between space-y-3 transition-all hover:shadow-md">
+              <div class="space-y-2">
+                <div class="flex items-center justify-between gap-1.5 text-[10px] font-mono">
+                  <span class="px-2 py-0.5 rounded bg-surface-container text-text-secondary uppercase font-semibold">
+                    {{ sim.category|replace('_', ' ') }}
+                  </span>
+                  {% if sim.similarity_score is defined and sim.similarity_score > 0 %}
+                    <span class="text-primary font-bold">{{ (sim.similarity_score * 100)|round|int }}% similar</span>
+                  {% endif %}
+                </div>
+
+                <a href="/opportunities/{{ sim.id }}" class="block font-bold text-xs sm:text-sm text-text-primary hover:text-primary transition-colors line-clamp-2 leading-snug">
+                  {{ sim.title }}
+                </a>
+
+                <p class="text-[11px] text-text-muted truncate">
+                  {{ sim.organization }}
+                </p>
+              </div>
+
+              <div class="pt-2 border-t border-border-subtle flex items-center justify-between text-[11px] text-text-muted">
+                {% if sim.remote %}
+                  <span class="inline-flex items-center gap-1 text-success">
+                    <span class="material-symbols-outlined text-[12px]">home_work</span> Remote
+                  </span>
+                {% else %}
+                  <span>On-site</span>
+                {% endif %}
+
+                <a href="/opportunities/{{ sim.id }}" class="inline-flex items-center gap-1 text-primary hover:underline font-semibold">
+                  <span>View</span>
+                  <span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+                </a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="bg-surface rounded-xl border border-border-subtle p-6 text-center text-xs text-text-muted">
+          No directly similar opportunities currently indexed in this category.
+        </div>
+      {% endif %}
+    </div>
+
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ csp_nonce }}">
+  // Progressive Enhancement for Bookmark Toggle
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.bookmark-form').forEach(form => {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const oppId = form.getAttribute('data-opp-id');
+        const csrfToken = form.querySelector('input[name="csrf_token"]').value;
+        const btn = form.querySelector('.bookmark-btn');
+        const star = btn.querySelector('.material-symbols-outlined');
+        const label = btn.querySelector('.save-label');
+
+        try {
+          const res = await fetch(`/api/opportunities/${oppId}/bookmark`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': csrfToken
+            },
+            body: JSON.stringify({ csrf_token: csrfToken })
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.saved) {
+              star.innerText = 'star';
+              star.classList.add('text-warning', 'icon-fill');
+              btn.classList.add('text-warning', 'border-warning/30');
+              if (label) label.innerText = 'Saved to Bookmarks';
+            } else {
+              star.innerText = 'star_border';
+              star.classList.remove('text-warning', 'icon-fill');
+              btn.classList.remove('text-warning', 'border-warning/30');
+              if (label) label.innerText = 'Save Opportunity';
+            }
+          } else {
+            form.submit(); // fallback to standard POST
+          }
+        } catch (err) {
+          form.submit(); // fallback to standard POST
+        }
+      });
+    });
+  });
+</script>
+{% endblock %}

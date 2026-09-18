@@ -7,6 +7,7 @@ role management, and password updates.
 
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+import uuid
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from src.database.connection import DatabaseManager
@@ -22,6 +23,16 @@ class UserRepository:
 
     def __init__(self, db_manager: Optional[DatabaseManager] = None):
         self.db_manager = db_manager or DatabaseManager()
+
+    @staticmethod
+    def _normalize_uid(user_id: Any) -> Optional[str]:
+        """Validates and returns normalized canonical UUID string or None."""
+        if not user_id:
+            return None
+        try:
+            return str(uuid.UUID(str(user_id).strip()))
+        except (ValueError, TypeError, AttributeError):
+            return None
 
     def create_user(
         self,
@@ -43,6 +54,9 @@ class UserRepository:
 
         if not password or not isinstance(password, str) or not password.strip():
             raise ValueError("Password cannot be empty or null.")
+
+        if len(password.strip()) < 8:
+            raise ValueError("Password must be at least 8 characters long.")
 
         if not username or not isinstance(username, str) or not username.strip():
             raise ValueError("Username cannot be empty or null.")
@@ -131,16 +145,22 @@ class UserRepository:
             conn.rollback()
             cursor.close()
 
-    def get_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
-        """Retrieves user details by user_id."""
-        sql = "SELECT id, username, email, role, is_active, created_at, last_login FROM Users WHERE id = ?"
+    def get_by_id(self, user_id: Any) -> Optional[Dict[str, Any]]:
+        """Retrieves user details by canonical user UUID."""
+        uid = self._normalize_uid(user_id)
+        if not uid:
+            return None
+        sql = 'SELECT id, username, email, role, is_active, created_at, last_login FROM "Users" WHERE id = %s'
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute(sql, (user_id,))
+            cursor.execute(sql, (uid,))
             row = cursor.fetchone()
             if row:
-                return row_to_dict(row, cursor.description)
+                res = row_to_dict(row, cursor.description)
+                if res.get("id"):
+                    res["id"] = str(res["id"])
+                return res
             return None
         finally:
             conn.rollback()
@@ -150,14 +170,17 @@ class UserRepository:
         """Retrieves user details by username."""
         if not username or not isinstance(username, str):
             return None
-        sql = "SELECT id, username, email, role, is_active FROM Users WHERE LOWER(username) = ?"
+        sql = 'SELECT id, username, email, role, is_active FROM "Users" WHERE LOWER(username) = %s'
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute(sql, (username.strip().lower(),))
             row = cursor.fetchone()
             if row:
-                return row_to_dict(row, cursor.description)
+                res = row_to_dict(row, cursor.description)
+                if res.get("id"):
+                    res["id"] = str(res["id"])
+                return res
             return None
         finally:
             conn.rollback()
@@ -167,42 +190,49 @@ class UserRepository:
         """Retrieves user details by email."""
         if not email or not isinstance(email, str):
             return None
-        sql = "SELECT id, username, email, role, is_active FROM Users WHERE LOWER(email) = ?"
+        sql = 'SELECT id, username, email, role, is_active FROM "Users" WHERE LOWER(email) = %s'
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute(sql, (email.strip().lower(),))
             row = cursor.fetchone()
             if row:
-                return row_to_dict(row, cursor.description)
+                res = row_to_dict(row, cursor.description)
+                if res.get("id"):
+                    res["id"] = str(res["id"])
+                return res
             return None
         finally:
             conn.rollback()
             cursor.close()
 
-    def update_last_login(self, user_id: int) -> None:
-        """Updates last_login timestamp for target user_id."""
+    def update_last_login(self, user_id: Any) -> None:
+        """Updates last_login timestamp for target user UUID."""
+        uid = self._normalize_uid(user_id)
+        if not uid:
+            return
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        sql = "UPDATE Users SET last_login = ? WHERE id = ?"
+        sql = 'UPDATE "Users" SET last_login = %s WHERE id = %s'
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute(sql, (ts, user_id))
+            cursor.execute(sql, (ts, uid))
             conn.commit()
         finally:
             cursor.close()
 
-    def verify_password(self, user_id: int, password: str) -> bool:
+    def verify_password(self, user_id: Any, password: str) -> bool:
         """
-        Verifies whether submitted plaintext password matches the stored password_hash for user_id.
+        Verifies whether submitted plaintext password matches the stored password_hash for user UUID.
         """
-        if not user_id or not password or not isinstance(password, str):
+        uid = self._normalize_uid(user_id)
+        if not uid or not password or not isinstance(password, str):
             return False
         sql = 'SELECT id, password_hash, is_active FROM "Users" WHERE id = %s'
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute(sql, (user_id,))
+            cursor.execute(sql, (uid,))
             row = cursor.fetchone()
             if not row:
                 return False
@@ -217,11 +247,12 @@ class UserRepository:
             conn.rollback()
             cursor.close()
 
-    def update_password(self, user_id: int, new_password: str) -> bool:
+    def update_password(self, user_id: Any, new_password: str) -> bool:
         """
         Updates user password with PBKDF2 SHA-256 hash.
         """
-        if not user_id or not new_password or not isinstance(new_password, str):
+        uid = self._normalize_uid(user_id)
+        if not uid or not new_password or not isinstance(new_password, str):
             raise ValueError("Invalid user_id or password.")
         if len(new_password) < 8:
             raise ValueError("Password must be at least 8 characters long.")
@@ -231,7 +262,7 @@ class UserRepository:
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute(sql, (password_hash, user_id))
+            cursor.execute(sql, (password_hash, uid))
             conn.commit()
             return True
         except Exception as e:
@@ -240,17 +271,18 @@ class UserRepository:
         finally:
             cursor.close()
 
-    def update_password_hash(self, user_id: int, password_hash: str) -> bool:
+    def update_password_hash(self, user_id: Any, password_hash: str) -> bool:
         """
         Updates user password hash in Users table directly with precomputed PBKDF2 hash.
         """
-        if not user_id or not password_hash or not isinstance(password_hash, str):
+        uid = self._normalize_uid(user_id)
+        if not uid or not password_hash or not isinstance(password_hash, str):
             raise ValueError("Invalid user_id or password_hash.")
         sql = 'UPDATE "Users" SET password_hash = %s WHERE id = %s'
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute(sql, (password_hash, user_id))
+            cursor.execute(sql, (password_hash, uid))
             conn.commit()
             return True
         except Exception as e:
@@ -277,7 +309,7 @@ class UserRepository:
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT COUNT(*) FROM Users")
+            cursor.execute('SELECT COUNT(*) FROM "Users"')
             res = cursor.fetchone()
             return res[0] > 0 if res else False
         finally:
@@ -293,7 +325,7 @@ class UserRepository:
             res = cursor.fetchone()
             if res and res[0] > 0:
                 return True
-            cursor.execute("SELECT COUNT(*) FROM Users WHERE role IN ('Admin', 'Super Admin')")
+            cursor.execute('SELECT COUNT(*) FROM "Users" WHERE role IN (\'Admin\', \'Super Admin\')')
             res_users = cursor.fetchone()
             return res_users[0] > 0 if res_users else False
         finally:

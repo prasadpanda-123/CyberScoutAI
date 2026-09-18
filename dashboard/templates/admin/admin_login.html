@@ -17,44 +17,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <script>
-    tailwind.config = {
-      darkMode: "class",
-      theme: {
-        extend: {
-          colors: {
-            "surface-bright": "#31394d",
-            "bg-card-hover": "#1E293B",
-            "outline": "#89929b",
-            "surface-container-lowest": "#060e20",
-            "text-muted": "#64748B",
-            "danger": "#EF4444",
-            "admin-accent": "#EF4444",
-            "primary": "#93ccff",
-            "surface-container": "#171f33",
-            "info": "#06B6D4",
-            "primary-container": "#3198dc",
-            "surface-container-highest": "#2d3449",
-            "border-subtle": "#1E293B",
-            "surface-variant": "#2d3449",
-            "surface": "#0b1326",
-            "warning": "#F59E0B",
-            "text-secondary": "#94A3B8",
-            "bg-surface": "#0B0F19",
-            "surface-container-low": "#131b2e",
-            "bg-body": "#070B14",
-            "text-primary": "#F8FAFC",
-            "success": "#10B981"
-          },
-          fontFamily: {
-            "sans": ["Inter", "system-ui", "sans-serif"],
-            "mono": ["JetBrains Mono", "monospace"]
-          }
-        }
-      }
-    }
-  </script>
+  <!-- Precompiled Static Tailwind CSS & Admin Theme -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
 </head>
 <body class="bg-bg-body text-text-primary font-sans antialiased min-h-screen flex flex-col justify-center items-center p-4 selection:bg-admin-accent/30 selection:text-white">
@@ -96,8 +60,8 @@
     <div class="bg-surface p-6 sm:p-8 rounded-xl border border-danger/25 shadow-2xl shadow-danger/5">
       <form action="/admin/login" method="POST" class="space-y-4">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        {% if request.args.get('next') %}
-          <input type="hidden" name="next" value="{{ request.args.get('next') }}">
+        {% if next %}
+          <input type="hidden" name="next" value="{{ next }}">
         {% endif %}
 
         <div>
@@ -130,14 +94,14 @@
 
     <!-- Return to user portal -->
     <div class="mt-6 text-center">
-      <a href="/login" class="inline-flex items-center gap-1 text-xs text-text-muted hover:text-text-primary transition-colors">
+      <a href="{{ url_for('auth_ui.login') }}" class="inline-flex items-center gap-1 text-xs text-text-muted hover:text-text-primary transition-colors">
         <span class="material-symbols-outlined text-[14px]">arrow_back</span>
         <span>Return to User Portal</span>
       </a>
     </div>
   </div>
 
-  <script>
+  <script nonce="{{ csp_nonce }}">
     function toggleAdminPassword() {
       const input = document.getElementById('admin_password');
       const icon = document.getElementById('adminToggleIcon');

@@ -39,7 +39,7 @@ class TestDigestBuilder(unittest.TestCase):
             url="https://example.com/sans",
             source_id="sans",
             category="scholarship",
-            score=95,
+            score=999,
         )
         opp_repo.upsert(opp)
 

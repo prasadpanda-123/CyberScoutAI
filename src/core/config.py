@@ -7,6 +7,7 @@ strongly-typed, dot-notation access to project settings.
 
 import os
 from pathlib import Path
+import re
 from typing import Any, Dict, List, Optional
 import yaml
 from dotenv import load_dotenv
@@ -156,6 +157,10 @@ class Config:
         """Returns dictionary representation of current loaded config."""
         return self._config.copy()
 
+    def as_sanitized_dict(self) -> Dict[str, Any]:
+        """Returns sanitized dictionary representation of configuration with all secrets redacted."""
+        return sanitize_config_dict(self._config.copy())
+
     def to_dict(self) -> Dict[str, Any]:
         """Returns dictionary representation of current loaded config."""
         return self._config.copy()
@@ -166,5 +171,70 @@ class Config:
         return self._config.copy()
 
 
+# Compiled regex for detecting and redacting credentials in connection strings
+_CREDENTIAL_URI_REGEX = re.compile(r"([a-zA-Z][a-zA-Z0-9+.-]*://)([^:]+):([^@]+)@")
+
+SENSITIVE_KEY_PATTERNS = (
+    "password",
+    "secret",
+    "token",
+    "api_key",
+    "apikey",
+    "key",
+    "credential",
+    "credentials",
+    "otp_hash",
+    "auth",
+    "brevo",
+    "github",
+    "jwt",
+    "private",
+    "hash",
+    "salt",
+    "cookie",
+)
+
+
+def sanitize_config_dict(data: Any) -> Any:
+    """
+    Recursively redacts passwords, tokens, API keys, secrets, database credentials,
+    and connection strings from configuration dictionaries or lists.
+
+    Guarantees no sensitive material or secrets are exposed over HTTP APIs.
+    """
+    if isinstance(data, dict):
+        sanitized = {}
+        for k, v in data.items():
+            k_lower = str(k).lower()
+            if isinstance(v, (dict, list)):
+                sanitized[k] = sanitize_config_dict(v)
+            elif any(s in k_lower for s in SENSITIVE_KEY_PATTERNS):
+                if isinstance(v, str) and ("postgres" in v or "://" in v):
+                    sanitized[k] = "postgresql://user:******@host:port/dbname"
+                else:
+                    sanitized[k] = "******"
+            elif isinstance(v, str):
+                if ("url" in k_lower or "dsn" in k_lower or "connection" in k_lower) and ("://" in v or "postgres" in v):
+                    if "@" in v or "postgres" in v:
+                        sanitized[k] = "postgresql://user:******@host:port/dbname"
+                    else:
+                        sanitized[k] = v
+                elif _CREDENTIAL_URI_REGEX.search(v):
+                    sanitized[k] = _CREDENTIAL_URI_REGEX.sub(r"\1\2:******@", v)
+                else:
+                    sanitized[k] = v
+            else:
+                sanitized[k] = v
+        return sanitized
+    elif isinstance(data, list):
+        return [sanitize_config_dict(item) for item in data]
+    elif isinstance(data, str):
+        if _CREDENTIAL_URI_REGEX.search(data):
+            return _CREDENTIAL_URI_REGEX.sub(r"\1\2:******@", data)
+        return data
+    return data
+
+
 # Global singleton instance
 config = Config()
+

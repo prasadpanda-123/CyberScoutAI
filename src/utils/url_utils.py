@@ -219,3 +219,74 @@ def normalize_url(url: str) -> str:
     ))
 
     return canonical
+
+
+def is_safe_internal_url(target: Optional[str]) -> bool:
+    """
+    Verifies that a redirect target is strictly a safe, internal, relative path.
+    Defends against Open Redirect attacks (SEC-01):
+    - Rejects absolute URLs (http://, https://, ftp://, etc.)
+    - Rejects protocol-relative URLs (//attacker.example, ///)
+    - Rejects backslash obfuscation (\\attacker, /\\attacker, /%5c, /%255c)
+    - Rejects scheme-relative URLs (javascript:, data:, vbscript:, blob:, etc.)
+    - Rejects encoded slash/backslash variants (/%2f, /%5c, /%252f, /%255c)
+    - Rejects control characters, null bytes, and CRLF (header injection)
+    """
+    if not target or not isinstance(target, str):
+        return False
+
+    target = target.strip()
+    if not target:
+        return False
+
+    # Prevent control characters, CRLF, tabs, null bytes (header injection & parsing evasions)
+    if any(ord(c) < 32 or ord(c) == 127 for c in target):
+        return False
+
+    # Must start with a single slash, not protocol-relative //, ///, or backslash \
+    if not target.startswith("/") or target.startswith("//") or "\\" in target:
+        return False
+
+    # Multi-pass unquote to neutralize nested/double-encoded bypasses (e.g. %252f, %255c)
+    curr = target
+    for _ in range(3):
+        try:
+            nxt = urllib.parse.unquote(curr)
+        except Exception:
+            return False
+        if nxt == curr:
+            break
+        curr = nxt
+    unquoted = curr
+
+    if not unquoted.startswith("/") or unquoted.startswith("//") or "\\" in unquoted:
+        return False
+
+    # Disallow control characters or whitespace/spaces in unquoted string (e.g. /admin%20/dashboard)
+    if any(ord(c) <= 32 or ord(c) == 127 for c in unquoted):
+        return False
+
+    # Check dangerous schemes / pseudo-protocols anywhere in unquoted string
+    lower_unquoted = unquoted.lower()
+    for bad in ("javascript:", "data:", "vbscript:", "http:", "https:", "ftp:", "file:", "blob:", "about:"):
+        if bad in lower_unquoted:
+            return False
+
+    try:
+        parsed = urllib.parse.urlsplit(target)
+        if parsed.scheme or parsed.netloc:
+            return False
+        if not parsed.path.startswith("/") or parsed.path.startswith("//"):
+            return False
+
+        # Also parse unquoted target
+        parsed_unquoted = urllib.parse.urlsplit(unquoted)
+        if parsed_unquoted.scheme or parsed_unquoted.netloc:
+            return False
+        if not parsed_unquoted.path.startswith("/") or parsed_unquoted.path.startswith("//"):
+            return False
+    except Exception:
+        return False
+
+    return True
+

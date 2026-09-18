@@ -39,6 +39,9 @@ class CollectorManager:
         self.context = context or CollectorContext.create_default()
         self.factory = factory or CollectorFactory(registry=self.registry, context=self.context)
         self.metrics = CollectorMetrics()
+        from src.collectors.source_health import SourceHealthTracker
+        from src.models.enums import CollectorFailureClass
+        self.health_tracker = SourceHealthTracker()
 
     def execute_task(self, task: SearchTask, collector: Optional[BaseCollector] = None) -> CollectorResult:
         """
@@ -52,22 +55,35 @@ class CollectorManager:
         Returns:
             Standardized CollectorResult instance.
         """
+        from src.models.enums import CollectorFailureClass
         start_time = time.time()
         source_id = task.source_id
         method = task.collection_method or "rss"
         url = task.target_url
 
+        self.health_tracker.record_attempt(source_id)
+
         if not collector:
             preferred_collector_name = task.metadata.get("preferred_collector")
             if not preferred_collector_name or preferred_collector_name == "GenericCollector":
-                if method == "rss":
-                    preferred_collector_name = "GenericRSSCollector"
-                elif method == "html":
-                    preferred_collector_name = "HtmlScraperCollector"
-                elif source_id == "github_search":
+                if source_id == "microsoft_learn":
+                    preferred_collector_name = "MicrosoftLearnCollector"
+                elif source_id == "devpost":
+                    preferred_collector_name = "DevpostCollector"
+                elif source_id == "google_summer_of_code":
+                    preferred_collector_name = "GSoCCollector"
+                elif source_id == "outreachy":
+                    preferred_collector_name = "OutreachyCollector"
+                elif source_id == "up_for_grabs":
+                    preferred_collector_name = "UpForGrabsCollector"
+                elif source_id in ("github_search", "github"):
                     preferred_collector_name = "GithubSearchCollector"
                 elif source_id == "ctftime":
                     preferred_collector_name = "CtftimeCollector"
+                elif method == "rss":
+                    preferred_collector_name = "GenericRSSCollector"
+                elif method == "html":
+                    preferred_collector_name = "HtmlScraperCollector"
                 else:
                     preferred_collector_name = "GenericRSSCollector"
 
@@ -79,6 +95,12 @@ class CollectorManager:
         if not collector:
             duration = time.time() - start_time
             self.metrics.record_provider_result(source_id, method, success=False)
+            self.health_tracker.record_failure(
+                source_id,
+                error_class=CollectorFailureClass.CONFIGURATION_FAILURE.value,
+                error_message=f"Failed to resolve collector for provider '{source_id}'.",
+                latency=duration,
+            )
             return CollectorResult(
                 source_id=source_id,
                 status="failed",
@@ -96,8 +118,16 @@ class CollectorManager:
 
             if result.status == "success":
                 self.metrics.record_provider_result(source_id, method, success=True, item_count=result.item_count)
+                self.health_tracker.record_success(source_id, latency=duration, items_seen=result.item_count)
             else:
                 self.metrics.record_provider_result(source_id, method, success=False)
+                err_msg = "; ".join(result.errors) if result.errors else "Unknown collector failure"
+                self.health_tracker.record_failure(
+                    source_id,
+                    error_class=CollectorFailureClass.SOURCE_FAILURE.value,
+                    error_message=err_msg,
+                    latency=duration,
+                )
 
             result.metrics = self.metrics.to_dict()
             logger.info(f"Provider '{source_id}' completed with status '{result.status}' ({result.item_count} items collected in {duration:.2f}s).")
@@ -106,6 +136,12 @@ class CollectorManager:
         except (TimeoutError, socket.timeout) as err_timeout:
             duration = time.time() - start_time
             self.metrics.record_provider_result(source_id, method, success=False, is_timeout=True)
+            self.health_tracker.record_failure(
+                source_id,
+                error_class=CollectorFailureClass.TIMEOUT.value,
+                error_message=str(err_timeout),
+                latency=duration,
+            )
             logger.error(f"[PIPELINE RESILIENCE WARNING] Provider '{source_id}' timed out after {duration:.2f}s (URL: '{url}'): {err_timeout}. Continuing pipeline.")
             return CollectorResult(
                 source_id=source_id,
@@ -118,7 +154,22 @@ class CollectorManager:
 
         except urllib.error.HTTPError as err_http:
             duration = time.time() - start_time
+            err_class = (
+                CollectorFailureClass.RATE_LIMIT.value
+                if err_http.code == 429
+                else (
+                    CollectorFailureClass.AUTHENTICATION_FAILURE.value
+                    if err_http.code in (401, 403)
+                    else CollectorFailureClass.SOURCE_FAILURE.value
+                )
+            )
             self.metrics.record_provider_result(source_id, method, success=False)
+            self.health_tracker.record_failure(
+                source_id,
+                error_class=err_class,
+                error_message=f"HTTP {err_http.code}: {err_http.reason}",
+                latency=duration,
+            )
             logger.error(f"[PIPELINE RESILIENCE WARNING] Provider '{source_id}' HTTP {err_http.code} error after {duration:.2f}s (URL: '{url}'): {err_http.reason}. Continuing pipeline.")
             return CollectorResult(
                 source_id=source_id,
@@ -132,6 +183,12 @@ class CollectorManager:
         except (urllib.error.URLError, socket.gaierror) as err_net:
             duration = time.time() - start_time
             self.metrics.record_provider_result(source_id, method, success=False)
+            self.health_tracker.record_failure(
+                source_id,
+                error_class=CollectorFailureClass.SOURCE_FAILURE.value,
+                error_message=f"Network error: {err_net}",
+                latency=duration,
+            )
             logger.error(f"[PIPELINE RESILIENCE WARNING] Provider '{source_id}' Network/DNS failure after {duration:.2f}s (URL: '{url}'): {err_net}. Continuing pipeline.")
             return CollectorResult(
                 source_id=source_id,
@@ -145,6 +202,12 @@ class CollectorManager:
         except ssl.SSLError as err_ssl:
             duration = time.time() - start_time
             self.metrics.record_provider_result(source_id, method, success=False)
+            self.health_tracker.record_failure(
+                source_id,
+                error_class=CollectorFailureClass.SOURCE_FAILURE.value,
+                error_message=f"SSL error: {err_ssl}",
+                latency=duration,
+            )
             logger.error(f"[PIPELINE RESILIENCE WARNING] Provider '{source_id}' SSL verification error after {duration:.2f}s (URL: '{url}'): {err_ssl}. Continuing pipeline.")
             return CollectorResult(
                 source_id=source_id,
@@ -158,6 +221,12 @@ class CollectorManager:
         except (CollectorError, Exception) as err_gen:
             duration = time.time() - start_time
             self.metrics.record_provider_result(source_id, method, success=False)
+            self.health_tracker.record_failure(
+                source_id,
+                error_class=CollectorFailureClass.PARSER_FAILURE.value,
+                error_message=str(err_gen),
+                latency=duration,
+            )
             logger.error(f"[PIPELINE RESILIENCE WARNING] Isolated exception executing provider '{source_id}' (URL: '{url}'): {err_gen}. Continuing pipeline.")
             return CollectorResult(
                 source_id=source_id,

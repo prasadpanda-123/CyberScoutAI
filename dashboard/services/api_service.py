@@ -3,6 +3,7 @@ API Service wrapping backend actions (scan triggers, scheduler commands, email t
 """
 
 from datetime import datetime, timezone
+import json
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -208,6 +209,12 @@ class APIService:
         """Resumes scheduler background daemon service."""
         self.automation_engine.scheduler_service.start()
         return {"success": True, "status": "running", "message": "Scheduler background service resumed."}
+
+    def restart_scheduler(self) -> Dict[str, Any]:
+        """Restarts scheduler background daemon service (pause then resume)."""
+        self.pause_scheduler()
+        self.resume_scheduler()
+        return {"success": True, "status": "restarted", "message": "Scheduler service restarted successfully."}
 
     def get_reports_list(self) -> List[Dict[str, Any]]:
         """Scans REPORTS_DIR and returns details of all generated DOCX & CSV report files."""

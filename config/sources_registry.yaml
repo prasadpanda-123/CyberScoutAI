@@ -1,0 +1,1080 @@
+# ==============================================================================
+# CYBERSCOUT AI — AUTHORITATIVE TARGET SOURCES REGISTRY (PHASE 2)
+# ==============================================================================
+# Contains the 75 approved opportunity sources across 7 industry sectors.
+# Pipeline invariant: COLLECT -> NORMALIZE -> SCORE -> PERSIST -> NOTIFY
+
+sources:
+  # ----------------------------------------------------------------------------
+  # INDIA — INTERNSHIPS / CAREERS (1-15)
+  # ----------------------------------------------------------------------------
+  - source_id: aicte_internships
+    name: "AICTE National Internship Portal"
+    canonical_url: "https://internship.aicte-india.org/"
+    organization: "All India Council for Technical Education (AICTE)"
+    country_scope: "IN"
+    language: "en-IN"
+    source_family: "indian_internship"
+    opportunity_types: ["internship"]
+    collector_type: "structured_public_endpoint"
+    access_method: "structured_endpoint"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: ncs_india
+    name: "National Career Service (NCS)"
+    canonical_url: "https://www.ncs.gov.in/"
+    organization: "Ministry of Labour and Employment, Govt. of India"
+    country_scope: "IN"
+    language: "en-IN"
+    source_family: "indian_internship"
+    opportunity_types: ["internship", "job"]
+    collector_type: "official_feed"
+    access_method: "official_feed"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: aicte_placements
+    name: "AICTE Placement Portal"
+    canonical_url: "https://placement.aicte-india.org/"
+    organization: "All India Council for Technical Education (AICTE)"
+    country_scope: "IN"
+    language: "en-IN"
+    source_family: "indian_internship"
+    opportunity_types: ["job", "internship"]
+    collector_type: "official_feed"
+    access_method: "official_feed"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: internshala
+    name: "Internshala"
+    canonical_url: "https://internshala.com/"
+    organization: "Internshala"
+    country_scope: "IN"
+    language: "en-IN"
+    source_family: "indian_internship"
+    opportunity_types: ["internship", "job"]
+    collector_type: "html_extraction"
+    access_method: "html_extraction"
+    trust_tier: "tier_2"
+    status: "MANUAL_REVIEW"
+    enabled: false
+
+  - source_id: unstop
+    name: "Unstop"
+    canonical_url: "https://unstop.com/"
+    organization: "Unstop (FLAM)"
+    country_scope: "IN"
+    language: "en-IN"
+    source_family: "indian_internship"
+    opportunity_types: ["internship", "hackathon", "competition"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: freshersworld
+    name: "Freshersworld"
+    canonical_url: "https://www.freshersworld.com/"
+    organization: "TeamLease / Freshersworld"
+    country_scope: "IN"
+    language: "en-IN"
+    source_family: "indian_internship"
+    opportunity_types: ["job", "internship"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: apna
+    name: "Apna"
+    canonical_url: "https://apna.co/"
+    organization: "Apna Communities Inc."
+    country_scope: "IN"
+    language: "en-IN"
+    source_family: "indian_internship"
+    opportunity_types: ["job"]
+    collector_type: "manual_curated"
+    access_method: "manual_curated"
+    trust_tier: "tier_2"
+    status: "MANUAL_REVIEW"
+    enabled: false
+
+  - source_id: foundit
+    name: "Foundit"
+    canonical_url: "https://www.foundit.in/"
+    organization: "foundit (formerly Monster India)"
+    country_scope: "IN"
+    language: "en-IN"
+    source_family: "indian_internship"
+    opportunity_types: ["job", "internship"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: cutshort
+    name: "Cutshort"
+    canonical_url: "https://cutshort.io/"
+    organization: "Cutshort Technologies"
+    country_scope: "IN"
+    language: "en-IN"
+    source_family: "indian_internship"
+    opportunity_types: ["job", "internship"]
+    collector_type: "manual_curated"
+    access_method: "manual_curated"
+    trust_tier: "tier_2"
+    status: "MANUAL_REVIEW"
+    enabled: false
+
+  - source_id: wellfound
+    name: "Wellfound"
+    canonical_url: "https://wellfound.com/"
+    organization: "Wellfound (formerly AngelList Talent)"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "global_internship"
+    opportunity_types: ["job", "internship"]
+    collector_type: "manual_curated"
+    access_method: "manual_curated"
+    trust_tier: "tier_2"
+    status: "MANUAL_REVIEW"
+    enabled: false
+
+  - source_id: superset
+    name: "Superset"
+    canonical_url: "https://joinsuperset.com/"
+    organization: "Superset Campus Placements"
+    country_scope: "IN"
+    language: "en-IN"
+    source_family: "indian_internship"
+    opportunity_types: ["internship", "job"]
+    collector_type: "unsupported"
+    access_method: "unsupported"
+    requires_auth: true
+    trust_tier: "tier_2"
+    status: "UNSUPPORTED"
+    enabled: false
+
+  - source_id: naukri
+    name: "Naukri"
+    canonical_url: "https://www.naukri.com/"
+    organization: "Info Edge India Ltd."
+    country_scope: "IN"
+    language: "en-IN"
+    source_family: "indian_internship"
+    opportunity_types: ["job", "internship"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: linkedin_jobs
+    name: "LinkedIn Jobs"
+    canonical_url: "https://www.linkedin.com/jobs/"
+    organization: "Microsoft / LinkedIn"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "job"
+    opportunity_types: ["job", "internship"]
+    collector_type: "manual_curated"
+    access_method: "manual_curated"
+    trust_tier: "tier_2"
+    status: "MANUAL_REVIEW"
+    enabled: false
+
+  - source_id: indeed_india
+    name: "Indeed India"
+    canonical_url: "https://in.indeed.com/"
+    organization: "Indeed / Recruit Holdings"
+    country_scope: "IN"
+    language: "en-IN"
+    source_family: "job"
+    opportunity_types: ["job", "internship"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: letsintern
+    name: "LetsIntern"
+    canonical_url: "https://www.letsintern.com/"
+    organization: "LetsIntern"
+    country_scope: "IN"
+    language: "en-IN"
+    source_family: "indian_internship"
+    opportunity_types: ["internship"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_3"
+    status: "CONFIGURED"
+    enabled: true
+
+  # ----------------------------------------------------------------------------
+  # GLOBAL INTERNSHIPS / EARLY CAREER (16-25)
+  # ----------------------------------------------------------------------------
+  - source_id: handshake
+    name: "Handshake"
+    canonical_url: "https://joinhandshake.com/"
+    organization: "Stryder Corp. (Handshake)"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "global_internship"
+    opportunity_types: ["internship", "job"]
+    collector_type: "manual_curated"
+    access_method: "manual_curated"
+    requires_auth: true
+    trust_tier: "tier_2"
+    status: "MANUAL_REVIEW"
+    enabled: false
+
+  - source_id: wayup
+    name: "WayUp"
+    canonical_url: "https://www.wayup.com/"
+    organization: "Yello / WayUp"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "global_internship"
+    opportunity_types: ["internship", "job"]
+    collector_type: "manual_curated"
+    access_method: "manual_curated"
+    trust_tier: "tier_2"
+    status: "MANUAL_REVIEW"
+    enabled: false
+
+  - source_id: ripplematch
+    name: "RippleMatch"
+    canonical_url: "https://ripplematch.com/"
+    organization: "RippleMatch Inc."
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "global_internship"
+    opportunity_types: ["internship", "job"]
+    collector_type: "manual_curated"
+    access_method: "manual_curated"
+    requires_auth: true
+    trust_tier: "tier_2"
+    status: "MANUAL_REVIEW"
+    enabled: false
+
+  - source_id: forage
+    name: "Forage"
+    canonical_url: "https://www.theforage.com/"
+    organization: "Forage / InsideSherpa"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "global_internship"
+    opportunity_types: ["internship", "course"]
+    collector_type: "structured_public_endpoint"
+    access_method: "structured_endpoint"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: gradcracker
+    name: "Gradcracker"
+    canonical_url: "https://www.gradcracker.com/"
+    organization: "Gradcracker UK"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "global_internship"
+    opportunity_types: ["internship", "job"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: prosple
+    name: "Prosple"
+    canonical_url: "https://prosple.com/"
+    organization: "Prosple Pty Ltd"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "global_internship"
+    opportunity_types: ["internship", "job"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: euraxess
+    name: "Euraxess"
+    canonical_url: "https://euraxess.ec.europa.eu/"
+    organization: "European Commission"
+    country_scope: "EU"
+    language: "en"
+    source_family: "research"
+    opportunity_types: ["research", "fellowship", "job"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: academic_positions
+    name: "Academic Positions"
+    canonical_url: "https://academicpositions.com/"
+    organization: "Academic Positions Sweden AB"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "research"
+    opportunity_types: ["research", "fellowship", "job"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: chegg_internships
+    name: "Chegg Internships"
+    canonical_url: "https://www.internships.com/"
+    organization: "Chegg Inc."
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "global_internship"
+    opportunity_types: ["internship"]
+    collector_type: "manual_curated"
+    access_method: "manual_curated"
+    trust_tier: "tier_2"
+    status: "MANUAL_REVIEW"
+    enabled: false
+
+  - source_id: glassdoor
+    name: "Glassdoor"
+    canonical_url: "https://www.glassdoor.com/"
+    organization: "Glassdoor LLC / Recruit"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "job"
+    opportunity_types: ["job", "internship"]
+    collector_type: "manual_curated"
+    access_method: "manual_curated"
+    trust_tier: "tier_2"
+    status: "MANUAL_REVIEW"
+    enabled: false
+
+  # ----------------------------------------------------------------------------
+  # HACKATHONS / DEVELOPER COMPETITIONS (26-35)
+  # ----------------------------------------------------------------------------
+  - source_id: devpost
+    name: "Devpost"
+    canonical_url: "https://devpost.com/"
+    organization: "Devpost Inc."
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "hackathon"
+    opportunity_types: ["hackathon", "competition"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_1"
+    status: "IMPLEMENTED"
+    enabled: true
+
+  - source_id: hackerearth
+    name: "HackerEarth"
+    canonical_url: "https://www.hackerearth.com/challenges/"
+    organization: "HackerEarth Inc."
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "hackathon"
+    opportunity_types: ["hackathon", "competition", "job"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: mlh
+    name: "Major League Hacking (MLH)"
+    canonical_url: "https://mlh.io/"
+    organization: "Major League Hacking"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "hackathon"
+    opportunity_types: ["hackathon"]
+    collector_type: "structured_public_endpoint"
+    access_method: "structured_endpoint"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: devfolio
+    name: "Devfolio"
+    canonical_url: "https://devfolio.co/"
+    organization: "Devfolio (Devfolio Labs)"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "hackathon"
+    opportunity_types: ["hackathon"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: hackernoon_hackathons
+    name: "HackerNoon Hackathons"
+    canonical_url: "https://hackernoon.com/"
+    organization: "HackerNoon"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "hackathon"
+    opportunity_types: ["hackathon", "competition"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: hack2skill
+    name: "Hack2Skill"
+    canonical_url: "https://hack2skill.com/"
+    organization: "Hack2Skill Community"
+    country_scope: "IN"
+    language: "en-IN"
+    source_family: "hackathon"
+    opportunity_types: ["hackathon", "competition"]
+    collector_type: "structured_public_endpoint"
+    access_method: "structured_endpoint"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: hackathon_com
+    name: "Hackathon.com"
+    canonical_url: "https://www.hackathon.com/"
+    organization: "Hackathon.com"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "hackathon"
+    opportunity_types: ["hackathon"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_3"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: kaggle
+    name: "Kaggle"
+    canonical_url: "https://www.kaggle.com/competitions"
+    organization: "Google / Kaggle"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "competition"
+    opportunity_types: ["competition", "challenge"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: topcoder
+    name: "Topcoder"
+    canonical_url: "https://www.topcoder.com/challenges"
+    organization: "Wipro / Topcoder"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "competition"
+    opportunity_types: ["competition", "challenge"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: challenge_gov
+    name: "Challenge.gov"
+    canonical_url: "https://www.challenge.gov/"
+    organization: "General Services Administration (GSA), US Govt"
+    country_scope: "US"
+    language: "en"
+    source_family: "challenge"
+    opportunity_types: ["challenge", "competition"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  # ----------------------------------------------------------------------------
+  # CYBERSECURITY / CTF (36-45)
+  # ----------------------------------------------------------------------------
+  - source_id: ctftime
+    name: "CTFtime"
+    canonical_url: "https://ctftime.org/"
+    organization: "CTFtime Community"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "ctf"
+    opportunity_types: ["ctf", "competition"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_1"
+    status: "IMPLEMENTED"
+    enabled: true
+
+  - source_id: picoctf
+    name: "picoCTF"
+    canonical_url: "https://picoctf.org/"
+    organization: "Carnegie Mellon University"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "ctf"
+    opportunity_types: ["ctf", "course"]
+    collector_type: "official_feed"
+    access_method: "official_feed"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: tryhackme
+    name: "TryHackMe"
+    canonical_url: "https://tryhackme.com/"
+    organization: "TryHackMe Ltd."
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "cybersecurity"
+    opportunity_types: ["course", "challenge"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: hackthebox
+    name: "Hack The Box"
+    canonical_url: "https://www.hackthebox.com/"
+    organization: "Hack The Box"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "cybersecurity"
+    opportunity_types: ["course", "ctf", "challenge"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: overthewire
+    name: "OverTheWire"
+    canonical_url: "https://overthewire.org/wargames/"
+    organization: "OverTheWire Community"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "cybersecurity"
+    opportunity_types: ["challenge"]
+    collector_type: "html_extraction"
+    access_method: "html_extraction"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: cyberdefenders
+    name: "CyberDefenders"
+    canonical_url: "https://cyberdefenders.org/"
+    organization: "CyberDefenders"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "cybersecurity"
+    opportunity_types: ["challenge", "course"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: root_me
+    name: "Root-Me"
+    canonical_url: "https://www.root-me.org/"
+    organization: "Root-Me Pro"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "cybersecurity"
+    opportunity_types: ["ctf", "challenge"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: portswigger_academy
+    name: "PortSwigger Web Security Academy"
+    canonical_url: "https://portswigger.net/web-security"
+    organization: "PortSwigger Ltd."
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "course"
+    opportunity_types: ["course", "certification"]
+    collector_type: "structured_public_endpoint"
+    access_method: "structured_endpoint"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: owasp
+    name: "OWASP"
+    canonical_url: "https://owasp.org/"
+    organization: "Open Web Application Security Project (OWASP)"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "open_source"
+    opportunity_types: ["open_source", "conference"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: sans_cyber_aces
+    name: "SANS Cyber Aces"
+    canonical_url: "https://www.cyberaces.org/"
+    organization: "SANS Institute"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "course"
+    opportunity_types: ["course"]
+    collector_type: "structured_public_endpoint"
+    access_method: "structured_endpoint"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  # ----------------------------------------------------------------------------
+  # BUG BOUNTY / SECURITY RESEARCH (46-52)
+  # ----------------------------------------------------------------------------
+  - source_id: hackerone
+    name: "HackerOne"
+    canonical_url: "https://hackerone.com/directory/programs"
+    organization: "HackerOne Inc."
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "bug_bounty"
+    opportunity_types: ["bug_bounty", "security_research"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: bugcrowd
+    name: "Bugcrowd"
+    canonical_url: "https://bugcrowd.com/programs"
+    organization: "Bugcrowd Inc."
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "bug_bounty"
+    opportunity_types: ["bug_bounty", "security_research"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: intigriti
+    name: "Intigriti"
+    canonical_url: "https://www.intigriti.com/"
+    organization: "Intigriti NV"
+    country_scope: "EU"
+    language: "en"
+    source_family: "bug_bounty"
+    opportunity_types: ["bug_bounty", "security_research"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: yeswehack
+    name: "YesWeHack"
+    canonical_url: "https://www.yeswehack.com/"
+    organization: "YesWeHack SAS"
+    country_scope: "EU"
+    language: "en"
+    source_family: "bug_bounty"
+    opportunity_types: ["bug_bounty", "security_research"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: hackenproof
+    name: "HackenProof"
+    canonical_url: "https://hackenproof.com/"
+    organization: "HackenProof"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "bug_bounty"
+    opportunity_types: ["bug_bounty", "security_research"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: openbugbounty
+    name: "Open Bug Bounty"
+    canonical_url: "https://www.openbugbounty.org/"
+    organization: "Open Bug Bounty Community"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "bug_bounty"
+    opportunity_types: ["bug_bounty", "security_research"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: federacy
+    name: "Federacy"
+    canonical_url: "https://www.federacy.com/"
+    organization: "Federacy Inc."
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "bug_bounty"
+    opportunity_types: ["bug_bounty"]
+    collector_type: "manual_curated"
+    access_method: "manual_curated"
+    trust_tier: "tier_3"
+    status: "MANUAL_REVIEW"
+    enabled: false
+
+  # ----------------------------------------------------------------------------
+  # LEARNING / COURSES (53-67)
+  # ----------------------------------------------------------------------------
+  - source_id: microsoft_learn
+    name: "Microsoft Learn"
+    canonical_url: "https://learn.microsoft.com/"
+    organization: "Microsoft Corporation"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "course"
+    opportunity_types: ["course", "certification"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_1"
+    status: "IMPLEMENTED"
+    enabled: true
+
+  - source_id: cisco_skills_for_all
+    name: "Cisco Skills for All"
+    canonical_url: "https://skillsforall.com/"
+    organization: "Cisco Systems Inc."
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "course"
+    opportunity_types: ["course", "certification"]
+    collector_type: "official_feed"
+    access_method: "official_feed"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: ibm_skillsbuild
+    name: "IBM SkillsBuild"
+    canonical_url: "https://skillsbuild.org/"
+    organization: "International Business Machines (IBM)"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "course"
+    opportunity_types: ["course", "certification"]
+    collector_type: "official_feed"
+    access_method: "official_feed"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: nasscom_futureskills
+    name: "NASSCOM FutureSkills Prime"
+    canonical_url: "https://futureskillsprime.in/"
+    organization: "NASSCOM & Ministry of Electronics and IT (MeitY)"
+    country_scope: "IN"
+    language: "en-IN"
+    source_family: "course"
+    opportunity_types: ["course", "certification"]
+    collector_type: "official_feed"
+    access_method: "official_feed"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: freecodecamp
+    name: "freeCodeCamp"
+    canonical_url: "https://www.freecodecamp.org/"
+    organization: "freeCodeCamp Foundation"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "course"
+    opportunity_types: ["course", "certification"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: khan_academy
+    name: "Khan Academy"
+    canonical_url: "https://www.khanacademy.org/"
+    organization: "Khan Academy"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "course"
+    opportunity_types: ["course"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: edx
+    name: "edX"
+    canonical_url: "https://www.edx.org/"
+    organization: "edX / 2U Inc."
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "course"
+    opportunity_types: ["course", "certification"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: coursera
+    name: "Coursera"
+    canonical_url: "https://www.coursera.org/"
+    organization: "Coursera Inc."
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "course"
+    opportunity_types: ["course", "certification"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: mit_ocw
+    name: "MIT OpenCourseWare"
+    canonical_url: "https://ocw.mit.edu/"
+    organization: "Massachusetts Institute of Technology (MIT)"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "course"
+    opportunity_types: ["course"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: harvard_online
+    name: "Harvard Online"
+    canonical_url: "https://www.harvardonline.harvard.edu/"
+    organization: "Harvard University"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "course"
+    opportunity_types: ["course", "certification"]
+    collector_type: "official_feed"
+    access_method: "official_feed"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: openlearn
+    name: "OpenLearn"
+    canonical_url: "https://www.open.edu/openlearn/"
+    organization: "The Open University (UK)"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "course"
+    opportunity_types: ["course", "certification"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: saylor_academy
+    name: "Saylor Academy"
+    canonical_url: "https://www.saylor.org/"
+    organization: "Saylor Academy"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "course"
+    opportunity_types: ["course", "certification"]
+    collector_type: "structured_public_endpoint"
+    access_method: "structured_endpoint"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: class_central
+    name: "Class Central"
+    canonical_url: "https://www.classcentral.com/"
+    organization: "Class Central"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "course"
+    opportunity_types: ["course"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_3"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: odin_project
+    name: "The Odin Project"
+    canonical_url: "https://www.theodinproject.com/"
+    organization: "The Odin Project"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "course"
+    opportunity_types: ["course", "open_source"]
+    collector_type: "structured_public_endpoint"
+    access_method: "structured_endpoint"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: cs50_harvard
+    name: "CS50 / Harvard"
+    canonical_url: "https://cs50.harvard.edu/"
+    organization: "Harvard University"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "course"
+    opportunity_types: ["course", "certification"]
+    collector_type: "official_feed"
+    access_method: "official_feed"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  # ----------------------------------------------------------------------------
+  # OPEN SOURCE / DEVELOPER OPPORTUNITIES (68-75)
+  # ----------------------------------------------------------------------------
+  - source_id: github
+    name: "GitHub"
+    canonical_url: "https://github.com/"
+    organization: "GitHub Inc. / Microsoft"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "open_source"
+    opportunity_types: ["open_source"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_1"
+    status: "IMPLEMENTED"
+    enabled: true
+
+  - source_id: gitlab
+    name: "GitLab"
+    canonical_url: "https://gitlab.com/"
+    organization: "GitLab Inc."
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "open_source"
+    opportunity_types: ["open_source"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: good_first_issue
+    name: "Good First Issue"
+    canonical_url: "https://goodfirstissue.dev/"
+    organization: "Good First Issue Community"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "open_source"
+    opportunity_types: ["open_source"]
+    collector_type: "structured_public_endpoint"
+    access_method: "structured_endpoint"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: up_for_grabs
+    name: "Up For Grabs"
+    canonical_url: "https://up-for-grabs.net/"
+    organization: "Up For Grabs Community"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "open_source"
+    opportunity_types: ["open_source"]
+    collector_type: "structured_public_endpoint"
+    access_method: "structured_endpoint"
+    trust_tier: "tier_2"
+    status: "IMPLEMENTED"
+    enabled: true
+
+  - source_id: codetriage
+    name: "CodeTriage"
+    canonical_url: "https://www.codetriage.com/"
+    organization: "CodeTriage Community"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "open_source"
+    opportunity_types: ["open_source"]
+    collector_type: "rss"
+    access_method: "rss"
+    trust_tier: "tier_2"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: c4gt
+    name: "Code for GovTech (C4GT)"
+    canonical_url: "https://www.codeforgovtech.in/"
+    organization: "Samagra & C4GT Community"
+    country_scope: "IN"
+    language: "en-IN"
+    source_family: "open_source"
+    opportunity_types: ["open_source", "fellowship", "internship"]
+    collector_type: "structured_public_endpoint"
+    access_method: "structured_endpoint"
+    trust_tier: "tier_1"
+    status: "CONFIGURED"
+    enabled: true
+
+  - source_id: outreachy
+    name: "Outreachy"
+    canonical_url: "https://www.outreachy.org/"
+    organization: "Software Freedom Conservancy"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "open_source"
+    opportunity_types: ["open_source", "internship", "fellowship"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_1"
+    status: "IMPLEMENTED"
+    enabled: true
+
+  - source_id: google_summer_of_code
+    name: "Google Summer of Code"
+    canonical_url: "https://summerofcode.withgoogle.com/"
+    organization: "Google LLC"
+    country_scope: "GLOBAL"
+    language: "en"
+    source_family: "open_source"
+    opportunity_types: ["open_source", "internship", "fellowship"]
+    collector_type: "api"
+    access_method: "api"
+    trust_tier: "tier_1"
+    status: "IMPLEMENTED"
+    enabled: true

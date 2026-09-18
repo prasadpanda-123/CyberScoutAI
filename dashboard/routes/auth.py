@@ -1,12 +1,17 @@
 import secrets
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
+from src.auth.admin_auth import AdminSecurityManager
+from src.database.admin_repository import AdminRepository
 from src.database.audit_log_repository import AuditLogRepository
 from src.database.user_repository import UserRepository
 from src.utils.ip_utils import get_client_ip
+from src.core.logging import get_logger
 
+logger = get_logger(__name__)
 auth_bp = Blueprint("auth_ui", __name__)
 user_repo = UserRepository()
+admin_repo = AdminRepository()
 audit_repo = AuditLogRepository()
 
 
@@ -14,9 +19,9 @@ audit_repo = AuditLogRepository()
 def setup():
     """One-Time First-Run Setup flow when no administrator accounts exist."""
     client_ip = get_client_ip(request)
-    if user_repo.has_admin():
+    if admin_repo.has_admin() or user_repo.has_admin():
         flash("First-run setup is permanently disabled because administrator accounts already exist.", "info")
-        return redirect(url_for("auth_ui.login"))
+        return redirect(url_for("admin_ui.admin_login"))
 
     if request.method == "POST":
         username = request.form.get("username", "").strip()
@@ -28,35 +33,32 @@ def setup():
             flash("All fields are required.", "warning")
         elif password != confirm_password:
             flash("Passwords do not match.", "danger")
+        elif len(password) < 10:
+            flash("Administrator password must be at least 10 characters long.", "danger")
         else:
             try:
-                user = user_repo.create_user(
+                admin_account = admin_repo.create_admin(
                     username=username,
                     email=email,
                     password=password,
                     role="Super Admin",
                 )
-                audit_repo.log_event("AUTH", "SETUP_COMPLETE", "SUCCESS", user_id=user["id"], username=username, source_ip=client_ip, details="Initial super admin created")
+                audit_repo.log_event("AUTH", "SETUP_COMPLETE", "SUCCESS", user_id=admin_account["id"], username=username, source_ip=client_ip, details="Initial super admin created in Admins table")
                 session.clear()
-                session["user_id"] = user["id"]
-                session["username"] = user["username"]
-                session["email"] = user["email"]
-                session["role"] = user["role"]
-                flash(f"First-run setup complete! Super Admin '{username}' created successfully.", "success")
-                return redirect(url_for("dashboard_ui.index"))
-            except Exception:
-                audit_repo.log_event("AUTH", "SETUP_FAILED", "FAILED", username=username, source_ip=client_ip, details="Setup account creation error")
-                flash("Setup error occurred during account creation.", "danger")
+                flash(f"First-run setup complete! Super Admin '{username}' created successfully. Please log in to complete MFA setup.", "success")
+                return redirect(url_for("admin_ui.admin_login"))
+            except Exception as e:
+                audit_repo.log_event("AUTH", "SETUP_FAILED", "FAILED", username=username, source_ip=client_ip, details=f"Setup account creation error: {e}")
+                flash(f"Setup error occurred during account creation: {e}", "danger")
 
     return render_template("setup.html")
 
 
+from src.utils.url_utils import is_safe_internal_url
+
 def _is_safe_url(target: str) -> bool:
     """Verifies target redirect URL is a safe internal relative path."""
-    if not target or not isinstance(target, str):
-        return False
-    target = target.strip()
-    return target.startswith("/") and not target.startswith("//") and not target.startswith("/\\")
+    return is_safe_internal_url(target)
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -69,16 +71,58 @@ def login():
     if request.method == "POST":
         identifier = request.form.get("identifier", "").strip()
         password = request.form.get("password", "").strip()
+        csrf_token = request.form.get("csrf_token", "").strip()
         raw_next = request.form.get("next") or request.args.get("next")
         next_url = raw_next if (raw_next and _is_safe_url(raw_next)) else url_for("dashboard_ui.index")
 
-        user = user_repo.authenticate(identifier, password)
+        # 0. CSRF Token Validation
+        session_csrf = session.get("user_csrf_token") or session.get("admin_csrf_token")
+        if session_csrf and csrf_token and not secrets.compare_digest(session_csrf, csrf_token):
+            audit_repo.log_event("AUTH", "USER_LOGIN", "CSRF_FAILED", username=identifier or "Anonymous", source_ip=client_ip, details="CSRF token validation failed on user login")
+            flash("CSRF validation failed. Please try again.", "danger")
+            raw_next_arg = request.args.get("next", "")
+            safe_next_arg = raw_next_arg if _is_safe_url(raw_next_arg) else ""
+            return render_template("login.html", next=safe_next_arg), 400
+
+        # 1. Distributed Rate Limiting & Abuse Protection
+        if AdminSecurityManager.is_locked_out(client_ip, identifier, attempt_type="user_login"):
+            audit_repo.log_event("AUTH", "USER_LOGIN_LOCKED", "FAILED", username=identifier or "Anonymous", source_ip=client_ip, details="User login attempt while locked out")
+            flash("Account temporarily locked due to 5 consecutive failed login attempts. Please wait 15 minutes.", "danger")
+            raw_next_arg = request.args.get("next", "")
+            safe_next_arg = raw_next_arg if _is_safe_url(raw_next_arg) else ""
+            return render_template("login.html", next=safe_next_arg)
+
+        db_outage = False
+        try:
+            user = user_repo.authenticate(identifier, password)
+        except Exception as e:
+            err_str = str(e).lower()
+            if any(term in err_str for term in ("connection", "could not connect", "timeout", "pool", "network", "operationalerror", "server closed")):
+                logger.error(f"Database outage during user authentication: {e}")
+                db_outage = True
+            else:
+                logger.error(f"User authentication error: {e}")
+            user = None
+
+        if db_outage:
+            try:
+                audit_repo.log_event("AUTH", "USER_LOGIN_ERROR", "SERVICE_UNAVAILABLE", username=identifier or "Anonymous", source_ip=client_ip, details="Database unavailable during authentication")
+            except Exception:
+                pass
+            flash("Service temporarily unavailable. Please try again in a few moments.", "danger")
+            raw_next_arg = request.args.get("next", "")
+            safe_next_arg = raw_next_arg if _is_safe_url(raw_next_arg) else ""
+            return render_template("login.html", next=safe_next_arg), 503
+
         if user:
             # Enforce Portal Isolation: Admin accounts must authenticate via /admin/login
             if user.get("role") in ("Admin", "admin", "Super Admin", "Administrator"):
                 audit_repo.log_event("AUTH", "USER_LOGIN_REDIRECT", "PORTAL_ISOLATION", user_id=user["id"], username=user["username"], source_ip=client_ip, details="Admin attempted user login portal; redirected to /admin/login")
                 flash("Administrator accounts must authenticate through the dedicated Administrator Portal at /admin/login.", "warning")
                 return redirect(url_for("admin_ui.admin_login"))
+
+            # Reset failed login attempt history on success
+            AdminSecurityManager.reset_failed_attempts(client_ip, identifier, attempt_type="user_login")
 
             # Session Fixation Defense: Clear existing session dictionary before setting authenticated session keys
             session.clear()
@@ -91,6 +135,7 @@ def login():
             flash(f"Welcome back, {user['username']}!", "success")
             return redirect(next_url)
         else:
+            AdminSecurityManager.record_failed_attempt(client_ip, identifier, attempt_type="user_login")
             audit_repo.log_event("AUTH", "USER_LOGIN", "FAILED", username=identifier or "Anonymous", source_ip=client_ip, details="Invalid credentials")
             flash("Invalid username/email or password.", "danger")
 
@@ -116,6 +161,8 @@ def register():
 
         if not username or not email or not password:
             flash("All fields are required.", "warning")
+        elif len(password) < 8:
+            flash("Password must be at least 8 characters long.", "danger")
         elif password != confirm_password:
             flash("Passwords do not match.", "danger")
         else:
@@ -160,14 +207,22 @@ def forgot_password():
 def profile():
     """Renders User Account Profile page with self-only password update and OTP verification."""
     client_ip = get_client_ip(request)
-    if not session.get("user_id"):
+    raw_uid = session.get("user_id")
+    if not raw_uid:
         return redirect(url_for("auth_ui.login", next=request.path))
+
+    import uuid
+    try:
+        user_id = str(uuid.UUID(str(raw_uid).strip()))
+    except (ValueError, TypeError, AttributeError):
+        session.clear()
+        flash("Invalid session identifier. Please log in again.", "warning")
+        return redirect(url_for("auth_ui.login"))
 
     # Ensure user CSRF token is present in session
     if "user_csrf_token" not in session:
         session["user_csrf_token"] = secrets.token_hex(32)
 
-    user_id = session.get("user_id")
     username = session.get("username", "User")
 
     user_record = user_repo.get_by_id(user_id) if user_id else None
@@ -198,8 +253,56 @@ def profile():
 
         action = request.form.get("action", "request_pw_change")
 
+        # Action: Save Personalization / Career Preferences
+        if action == "save_preferences":
+            skills_raw = request.form.get("skills", "")
+            interests_raw = request.form.get("interests", "")
+            categories_list = request.form.getlist("preferred_categories")
+            types_list = request.form.getlist("preferred_types")
+            remote_val = request.form.get("prefers_remote")
+            location_val = request.form.get("preferred_location", "").strip()
+            exp_val = request.form.get("experience_level", "").strip()
+
+            from src.intelligence.skill_normalizer import normalize_skill_list
+            skills = normalize_skill_list([s.strip() for s in skills_raw.split(",") if s.strip()])
+            interests = [i.strip() for i in interests_raw.split(",") if i.strip()]
+            prefers_remote = None
+            if remote_val == "true":
+                prefers_remote = True
+            elif remote_val == "false":
+                prefers_remote = False
+
+            from src.models.recommendation_models import UserPreferencesDTO
+            from src.database.user_preferences_repository import UserPreferencesRepository
+
+            prefs = UserPreferencesDTO(
+                skills=skills,
+                interests=interests,
+                preferred_categories=categories_list,
+                preferred_types=types_list,
+                prefers_remote=prefers_remote,
+                preferred_location=location_val if location_val else None,
+                experience_level=exp_val if exp_val else None,
+            )
+            try:
+                UserPreferencesRepository(db_manager=user_repo.db_manager).save_preferences(user_id, prefs)
+                audit_repo.log_event(
+                    "USER_PROFILE",
+                    "PREFERENCES_UPDATED",
+                    "SUCCESS",
+                    user_id=user_id,
+                    username=username,
+                    source_ip=client_ip,
+                    details="User updated career discovery preferences",
+                )
+                flash("Career preferences updated successfully.", "success")
+            except Exception as e:
+                logger.error(f"Failed to save preferences for user {user_id}: {e}")
+                flash("Failed to save career preferences. Please try again.", "danger")
+            return redirect(url_for("auth_ui.profile"))
+
         # Action 1: Cancel Pending OTP
-        if action == "cancel_pw_otp":
+        elif action == "cancel_pw_otp":
             if pending_token:
                 AdminSecurityManager.clear_pending_password_change(pending_token)
                 session.pop("user_pending_pw_token", None)
@@ -208,7 +311,7 @@ def profile():
 
         # Action 2: Resend OTP Code
         elif action == "resend_pw_otp":
-            if not pending_state or pending_state.get("target_type") != "user" or pending_state.get("account_id") != user_id:
+            if not pending_token or not pending_state or pending_state.get("target_type") != "user" or pending_state.get("account_id") != user_id:
                 flash("No active password change request found. Please initiate a new request.", "warning")
                 session.pop("user_pending_pw_token", None)
                 return redirect(url_for("auth_ui.profile"))
@@ -224,7 +327,7 @@ def profile():
             new_otp = AdminSecurityManager.generate_otp_code()
             new_otp_hash = AdminSecurityManager.hash_otp_code(new_otp)
             new_expires_at = now + 300
-            AdminSecurityManager.update_pending_password_change_otp(pending_token, new_otp_hash, new_expires_at)
+            AdminSecurityManager.update_pending_password_change_otp(str(pending_token), new_otp_hash, new_expires_at)
 
             try:
                 from src.notifier.email_sender import EmailSender
@@ -272,14 +375,14 @@ def profile():
 
         # Action 3: Verify OTP and Finalize Password Update
         elif action == "verify_pw_otp":
-            if not pending_state or pending_state.get("target_type") != "user" or pending_state.get("account_id") != user_id:
+            if not pending_token or not pending_state or pending_state.get("target_type") != "user" or pending_state.get("account_id") != user_id:
                 flash("No active password change request found or session expired. Please start again.", "warning")
                 session.pop("user_pending_pw_token", None)
                 return redirect(url_for("auth_ui.profile"))
 
             # Check expiration
             if int(time.time()) > pending_state.get("expires_at", 0):
-                AdminSecurityManager.clear_pending_password_change(pending_token)
+                AdminSecurityManager.clear_pending_password_change(str(pending_token))
                 session.pop("user_pending_pw_token", None)
                 audit_repo.log_event(
                     "AUTH",
@@ -294,7 +397,7 @@ def profile():
                 return redirect(url_for("auth_ui.profile"))
 
             # Increment and check attempt limit
-            attempts = AdminSecurityManager.increment_pending_password_change_attempts(pending_token)
+            attempts = AdminSecurityManager.increment_pending_password_change_attempts(str(pending_token))
             if attempts > 5:
                 AdminSecurityManager.clear_pending_password_change(pending_token)
                 session.pop("user_pending_pw_token", None)
@@ -448,6 +551,13 @@ def profile():
                         flash("Could not send verification code. Please try again.", "danger")
                     return redirect(url_for("auth_ui.profile"))
 
+    preferences = None
+    try:
+        from src.database.user_preferences_repository import UserPreferencesRepository
+        preferences = UserPreferencesRepository(db_manager=user_repo.db_manager).get_preferences(user_id)
+    except Exception as pe:
+        logger.warning(f"Could not load preferences for user {user_id}: {pe}")
+
     return render_template(
         "profile.html",
         active_page="profile",
@@ -460,4 +570,6 @@ def profile():
         },
         pending_otp=bool(pending_state),
         masked_email=AdminSecurityManager.mask_email(pending_state.get("email") or email_val) if pending_state else "",
+        preferences=preferences,
     )
+

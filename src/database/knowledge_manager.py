@@ -2,7 +2,7 @@
 Knowledge Manager for CyberScout AI.
 """
 
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from src.database.connection import DatabaseManager
 from src.database.opportunity_repository import OpportunityRepository
@@ -65,46 +65,14 @@ class KnowledgeManager:
 
         return state
 
-    def process_opportunity_batch(self, opportunities: list) -> int:
+    def process_opportunity_batch(self, opportunities: list) -> Any:
         """
         Batch evaluates lifecycle states and saves/updates persistent records efficiently.
+        Returns PersistenceResult detailing new, updated, unchanged, and duplicate counts.
         """
         if not opportunities:
-            return 0
+            from src.database.opportunity_repository import PersistenceResult
+            return PersistenceResult()
 
-        hashes = [opp.generate_url_hash() for opp in opportunities if opp.generate_url_hash()]
-        existing_map = {}
-        if hashes:
-            for i in range(0, len(hashes), 100):
-                chunk = hashes[i:i + 100]
-                placeholders = ",".join(["?"] * len(chunk))
-                found = self.opp_repo.search(where_clause=f"url_hash IN ({placeholders})", params=tuple(chunk))
-                for item in found:
-                    existing_map[item.generate_url_hash()] = item
+        return self.opp_repo.upsert_batch(opportunities)
 
-        to_upsert = []
-        for opp in opportunities:
-            uh = opp.generate_url_hash()
-            existing = existing_map.get(uh)
-            if existing:
-                opp.id = existing.id
-                # Preserve existing high-value fields if incoming is missing
-                if not opp.deadline and existing.deadline:
-                    opp.deadline = existing.deadline
-                if not opp.published_date and existing.published_date:
-                    opp.published_date = existing.published_date
-                if not opp.description and existing.description:
-                    opp.description = existing.description
-                if (not opp.category or opp.category == "other") and existing.category and existing.category != "other":
-                    opp.category = existing.category
-                if not opp.provider and existing.provider:
-                    opp.provider = existing.provider
-                if not opp.company and existing.company:
-                    opp.company = existing.company
-                if not opp.location and existing.location:
-                    opp.location = existing.location
-                if (existing.score or 0) > (opp.score or 0):
-                    opp.score = existing.score
-            to_upsert.append(opp)
-
-        return self.opp_repo.upsert_batch(to_upsert)

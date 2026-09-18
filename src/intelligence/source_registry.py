@@ -65,6 +65,23 @@ class SourceRegistry:
             except Exception as e:
                 logger.warning(f"Could not merge sources.yaml: {e}")
 
+        # Also merge Phase 2 authoritative sources_registry.yaml if available
+        reg_file = CONFIG_DIR / "sources_registry.yaml"
+        if reg_file.exists():
+            try:
+                with open(reg_file, "r", encoding="utf-8") as f:
+                    r_data = yaml.safe_load(f) or {}
+                    r_list = r_data.get("sources", [])
+                    if isinstance(r_list, list):
+                        for item in r_list:
+                            if isinstance(item, dict) and ("source_id" in item or "id" in item):
+                                sid = item.get("source_id") or item.get("id")
+                                if sid not in self.sources:
+                                    self.sources[sid] = {"id": sid}
+                                self.sources[sid].update(item)
+            except Exception as e:
+                logger.warning(f"Could not merge sources_registry.yaml: {e}")
+
         logger.info(f"SourceRegistry initialized with {len(self.sources)} sources.")
 
     def get_source(self, source_id: str) -> Optional[Dict[str, Any]]:

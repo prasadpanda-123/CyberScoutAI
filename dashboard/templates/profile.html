@@ -47,6 +47,134 @@
     </div>
   </div>
 
+  <!-- Career Discovery & Personalization Preferences -->
+  <div class="bg-surface rounded-xl border border-border-subtle p-6 space-y-5">
+    <div class="flex items-center gap-2 pb-3 border-b border-border-subtle">
+      <span class="material-symbols-outlined text-primary text-[20px]">tune</span>
+      <div>
+        <h3 class="text-sm font-bold text-text-primary uppercase tracking-wider">Career Discovery & Personalization</h3>
+        <p class="text-xs text-text-secondary mt-0.5">Customize intelligent recommendations, skill matching, and opportunity ranking.</p>
+      </div>
+    </div>
+
+    <form action="/profile" method="POST" class="space-y-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="action" value="save_preferences">
+
+      <!-- Skills -->
+      <div class="space-y-1.5">
+        <label for="pref_skills" class="block text-xs font-bold text-text-secondary uppercase tracking-wider">
+          Technical Skills & Tools <span class="text-text-muted font-normal text-[11px]">(comma-separated)</span>
+        </label>
+        <input
+          type="text"
+          id="pref_skills"
+          name="skills"
+          value="{{ preferences.skills|join(', ') if preferences and preferences.skills else '' }}"
+          placeholder="e.g. Python, Linux, Wireshark, Docker, Burp Suite, Reverse Engineering"
+          class="w-full px-3.5 py-2.5 rounded-lg bg-surface-container-low border border-border-subtle text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono text-xs"
+        >
+        <p class="text-[11px] text-text-muted">Opportunities with matching skills receive higher recommendation ranking and instant skill badges.</p>
+      </div>
+
+      <!-- Interests -->
+      <div class="space-y-1.5">
+        <label for="pref_interests" class="block text-xs font-bold text-text-secondary uppercase tracking-wider">
+          Security Interests & Specialties <span class="text-text-muted font-normal text-[11px]">(comma-separated)</span>
+        </label>
+        <input
+          type="text"
+          id="pref_interests"
+          name="interests"
+          value="{{ preferences.interests|join(', ') if preferences and preferences.interests else '' }}"
+          placeholder="e.g. Penetration Testing, Cloud Security, Incident Response, Threat Intelligence"
+          class="w-full px-3.5 py-2.5 rounded-lg bg-surface-container-low border border-border-subtle text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono text-xs"
+        >
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-4">
+        <!-- Remote Preference -->
+        <div class="space-y-1.5">
+          <label for="pref_remote" class="block text-xs font-bold text-text-secondary uppercase tracking-wider">
+            Remote Preference
+          </label>
+          <select
+            id="pref_remote"
+            name="prefers_remote"
+            class="w-full px-3.5 py-2.5 rounded-lg bg-surface-container-low border border-border-subtle text-sm text-text-primary focus:outline-none focus:border-primary transition-all"
+          >
+            <option value="" {% if not preferences or preferences.prefers_remote is none %}selected{% endif %}>Any / Flexible</option>
+            <option value="true" {% if preferences and preferences.prefers_remote is true %}selected{% endif %}>Prefers Remote Only</option>
+            <option value="false" {% if preferences and preferences.prefers_remote is false %}selected{% endif %}>Prefers In-Person / On-Site</option>
+          </select>
+        </div>
+
+        <!-- Experience Level -->
+        <div class="space-y-1.5">
+          <label for="pref_exp" class="block text-xs font-bold text-text-secondary uppercase tracking-wider">
+            Experience Level
+          </label>
+          <select
+            id="pref_exp"
+            name="experience_level"
+            class="w-full px-3.5 py-2.5 rounded-lg bg-surface-container-low border border-border-subtle text-sm text-text-primary focus:outline-none focus:border-primary transition-all"
+          >
+            <option value="" {% if not preferences or not preferences.experience_level %}selected{% endif %}>Unspecified</option>
+            <option value="beginner" {% if preferences and preferences.experience_level == 'beginner' %}selected{% endif %}>Beginner / Student / Early Career</option>
+            <option value="intermediate" {% if preferences and preferences.experience_level == 'intermediate' %}selected{% endif %}>Intermediate / Associate</option>
+            <option value="advanced" {% if preferences and preferences.experience_level == 'advanced' %}selected{% endif %}>Advanced / Senior Professional</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Opportunity Types Checkboxes -->
+      <div class="space-y-2">
+        <label class="block text-xs font-bold text-text-secondary uppercase tracking-wider">
+          Preferred Opportunity Types
+        </label>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          {% for t in ['internship', 'job', 'hackathon', 'ctf', 'fellowship', 'scholarship', 'course'] %}
+          <label class="flex items-center gap-2 p-2 rounded-lg bg-surface-container-low border border-border-subtle hover:border-text-muted cursor-pointer transition-colors">
+            <input
+              type="checkbox"
+              name="preferred_types"
+              value="{{ t }}"
+              {% if preferences and t in preferences.preferred_types %}checked{% endif %}
+              class="rounded border-border-subtle text-primary focus:ring-primary"
+            >
+            <span class="text-text-primary capitalize">{{ t }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Location Preference -->
+      <div class="space-y-1.5">
+        <label for="pref_location" class="block text-xs font-bold text-text-secondary uppercase tracking-wider">
+          Target Location / Country <span class="text-text-muted font-normal text-[11px]">(optional)</span>
+        </label>
+        <input
+          type="text"
+          id="pref_location"
+          name="preferred_location"
+          value="{{ preferences.preferred_location if preferences and preferences.preferred_location else '' }}"
+          placeholder="e.g. United States, Remote, Washington DC"
+          class="w-full px-3.5 py-2.5 rounded-lg bg-surface-container-low border border-border-subtle text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-primary transition-all text-xs"
+        >
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button
+          type="submit"
+          class="px-4 py-2 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+        >
+          <span class="material-symbols-outlined text-[16px]">save</span>
+          <span>Save Preferences</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
   <!-- Appearance / Theme Settings -->
   <div class="bg-surface rounded-xl border border-border-subtle p-6 space-y-4">
     <div class="flex items-center gap-2 pb-2 border-b border-border-subtle">
@@ -141,7 +269,7 @@
     <form action="/profile" method="POST" class="space-y-4">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="action" value="request_pw_change">
-      <input type="text" id="username" name="username" value="{{ user_info.username }}" autocomplete="username" class="hidden" aria-hidden="true" tabindex="-1" style="display: none;">
+      <input type="text" id="username" name="username" value="{{ user_info.username }}" autocomplete="username" class="hidden" aria-hidden="true" tabindex="-1">
 
       <div>
         <label for="current_password" class="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">Current Password</label>
@@ -185,7 +313,7 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
   function setThemePreference(mode) {
     localStorage.setItem('cyberscout-theme-mode', mode);
     let resolved = mode;

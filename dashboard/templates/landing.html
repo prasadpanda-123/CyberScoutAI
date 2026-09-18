@@ -17,43 +17,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <script>
-    tailwind.config = {
-      darkMode: "class",
-      theme: {
-        extend: {
-          colors: {
-            "surface-bright": "#31394d",
-            "bg-card-hover": "#1E293B",
-            "outline": "#89929b",
-            "surface-container-lowest": "#060e20",
-            "text-muted": "#64748B",
-            "primary": "#93ccff",
-            "surface-container": "#171f33",
-            "info": "#06B6D4",
-            "primary-container": "#3198dc",
-            "surface-container-highest": "#2d3449",
-            "border-subtle": "#1E293B",
-            "surface-variant": "#2d3449",
-            "surface": "#0b1326",
-            "warning": "#F59E0B",
-            "text-secondary": "#94A3B8",
-            "bg-surface": "#0B0F19",
-            "surface-container-low": "#131b2e",
-            "bg-body": "#070B14",
-            "text-primary": "#F8FAFC",
-            "success": "#10B981",
-            "danger": "#EF4444"
-          },
-          fontFamily: {
-            "sans": ["Inter", "system-ui", "sans-serif"],
-            "mono": ["JetBrains Mono", "monospace"]
-          }
-        }
-      }
-    }
-  </script>
+  <!-- Precompiled Static Tailwind CSS & Theme -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
 </head>
 <body class="bg-bg-body text-text-primary font-sans antialiased overflow-x-hidden min-h-screen flex flex-col">
@@ -73,8 +38,8 @@
         <a class="text-xs font-semibold text-text-secondary hover:text-primary transition-colors uppercase tracking-wider" href="#bulletins">Bulletins</a>
       </div>
       <div class="flex items-center gap-3">
-        <a class="text-xs font-semibold text-text-secondary hover:text-primary transition-colors px-3 py-2" href="/login">Sign In</a>
-        <a class="bg-primary hover:bg-primary-container text-surface-container-lowest font-bold text-xs px-4 py-2 rounded-lg brand-glow transition-all" href="/register">Get Started</a>
+        <a class="text-xs font-semibold text-text-secondary hover:text-primary transition-colors px-3 py-2" href="{{ url_for('auth_ui.login') }}">Sign In</a>
+        <a class="bg-primary hover:bg-primary-container text-surface-container-lowest font-bold text-xs px-4 py-2 rounded-lg brand-glow transition-all" href="{{ url_for('auth_ui.register') }}">Get Started</a>
       </div>
     </div>
   </nav>
@@ -102,11 +67,11 @@
         </p>
 
         <div class="flex flex-wrap gap-4 pt-2">
-          <a href="/register" class="bg-primary hover:bg-primary-container text-surface-container-lowest font-bold text-sm px-6 py-3 rounded-lg brand-glow transition-all flex items-center gap-2">
+          <a href="{{ url_for('auth_ui.register') }}" class="bg-primary hover:bg-primary-container text-surface-container-lowest font-bold text-sm px-6 py-3 rounded-lg brand-glow transition-all flex items-center gap-2">
             <span>Explore Opportunities</span>
             <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
           </a>
-          <a href="/login" class="border border-border-subtle text-text-secondary hover:text-text-primary hover:bg-surface-container font-semibold text-sm px-6 py-3 rounded-lg transition-colors">
+          <a href="{{ url_for('auth_ui.login') }}" class="border border-border-subtle text-text-secondary hover:text-text-primary hover:bg-surface-container font-semibold text-sm px-6 py-3 rounded-lg transition-colors">
             Access Portal
           </a>
         </div>
@@ -186,8 +151,8 @@
     <div class="max-w-[1400px] mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-text-muted">
       <div>© 2026 CyberScout AI Platform. All rights reserved.</div>
       <div class="flex items-center gap-6">
-        <a href="/login" class="hover:text-primary transition-colors">User Login</a>
-        <a href="/admin/login" class="hover:text-danger transition-colors">Admin Gateway</a>
+        <a href="{{ url_for('auth_ui.login') }}" class="hover:text-primary transition-colors">User Login</a>
+        <a href="{{ url_for('admin_ui.admin_login') }}" class="hover:text-danger transition-colors">Admin Gateway</a>
         <span class="font-mono">v{{ app_info.version|default('2.2.0') }}</span>
       </div>
     </div>

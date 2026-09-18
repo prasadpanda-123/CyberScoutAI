@@ -1,0 +1,310 @@
+{% extends 'base.html' %}
+
+{% block title %}Your Personal Insights — CyberScout AI{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+  <!-- Page Header -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border-subtle pb-5">
+    <div>
+      <div class="flex items-center gap-2 mb-1">
+        <span class="material-symbols-outlined text-primary text-[28px]">psychology</span>
+        <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-text-primary">Personal Opportunity Insights</h1>
+      </div>
+      <p class="text-sm text-text-muted">Private intelligence derived strictly from your saved programs, search queries, and configured career preferences.</p>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <a href="/profile" class="px-4 py-2 rounded-xl text-xs font-semibold bg-surface-container-high hover:bg-surface-container-highest text-text-primary border border-border-subtle transition-colors flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-[16px]">tune</span>
+        Edit Preferences
+      </a>
+      <a href="/opportunities?view=saved" class="px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-on-primary shadow-sm hover:bg-primary/90 transition-colors flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-[16px]">bookmark</span>
+        View Saved Items ({{ insights.total_saved }})
+      </a>
+    </div>
+  </div>
+
+  <!-- Urgent Deadlines Alert Banner -->
+  {% if insights.saved_deadlines_within_7d > 0 %}
+  <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <span class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined text-[24px]">notification_important</span>
+      </span>
+      <div>
+        <div class="text-sm font-bold text-amber-400">Deadline Action Required</div>
+        <p class="text-xs text-text-muted mt-0.5">You have <span class="font-bold text-amber-300">{{ insights.saved_deadlines_within_7d }}</span> saved opportunity{% if insights.saved_deadlines_within_7d > 1 %}ies{% endif %} closing within the next 7 days.</p>
+      </div>
+    </div>
+    <a href="/opportunities?view=saved" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-neutral-950 hover:bg-amber-400 transition-colors shrink-0">
+      Review Now
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- Top KPI Cards -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+    <!-- Total Saved -->
+    <div class="p-5 rounded-2xl bg-surface border border-border-subtle shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between text-text-muted mb-2">
+        <span class="text-xs font-semibold uppercase tracking-wider">Total Saved</span>
+        <span class="material-symbols-outlined text-[20px] text-primary">bookmark</span>
+      </div>
+      <div class="text-3xl font-extrabold text-text-primary tracking-tight">{{ insights.total_saved }}</div>
+      <div class="text-xs text-text-muted mt-2">
+        Bookmarked programs
+      </div>
+    </div>
+
+    <!-- Active Saved -->
+    <div class="p-5 rounded-2xl bg-surface border border-border-subtle shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between text-text-muted mb-2">
+        <span class="text-xs font-semibold uppercase tracking-wider">Active Programs</span>
+        <span class="material-symbols-outlined text-[20px] text-emerald-500">check_circle</span>
+      </div>
+      <div class="text-3xl font-extrabold text-emerald-500 tracking-tight">{{ insights.active_saved }}</div>
+      <div class="text-xs text-text-muted mt-2">
+        Open for applications
+      </div>
+    </div>
+
+    <!-- Closing Soon -->
+    <div class="p-5 rounded-2xl bg-surface border border-border-subtle shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between text-text-muted mb-2">
+        <span class="text-xs font-semibold uppercase tracking-wider">Closing Soon</span>
+        <span class="material-symbols-outlined text-[20px] text-amber-500">alarm</span>
+      </div>
+      <div class="text-3xl font-extrabold text-amber-500 tracking-tight">{{ insights.closing_soon_saved }}</div>
+      <div class="text-xs text-text-muted mt-2">
+        Deadlines approaching
+      </div>
+    </div>
+
+    <!-- Notifications Received -->
+    <div class="p-5 rounded-2xl bg-surface border border-border-subtle shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between text-text-muted mb-2">
+        <span class="text-xs font-semibold uppercase tracking-wider">Alerts Received</span>
+        <span class="material-symbols-outlined text-[20px] text-indigo-400">notifications</span>
+      </div>
+      <div class="text-3xl font-extrabold text-indigo-400 tracking-tight">{{ insights.notifications_received }}</div>
+      <div class="text-xs text-text-muted mt-2">
+        <span class="font-semibold text-primary">{{ insights.unread_notifications }}</span> unread alerts
+      </div>
+    </div>
+  </div>
+
+  <!-- Two-Column Section: Interest Profile & Saved Breakdown -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Interest Profile -->
+    <div class="p-6 rounded-2xl bg-surface border border-border-subtle shadow-sm flex flex-col">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-base font-bold text-text-primary flex items-center gap-2">
+          <span class="material-symbols-outlined text-[20px] text-primary">interests</span>
+          Personal Career Radar
+        </h2>
+        <a href="/profile" class="text-xs text-primary hover:underline">Edit Profile</a>
+      </div>
+
+      <div class="space-y-4 flex-1">
+        <!-- Skills -->
+        <div>
+          <div class="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Tracked Skills</div>
+          {% if insights.skills %}
+          <div class="flex flex-wrap gap-1.5">
+            {% for sk in insights.skills %}
+            <span class="px-2.5 py-1 rounded-lg text-xs font-medium bg-primary/10 text-primary border border-primary/20">{{ sk }}</span>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-xs text-text-muted italic">No explicit skills added yet. Add skills in your profile to boost match quality.</p>
+          {% endif %}
+        </div>
+
+        <!-- Preferred Categories -->
+        <div>
+          <div class="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Preferred Categories</div>
+          {% if insights.preferred_categories %}
+          <div class="flex flex-wrap gap-1.5">
+            {% for cat in insights.preferred_categories %}
+            <span class="px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-container-high text-text-primary border border-border-subtle capitalize">{{ cat|replace('_', ' ') }}</span>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-xs text-text-muted italic">All categories currently accepted.</p>
+          {% endif %}
+        </div>
+
+        <!-- Preferred Types -->
+        <div>
+          <div class="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Target Opportunity Types</div>
+          {% if insights.preferred_types %}
+          <div class="flex flex-wrap gap-1.5">
+            {% for typ in insights.preferred_types %}
+            <span class="px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-container-high text-indigo-400 border border-border-subtle capitalize">{{ typ|replace('_', ' ') }}</span>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-xs text-text-muted italic">All opportunity types currently monitored.</p>
+          {% endif %}
+        </div>
+
+        <!-- Remote & Location -->
+        <div class="pt-2 border-t border-border-subtle grid grid-cols-2 gap-4 text-xs">
+          <div>
+            <span class="text-text-muted block mb-0.5">Remote Preference:</span>
+            <span class="font-semibold text-text-primary">
+              {% if insights.prefers_remote is true %}Remote Only{% elif insights.prefers_remote is false %}On-Site Preferred{% else %}Flexible / No Filter{% endif %}
+            </span>
+          </div>
+          <div>
+            <span class="text-text-muted block mb-0.5">Target Location:</span>
+            <span class="font-semibold text-text-primary">{{ insights.preferred_location or 'Global / Anywhere' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Saved Opportunities Intelligence -->
+    <div class="p-6 rounded-2xl bg-surface border border-border-subtle shadow-sm flex flex-col">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-base font-bold text-text-primary flex items-center gap-2">
+          <span class="material-symbols-outlined text-[20px] text-amber-500">folder_special</span>
+          Saved Programs Distribution
+        </h2>
+        <span class="text-xs font-mono text-text-muted">{{ insights.total_saved }} items</span>
+      </div>
+
+      {% if insights.total_saved > 0 %}
+      <div class="space-y-4 flex-1">
+        <!-- Categories in saved -->
+        <div>
+          <div class="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Saved Categories</div>
+          <div class="space-y-2">
+            {% for sc in insights.top_saved_categories %}
+            <div>
+              <div class="flex items-center justify-between text-xs mb-1">
+                <span class="font-medium text-text-primary capitalize">{{ sc.category|replace('_', ' ') }}</span>
+                <span class="text-text-muted font-mono">{{ sc.count }} saved</span>
+              </div>
+              <div class="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+                <div class="h-full bg-amber-500 rounded-full" {{ ('style="width: ' ~ [((sc.count / [insights.total_saved, 1]|max) * 100)|round, 100]|min ~ '%;"')|safe }}></div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Types in saved -->
+        <div class="pt-2">
+          <div class="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Saved Opportunity Types</div>
+          <div class="space-y-2">
+            {% for st in insights.top_saved_types %}
+            <div>
+              <div class="flex items-center justify-between text-xs mb-1">
+                <span class="font-medium text-text-primary capitalize">{{ st.opportunity_type|replace('_', ' ') }}</span>
+                <span class="text-text-muted font-mono">{{ st.count }} saved</span>
+              </div>
+              <div class="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+                <div class="h-full bg-indigo-500 rounded-full" {{ ('style="width: ' ~ [((st.count / [insights.total_saved, 1]|max) * 100)|round, 100]|min ~ '%;"')|safe }}></div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="p-8 my-auto text-center rounded-xl border border-dashed border-border-subtle">
+        <span class="material-symbols-outlined text-[36px] text-text-muted mb-2">bookmark_border</span>
+        <p class="text-xs text-text-muted max-w-sm mx-auto mb-4">You have not saved any opportunities yet. Bookmark active internships, hackathons, and certifications to see personal portfolio analytics.</p>
+        <a href="/opportunities" class="px-4 py-2 rounded-xl text-xs font-bold bg-primary text-on-primary hover:bg-primary/90 transition-colors inline-flex items-center gap-1.5">
+          Explore Opportunities
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Search & Alert Telemetry -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Search Activity -->
+    <div class="p-6 rounded-2xl bg-surface border border-border-subtle shadow-sm flex flex-col">
+      <h2 class="text-base font-bold text-text-primary mb-1 flex items-center gap-2">
+        <span class="material-symbols-outlined text-[20px] text-teal-400">search</span>
+        Recent Search Telemetry
+      </h2>
+      <p class="text-xs text-text-muted mb-4">Your search activity over the past 30 days.</p>
+
+      {% if insights.recent_searches %}
+      <div class="space-y-3 flex-1">
+        <div class="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Frequent Query Terms</div>
+        <div class="flex flex-wrap gap-2 mb-4">
+          {% for term in insights.frequent_search_terms %}
+          <span class="px-3 py-1 rounded-full text-xs font-medium bg-surface-container-high text-text-primary border border-border-subtle flex items-center gap-1.5">
+            {{ term.term }}
+            <span class="w-4 h-4 rounded-full bg-surface-container-highest text-[10px] font-mono flex items-center justify-center text-text-muted">{{ term.frequency }}</span>
+          </span>
+          {% endfor %}
+        </div>
+
+        <div class="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Recent Searches</div>
+        <div class="divide-y divide-border-subtle text-xs">
+          {% for s in insights.recent_searches %}
+          <div class="py-2 flex items-center justify-between">
+            <span class="font-medium text-text-primary flex items-center gap-2">
+              <span class="material-symbols-outlined text-[14px] text-text-muted">history</span>
+              {{ s.query }}
+            </span>
+            <span class="text-text-muted font-mono text-[11px]">{{ s.searched_at[:10] }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% else %}
+      <div class="p-8 my-auto text-center rounded-xl border border-dashed border-border-subtle">
+        <p class="text-xs text-text-muted">No search queries recorded yet. Use the search bar on the Opportunities page to find targeted programs.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Notification Activity -->
+    <div class="p-6 rounded-2xl bg-surface border border-border-subtle shadow-sm flex flex-col">
+      <div class="flex items-center justify-between mb-1">
+        <h2 class="text-base font-bold text-text-primary flex items-center gap-2">
+          <span class="material-symbols-outlined text-[20px] text-primary">mark_email_read</span>
+          Personal Alert Activity
+        </h2>
+        <a href="/notifications" class="text-xs text-primary hover:underline">Notification Center</a>
+      </div>
+      <p class="text-xs text-text-muted mb-4">Phase 7 transactional alerts delivered to your account.</p>
+
+      <div class="space-y-4 flex-1">
+        <div class="grid grid-cols-3 gap-3">
+          <div class="p-3 rounded-xl bg-surface-container-high text-center">
+            <div class="text-xs text-text-muted mb-1">New Programs</div>
+            <div class="text-lg font-bold text-emerald-400 font-mono">{{ insights.notification_breakdown.get('new', 0) }}</div>
+          </div>
+          <div class="p-3 rounded-xl bg-surface-container-high text-center">
+            <div class="text-xs text-text-muted mb-1">Updates</div>
+            <div class="text-lg font-bold text-cyan-400 font-mono">{{ insights.notification_breakdown.get('updated', 0) }}</div>
+          </div>
+          <div class="p-3 rounded-xl bg-surface-container-high text-center">
+            <div class="text-xs text-text-muted mb-1">Reopened</div>
+            <div class="text-lg font-bold text-amber-400 font-mono">{{ insights.notification_breakdown.get('reopened', 0) }}</div>
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-border-subtle flex items-center justify-between text-xs">
+          <span class="text-text-muted">Total Notifications Dispatched:</span>
+          <span class="font-mono font-bold text-text-primary">{{ insights.notifications_received }}</span>
+        </div>
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-text-muted">Unread In-App Notifications:</span>
+          <span class="font-mono font-bold text-primary">{{ insights.unread_notifications }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

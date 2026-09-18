@@ -2,8 +2,10 @@
 Flask Application Factory for CyberScout AI Web Dashboard.
 """
 
+import os
+import secrets
 from pathlib import Path
-from flask import Flask, Response, jsonify, redirect, request, session, url_for
+from flask import Flask, Response, g, jsonify, redirect, request, session, url_for
 
 from dashboard.config import DashboardConfig
 from dashboard.routes import (
@@ -25,6 +27,7 @@ from dashboard.routes import (
     scheduler_bp,
     system_bp,
     external_trigger_bp,
+    insights_bp,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -42,6 +45,18 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
     app = Flask(__name__, template_folder=str(BASE_DIR / "templates"), static_folder=str(BASE_DIR / "static"))
     app.config.from_object(config_class)
     setattr(app, "db_manager", db_mgr)
+
+    # Fail-closed SECRET_KEY verification (SEC-06)
+    if hasattr(config_class, "get_secret_key"):
+        app.config["SECRET_KEY"] = config_class.get_secret_key()
+    elif not app.config.get("TESTING") and (app.config.get("APP_ENV") == "production" or os.environ.get("RAILWAY_ENVIRONMENT")):
+        from dashboard.config import INSECURE_DEFAULT_SECRETS
+        secret = app.config.get("SECRET_KEY")
+        if not secret or secret in INSECURE_DEFAULT_SECRETS or len(secret) < 16:
+            raise RuntimeError(
+                "CRITICAL SECURITY CONFIGURATION ERROR: SECRET_KEY environment variable "
+                "is missing or insecure in production. Application cannot start safely."
+            )
 
     if not app.config.get("TESTING"):
         db_connected = db_mgr.check_connection_with_backoff(max_retries=5)
@@ -65,15 +80,32 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
     except Exception as e:
         logger.warning(f"Could not register DatabaseLogHandler: {e}")
 
-    # Secure Session Cookie Configuration (Phase 3 Hardening)
-    import os
+    # Secure Session Cookie Configuration (Phase 3 Hardening SEC-06)
     from datetime import timedelta
     app.config["SESSION_COOKIE_NAME"] = "cyberscout_session"
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-    is_prod = os.getenv("FLASK_ENV") == "production" or os.getenv("ENV") == "production"
-    app.config["SESSION_COOKIE_SECURE"] = is_prod and os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
+    is_prod = (
+        os.getenv("CYBERSCOUT_ENV") == "production"
+        or app.config.get("APP_ENV") == "production"
+        or os.getenv("FLASK_ENV") == "production"
+        or os.getenv("ENV") == "production"
+        or bool(os.getenv("RAILWAY_ENVIRONMENT"))
+    )
+    if is_prod and not app.config.get("TESTING"):
+        app.config["SESSION_COOKIE_SECURE"] = os.getenv("SESSION_COOKIE_SECURE", "true").lower() != "false"
+    else:
+        app.config["SESSION_COOKIE_SECURE"] = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=1)
+
+    # Server-Side Session Interface (PostgreSQL-backed opaque sessions)
+    from dashboard.sessions import PostgresSessionInterface
+    app.session_interface = PostgresSessionInterface()
+
+    # Reverse Proxy Header Handling (Render / Cloudflare / Nginx)
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
 
     # Register Blueprints
     app.register_blueprint(admin_bp)
@@ -94,30 +126,64 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
     app.register_blueprint(quality_bp)
     app.register_blueprint(production_bp)
     app.register_blueprint(external_trigger_bp)
+    app.register_blueprint(insights_bp)
+
+    @app.before_request
+    def assign_request_id():
+        """Extracts and validates X-Request-ID or generates a unique correlation ID."""
+        import re
+        req_id = request.headers.get("X-Request-ID") or request.headers.get("X-Correlation-ID")
+        if req_id and isinstance(req_id, str):
+            clean_id = re.sub(r"[^a-zA-Z0-9_-]", "", req_id.strip())[:64]
+            g.request_id = clean_id if clean_id else secrets.token_hex(16)
+        else:
+            g.request_id = secrets.token_hex(16)
+        g.correlation_id = g.request_id
 
     @app.before_request
     def check_first_run_setup():
-        """Redirects unconfigured application to /setup if no users exist."""
+        """Redirects unconfigured application to /setup if no administrator accounts exist."""
         if request.endpoint and (
-            request.endpoint in ("auth_ui.setup", "admin_ui.admin_login", "static", "health.health_status", "health.api_health")
+            request.endpoint in (
+                "auth_ui.setup",
+                "auth_ui.login",
+                "auth_ui.register",
+                "auth_ui.forgot_password",
+                "auth_ui.reset_password",
+                "admin_ui.admin_login",
+                "dashboard_ui.landing",
+                "static",
+                "health.health_status",
+                "health.api_health",
+                "health.health_liveness",
+                "health.health_readiness",
+            )
             or request.path.startswith("/api/health")
+            or request.path.startswith("/health")
             or request.path.startswith("/api/external")
             or request.path.startswith("/api/scheduler")
+            or request.path.startswith("/setup")
         ):
             return None
         try:
+            from src.database.admin_repository import AdminRepository
             from src.database.user_repository import UserRepository
+            admin_repo = AdminRepository()
             user_repo = UserRepository()
-            if not user_repo.has_users() and not request.path.startswith("/setup"):
+            if not admin_repo.has_admin() and not user_repo.has_admin():
                 return redirect(url_for("auth_ui.setup"))
         except Exception:
             pass
         return None
 
+    @app.before_request
+    def generate_csp_nonce():
+        """Generates a cryptographically secure random nonce per HTTP response."""
+        g.csp_nonce = secrets.token_urlsafe(16)
+
     @app.context_processor
-    def inject_user_and_admin():
-        """Injects active user session, admin session details, CSRF token, and app version into Jinja2 templates."""
-        import secrets
+    def inject_template_context():
+        """Injects active user session, admin session details, CSRF token, CSP nonce, and app version into Jinja2 templates."""
         from src.core.version import get_version_info
         
         token = session.get("admin_csrf_token") or session.get("user_csrf_token")
@@ -126,9 +192,20 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
             session["user_csrf_token"] = token
             session["admin_csrf_token"] = token
 
+        user_id = session.get("user_id") or session.get("admin_user_id")
+        saved_count = 0
+        if user_id:
+            try:
+                from src.database.opportunity_repository import OpportunityRepository
+                saved_count = OpportunityRepository().count_saved_opportunities(str(user_id))
+            except Exception:
+                saved_count = 0
+
         return {
             "app_info": get_version_info(),
             "csrf_token": token,
+            "csp_nonce": getattr(g, "csp_nonce", ""),
+            "saved_count": saved_count,
             "current_user": {
                 "id": session.get("user_id"),
                 "username": session.get("username", "Guest"),
@@ -163,7 +240,11 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
 
     @app.after_request
     def apply_security_headers(response):
-        """Applies OWASP Top 10 Security Headers, anti-caching, and removes version disclosure."""
+        """Applies OWASP Top 10 Security Headers, strict CSP with per-response nonce, anti-caching, and removes version disclosure."""
+        nonce = getattr(g, "csp_nonce", "")
+        nonce_part = f"'nonce-{nonce}'" if nonce else ""
+        script_src = f"'self' {nonce_part}".strip()
+
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
@@ -171,16 +252,23 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.tailwindcss.com; "
-            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://cdn.tailwindcss.com; "
-            "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
+            f"script-src {script_src}; "
+            "style-src 'self' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self' data: https:; "
-            "connect-src 'self' https://cdn.jsdelivr.net https://cdn.tailwindcss.com;"
+            "connect-src 'self'; "
+            "object-src 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self'; "
+            "frame-ancestors 'none';"
         )
         response.headers.pop("Server", None)
         response.headers.pop("X-Powered-By", None)
+        req_id = getattr(g, "request_id", "")
+        if req_id:
+            response.headers["X-Request-ID"] = req_id
 
-        if not request.path.startswith("/static") and request.path not in ("/", "/robots.txt", "/sitemap.xml", "/api/health", "/health"):
+        if not request.path.startswith("/static") and not request.path.startswith("/health") and not request.path.startswith("/api/health") and request.path not in ("/", "/robots.txt", "/sitemap.xml"):
             response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"
@@ -189,10 +277,11 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
 
     @app.errorhandler(500)
     def handle_500_error(e):
-        logger.exception(f"500 Internal Server Error on {request.path}: {e}")
+        req_id = getattr(g, "request_id", "unknown")
+        logger.error(f"500 Internal Server Error [request_id={req_id}] on {request.path}: {e}", exc_info=True)
         if request.path.startswith("/api/") or request.path.startswith("/admin/api/") or request.headers.get("Accept") == "application/json":
-            return jsonify({"status": "failed", "error": "Internal Server Error"}), 500
-        return jsonify({"status": "failed", "error": "An unexpected server error occurred. Please try again later."}), 500
+            return jsonify({"status": "failed", "error": "Internal Server Error", "request_id": req_id}), 500
+        return jsonify({"status": "failed", "error": "An unexpected server error occurred. Please try again later.", "request_id": req_id}), 500
 
     @app.errorhandler(401)
     def handle_401_error(e):
@@ -210,7 +299,15 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
     def handle_409_error(e):
         if request.path.startswith("/api/") or request.path.startswith("/admin/api/") or request.headers.get("Accept") == "application/json":
             return jsonify({"status": "failed", "error": "Conflict. A scan or process is already running."}), 409
-        return jsonify({"status": "failed", "error": "Conflict. Operation cannot be completed right now."}), 409
+        return jsonify({"status": "failed", "error": "Conflict. Action cannot be completed in current state."}), 409
+
+    @app.errorhandler(413)
+    def handle_413_error(e):
+        logger.warning(f"413 Request Entity Too Large on {request.path}: {e}")
+        if request.path.startswith("/api/") or request.path.startswith("/admin/api/") or request.headers.get("Accept") == "application/json":
+            return jsonify({"status": "failed", "error": "Payload Too Large. Request body exceeds maximum limit."}), 413
+        return jsonify({"status": "failed", "error": "Request entity exceeds maximum permitted size."}), 413
+
 
     @app.errorhandler(404)
     def handle_404_error(e):
@@ -230,4 +327,4 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
 
 if __name__ == "__main__":
     app = create_app()
-    app.run(host=DashboardConfig.HOST, port=DashboardConfig.PORT, debug=True)
+    app.run(host=DashboardConfig.HOST, port=DashboardConfig.PORT, debug=DashboardConfig.DEBUG)

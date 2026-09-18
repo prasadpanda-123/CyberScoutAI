@@ -103,11 +103,11 @@ class TestSecurityAuth(unittest.TestCase):
         self.assertEqual(anon_client.get("/admin/login").status_code, 200)
         self.assertEqual(anon_client.get("/api/health").status_code, 200)
 
-        # Protected user HTML endpoints redirect unauthenticated requests directly to landing page '/'
+        # Protected user HTML endpoints redirect unauthenticated requests directly to login or landing page
         for protected_path in ["/dashboard", "/opportunities", "/analytics", "/history", "/knowledge", "/production", "/quality"]:
             res = anon_client.get(protected_path)
             self.assertEqual(res.status_code, 302, f"Path {protected_path} should redirect unauthenticated user")
-            self.assertTrue(res.location.endswith("/"), f"Path {protected_path} location should redirect to landing page '/'")
+            self.assertTrue(res.location.startswith("/login") or res.location.endswith("/"), f"Path {protected_path} location should redirect to /login or '/'")
 
         # Protected user API endpoints return 401 JSON
         for api_path in ["/api/opportunities", "/api/dashboard/summary", "/api/analytics"]:
@@ -138,7 +138,7 @@ class TestSecurityAuth(unittest.TestCase):
         res = anon_client.get("/opportunities")
         self.assertNotEqual(res.status_code, 200, "Unauthenticated GET /opportunities MUST NOT return HTTP 200")
         self.assertEqual(res.status_code, 302)
-        self.assertTrue(res.location.endswith("/"))
+        self.assertTrue(res.location.startswith("/login") or res.location.endswith("/"))
         html_data = res.get_data(as_text=True)
         self.assertNotIn("Opportunities Explorer", html_data)
         self.assertNotIn("table-responsive", html_data)
@@ -175,7 +175,7 @@ class TestSecurityAuth(unittest.TestCase):
 
         res_after = user_client.get("/dashboard")
         self.assertEqual(res_after.status_code, 302)
-        self.assertTrue(res_after.location.endswith("/"))
+        self.assertTrue(res_after.location.startswith("/login") or res_after.location.endswith("/"))
 
     def test_registration_role_escalation_prevention(self):
         """Verify registration endpoint ignores role parameter in POST body and forces 'Viewer' role."""

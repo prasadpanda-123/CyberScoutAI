@@ -1,0 +1,615 @@
+{
+  "roles": [
+    {
+      "role": "anon",
+      "super": false,
+      "bypassrls": false,
+      "canlogin": false
+    },
+    {
+      "role": "authenticated",
+      "super": false,
+      "bypassrls": false,
+      "canlogin": false
+    },
+    {
+      "role": "cyberscout_app",
+      "super": false,
+      "bypassrls": false,
+      "canlogin": true
+    },
+    {
+      "role": "postgres",
+      "super": false,
+      "bypassrls": true,
+      "canlogin": true
+    },
+    {
+      "role": "service_role",
+      "super": false,
+      "bypassrls": true,
+      "canlogin": false
+    }
+  ],
+  "tables": [
+    {
+      "table_name": "Admins",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "AppLogs",
+      "rls_enabled": false,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "AuditLogs",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "EmailHistory",
+      "rls_enabled": false,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "Keywords",
+      "rls_enabled": false,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "LoginAttempts",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "NotificationOutbox",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "Opportunities",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "OpportunityDuplicatesArchive",
+      "rls_enabled": false,
+      "rls_forced": false,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "PendingMfa",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "Preferences",
+      "rls_enabled": false,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "SavedOpportunities",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "ScanJobs",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "SearchHistory",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "ServerSessions",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "SourceHealth",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "Sources",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "Statistics",
+      "rls_enabled": false,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "UserPreferences",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "UserSearchHistory",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "Users",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "alembic_version",
+      "rls_enabled": false,
+      "rls_forced": false,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "scheduler_state",
+      "rls_enabled": false,
+      "rls_forced": true,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "scheduler_webhook_requests",
+      "rls_enabled": false,
+      "rls_forced": false,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    },
+    {
+      "table_name": "schema_version",
+      "rls_enabled": false,
+      "rls_forced": false,
+      "owner": "postgres",
+      "cyberscout_app_privileges": [
+        "DELETE",
+        "INSERT",
+        "SELECT",
+        "UPDATE"
+      ]
+    }
+  ],
+  "policies": [
+    {
+      "table": "Admins",
+      "name": "admins_policy",
+      "roles": [
+        "public"
+      ],
+      "command": "ALL",
+      "permissive": "PERMISSIVE",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table": "AppLogs",
+      "name": "applogs_insert",
+      "roles": [
+        "public"
+      ],
+      "command": "INSERT",
+      "permissive": "PERMISSIVE",
+      "using": null,
+      "with_check": "true"
+    },
+    {
+      "table": "AuditLogs",
+      "name": "audit_append_only",
+      "roles": [
+        "public"
+      ],
+      "command": "INSERT",
+      "permissive": "PERMISSIVE",
+      "using": null,
+      "with_check": "true"
+    },
+    {
+      "table": "AuditLogs",
+      "name": "audit_no_delete",
+      "roles": [
+        "public"
+      ],
+      "command": "DELETE",
+      "permissive": "PERMISSIVE",
+      "using": "false",
+      "with_check": null
+    },
+    {
+      "table": "AuditLogs",
+      "name": "audit_no_update",
+      "roles": [
+        "public"
+      ],
+      "command": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "using": "false",
+      "with_check": null
+    },
+    {
+      "table": "AuditLogs",
+      "name": "audit_select_policy",
+      "roles": [
+        "public"
+      ],
+      "command": "SELECT",
+      "permissive": "PERMISSIVE",
+      "using": "true",
+      "with_check": null
+    },
+    {
+      "table": "AuditLogs",
+      "name": "auditlogs_insert",
+      "roles": [
+        "public"
+      ],
+      "command": "INSERT",
+      "permissive": "PERMISSIVE",
+      "using": null,
+      "with_check": "true"
+    },
+    {
+      "table": "EmailHistory",
+      "name": "emailhistory_all",
+      "roles": [
+        "public"
+      ],
+      "command": "ALL",
+      "permissive": "PERMISSIVE",
+      "using": "((current_setting('app.current_user_role'::text, true) = ANY (ARRAY['Admin'::text, 'admin'::text, 'Super Admin'::text, 'Administrator'::text])) OR (current_setting('app.is_service'::text, true) = 'true'::text))",
+      "with_check": null
+    },
+    {
+      "table": "LoginAttempts",
+      "name": "loginattempts_policy",
+      "roles": [
+        "public"
+      ],
+      "command": "ALL",
+      "permissive": "PERMISSIVE",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table": "NotificationOutbox",
+      "name": "notification_outbox_policy",
+      "roles": [
+        "public"
+      ],
+      "command": "ALL",
+      "permissive": "PERMISSIVE",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table": "Opportunities",
+      "name": "opportunity_read_policy",
+      "roles": [
+        "public"
+      ],
+      "command": "SELECT",
+      "permissive": "PERMISSIVE",
+      "using": "true",
+      "with_check": null
+    },
+    {
+      "table": "Opportunities",
+      "name": "opportunity_write_policy",
+      "roles": [
+        "public"
+      ],
+      "command": "ALL",
+      "permissive": "PERMISSIVE",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table": "PendingMfa",
+      "name": "pending_mfa_access_policy",
+      "roles": [
+        "authenticated",
+        "service_role"
+      ],
+      "command": "ALL",
+      "permissive": "PERMISSIVE",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table": "PendingMfa",
+      "name": "pendingmfa_policy",
+      "roles": [
+        "public"
+      ],
+      "command": "ALL",
+      "permissive": "PERMISSIVE",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table": "SavedOpportunities",
+      "name": "savedopportunities_policy",
+      "roles": [
+        "public"
+      ],
+      "command": "ALL",
+      "permissive": "PERMISSIVE",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table": "ScanJobs",
+      "name": "scanjobs_policy",
+      "roles": [
+        "public"
+      ],
+      "command": "ALL",
+      "permissive": "PERMISSIVE",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table": "SearchHistory",
+      "name": "searchhistory_all",
+      "roles": [
+        "public"
+      ],
+      "command": "ALL",
+      "permissive": "PERMISSIVE",
+      "using": "((current_setting('app.current_user_role'::text, true) = ANY (ARRAY['Admin'::text, 'admin'::text, 'Super Admin'::text, 'Administrator'::text])) OR (current_setting('app.is_service'::text, true) = 'true'::text))",
+      "with_check": null
+    },
+    {
+      "table": "SearchHistory",
+      "name": "searchhistory_policy",
+      "roles": [
+        "public"
+      ],
+      "command": "ALL",
+      "permissive": "PERMISSIVE",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table": "ServerSessions",
+      "name": "server_sessions_access_policy",
+      "roles": [
+        "authenticated",
+        "service_role"
+      ],
+      "command": "ALL",
+      "permissive": "PERMISSIVE",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table": "ServerSessions",
+      "name": "serversessions_policy",
+      "roles": [
+        "public"
+      ],
+      "command": "ALL",
+      "permissive": "PERMISSIVE",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table": "SourceHealth",
+      "name": "sourcehealth_policy",
+      "roles": [
+        "public"
+      ],
+      "command": "ALL",
+      "permissive": "PERMISSIVE",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table": "Sources",
+      "name": "sources_policy",
+      "roles": [
+        "public"
+      ],
+      "command": "ALL",
+      "permissive": "PERMISSIVE",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table": "UserPreferences",
+      "name": "userpreferences_policy",
+      "roles": [
+        "public"
+      ],
+      "command": "ALL",
+      "permissive": "PERMISSIVE",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table": "UserSearchHistory",
+      "name": "usersearchhistory_policy",
+      "roles": [
+        "public"
+      ],
+      "command": "ALL",
+      "permissive": "PERMISSIVE",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table": "Users",
+      "name": "users_policy",
+      "roles": [
+        "public"
+      ],
+      "command": "ALL",
+      "permissive": "PERMISSIVE",
+      "using": "true",
+      "with_check": "true"
+    }
+  ]
+}

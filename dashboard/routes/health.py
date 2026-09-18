@@ -39,6 +39,50 @@ def api_health_database():
     return jsonify(metrics), status_code
 
 
+@health_bp.route("/health/live", methods=["GET"])
+@health_bp.route("/api/health/live", methods=["GET"])
+def health_liveness():
+    """
+    Liveness probe: verifies the application worker process is alive and responsive.
+    Does NOT require database or external services to be reachable.
+    """
+    return jsonify({
+        "status": "ok",
+        "service": "CyberScout AI",
+        "alive": True,
+    }), 200
+
+
+@health_bp.route("/health/ready", methods=["GET"])
+@health_bp.route("/api/health/ready", methods=["GET"])
+def health_readiness():
+    """
+    Readiness probe: verifies the application can actively serve user requests.
+    Checks PostgreSQL connectivity without exposing credentials, secrets, or internal paths.
+    """
+    db_mgr = get_db_manager()
+    is_ready = False
+    try:
+        is_ready = bool(db_mgr.ping())
+    except Exception:
+        is_ready = False
+
+    if is_ready:
+        return jsonify({
+            "status": "ok",
+            "service": "CyberScout AI",
+            "ready": True,
+            "database": "connected",
+        }), 200
+    else:
+        return jsonify({
+            "status": "degraded",
+            "service": "CyberScout AI",
+            "ready": False,
+            "database": "unavailable",
+        }), 503
+
+
 @health_bp.route("/health")
 def index():
     """Renders visual system health dashboard or returns JSON health metrics."""

@@ -14,6 +14,7 @@ from src.core.logging import get_logger
 from src.intelligence.planner_models import SearchTask
 from src.models.enums import OpportunityCategory, Status
 from src.models.opportunity import Opportunity
+from src.models.opportunity_dto import NormalizedOpportunityDTO
 
 logger = get_logger(__name__)
 
@@ -31,6 +32,46 @@ class YouTubeRSSCollector(BaseCollector):
     def collector_name(self) -> str:
         return "YouTube RSS Collector"
 
+    def discover(self, task: Optional[SearchTask] = None) -> List[str]:
+        if task and task.target_url:
+            return [task.target_url]
+        return []
+
+    def fetch(self, target: str) -> Any:
+        status_code, content = self.context.http_client.get(target, source_id=self.source_id)
+        if status_code != 200:
+            return None
+        return content
+
+    def validate(self, raw_data: Any) -> bool:
+        return bool(raw_data and isinstance(raw_data, str) and len(raw_data.strip()) > 20)
+
+    def parse(self, raw_payload: Any) -> List[Dict[str, Any]]:
+        if not raw_payload:
+            return []
+        return self._parse_youtube_atom(raw_payload)
+
+    def normalize(self, raw_item: Dict[str, Any]) -> Optional[NormalizedOpportunityDTO]:
+        title = raw_item.get("title", "Untitled Video").strip()
+        url = raw_item.get("link", "").strip()
+        if not title or not url:
+            return None
+        from src.models.enums import OpportunityType, PricingType
+        return NormalizedOpportunityDTO(
+            title=f"Tutorial: {title}",
+            url=url,
+            source_id=self.source_id,
+            description=raw_item.get("description", ""),
+            provider=raw_item.get("author", "YouTube Channel"),
+            opportunity_type=OpportunityType.COURSE.value,
+            categories=["tutorial", "course"],
+            tags=["youtube", "tutorial", "video"],
+            start_date=raw_item.get("published_date"),
+            pricing_type=PricingType.FREE.value,
+            is_free=True,
+            raw_payload=raw_item,
+        )
+
     def collect(self, task: SearchTask) -> CollectorResult:
         """
         Executes YouTube RSS collection.
@@ -46,15 +87,15 @@ class YouTubeRSSCollector(BaseCollector):
         opportunities: List[Dict[str, Any]] = []
 
         try:
-            status_code, content = self.context.http_client.get(target_url, source_id=self.source_id)
-            if status_code != 200:
+            content = self.fetch(target_url)
+            if content is None:
                 return CollectorResult(
                     source_id=self.source_id,
                     status="failed",
-                    errors=[f"YouTube RSS feed returned status {status_code} for URL '{target_url}'."],
+                    errors=[f"YouTube RSS feed failed for URL '{target_url}'."],
                 )
 
-            raw_entries = self._parse_youtube_atom(content)
+            raw_entries = self.parse(content)
             for entry in raw_entries:
                 norm = self.normalize_item(entry, task)
                 if norm:

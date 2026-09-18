@@ -9,6 +9,9 @@ from src.database.connection import DatabaseManager
 from src.database.user_repository import UserRepository
 
 
+from src.database.admin_repository import AdminRepository
+
+
 @pytest.fixture
 def client(monkeypatch):
     """Creates a test Flask client configured with an isolated test database."""
@@ -16,13 +19,15 @@ def client(monkeypatch):
     db_mgr.initialize_database()
 
     user_repo = UserRepository(db_manager=db_mgr)
-    # Seed Super Admin
+    admin_repo = AdminRepository(db_manager=db_mgr)
+
+    # Seed Admin in Admins table (isolated identity boundary)
     try:
-        user_repo.create_user(
+        admin_repo.create_admin(
             username="superadmin",
             email="superadmin@cyberscout.ai",
             password="SuperAdminPass123!",
-            role="Super Admin",
+            role="Admin",
         )
     except Exception:
         pass
@@ -40,6 +45,7 @@ def client(monkeypatch):
     audit_repo = AuditLogRepository(db_manager=db_mgr)
 
     monkeypatch.setattr("dashboard.routes.admin.user_repo", user_repo)
+    monkeypatch.setattr("dashboard.routes.admin.admin_repo", admin_repo)
     monkeypatch.setattr("dashboard.routes.auth.user_repo", user_repo)
     monkeypatch.setattr("dashboard.routes.admin.audit_repo", audit_repo)
 
@@ -54,7 +60,8 @@ def client(monkeypatch):
     try:
         conn = db_mgr.get_connection()
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM \"Users\" WHERE email IN ('superadmin@cyberscout.ai', 'normaluser@cyberscout.ai', 'crafted_admin@cyberscout.ai');")
+        cursor.execute("DELETE FROM \"Users\" WHERE email IN ('normaluser@cyberscout.ai', 'crafted_admin@cyberscout.ai');")
+        cursor.execute("DELETE FROM \"Admins\" WHERE email IN ('superadmin@cyberscout.ai');")
         conn.commit()
         cursor.close()
     except Exception:

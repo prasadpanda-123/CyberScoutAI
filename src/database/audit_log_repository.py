@@ -35,7 +35,8 @@ class AuditLogRepository:
         safe_user_id = None
         if user_id is not None:
             try:
-                candidate_id = int(user_id)
+                import uuid
+                candidate_id = str(uuid.UUID(str(user_id).strip()))
                 # Verify that candidate_id exists in Users table to satisfy fk_auditlogs_user_id constraint
                 conn = self.db_manager.get_connection()
                 chk_cursor = conn.cursor()
@@ -101,6 +102,8 @@ class AuditLogRepository:
         """
         Retrieves paginated audit log entries with optional filters.
         """
+        page = max(1, int(page))
+        limit = max(1, min(int(limit), 200))
         where_clauses: List[str] = []
         params: List[Any] = []
 

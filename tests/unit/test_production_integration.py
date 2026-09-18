@@ -68,7 +68,7 @@ class TestProductionIntegration(unittest.TestCase):
 
         res = client.get("/admin/collectors")
         self.assertEqual(res.status_code, 200)
-        self.assertIn(b"Collectors Management", res.data)
+        self.assertIn(b"Collector Management", res.data)
 
     def test_admin_api_db_info_post_returns_200(self):
         """Verify POST /admin/api/db/info returns JSON 200."""
@@ -99,13 +99,15 @@ class TestProductionIntegration(unittest.TestCase):
         app = create_app(config_class=TestConfig)
         client = app.test_client()
 
+        csrf_tok = "test_csrf_token_run_123"
         with client.session_transaction() as sess:
             sess["admin_authenticated"] = True
             sess["admin_user_id"] = 1
             sess["admin_username"] = "admin"
             sess["admin_role"] = "Admin"
+            sess["admin_csrf_token"] = csrf_tok
 
-        res = client.post("/api/run", json={"dry_run": True})
+        res = client.post("/api/run", json={"dry_run": True, "csrf_token": csrf_tok})
         self.assertIn(res.status_code, (202, 409, 503))
         if res.status_code == 202:
             data = res.get_json()
@@ -127,8 +129,14 @@ class TestProductionIntegration(unittest.TestCase):
             sess["admin_username"] = "admin"
             sess["admin_role"] = "Admin"
 
-        res = client.get("/api/scan/status/nonexistent_job")
-        self.assertEqual(res.status_code, 404)
+        # Malformed job format returns 400
+        res_bad = client.get("/api/scan/status/nonexistent_job")
+        self.assertEqual(res_bad.status_code, 400)
+
+        # Well-formed job ID returns status JSON (200)
+        res_valid = client.get("/api/scan/status/00000000-0000-0000-0000-000000000000")
+        self.assertEqual(res_valid.status_code, 200)
+        self.assertIn("status", res_valid.get_json())
 
 
 if __name__ == "__main__":

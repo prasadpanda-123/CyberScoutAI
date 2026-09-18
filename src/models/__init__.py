@@ -15,9 +15,22 @@ from src.models.enums import (
     SourceStatus,
     SourceType,
     Status,
+    SourceFamily,
+    OpportunityType,
+    PricingType,
+    StipendType,
+    CertificateCost,
+    CertificateAvailable,
+    TrustTier,
+    HealthStatus,
+    CollectorFailureClass,
+    TermsReviewStatus,
+    RobotsPolicy,
+    AccessMethod,
 )
 from src.models.keyword import Keyword
 from src.models.opportunity import Opportunity
+from src.models.opportunity_dto import NormalizedOpportunityDTO
 from src.models.search_models import SearchQuery, SearchResult
 from src.models.source import Source
 from src.models.stats import ApplicationStatistics, Preferences
@@ -26,6 +39,7 @@ from src.models.types import JsonDict, OpportunityId, RunId, ScoreBreakdown, Sou
 __all__ = [
     # Models
     "Opportunity",
+    "NormalizedOpportunityDTO",
     "Source",
     "Keyword",
     "SearchQuery",

@@ -10,6 +10,7 @@ import time
 from typing import Any, Dict, List, Optional
 import uuid
 
+from src.core.exceptions import DatabaseConnectionError
 from src.core.logging import get_logger
 from src.database.connection import DatabaseManager
 from src.database.knowledge_manager import KnowledgeManager
@@ -22,6 +23,9 @@ from src.models.opportunity import Opportunity
 from src.processors.pipeline import ProcessingPipeline
 from src.notifier.email_client import EmailClient
 from src.automation.metrics import RunMetrics
+from src.intelligence.data_quality_engine import DataQualityEngine
+from src.intelligence.lifecycle_engine import LifecycleEngine
+from src.intelligence.source_anomaly_detector import SourceAnomalyDetector
 
 logger = get_logger(__name__)
 
@@ -142,23 +146,40 @@ def run_pipeline_once(
 
         for item in items:
             norm_desc = extract_normalized_description(item)
-            if isinstance(item, Opportunity):
+            if hasattr(item, "to_opportunity"):
+                try:
+                    opp = item.to_opportunity()
+                    if norm_desc:
+                        opp.description = norm_desc
+                    raw_items.append(opp)
+                except Exception as dto_err:
+                    logger.debug(f"Skipping unconvertible DTO item from {sid}: {dto_err}")
+            elif isinstance(item, Opportunity):
                 item.description = norm_desc
                 raw_items.append(item)
             elif isinstance(item, dict):
                 try:
-                    opp = Opportunity(
-                        title=item.get("title", "Untitled"),
-                        url=item.get("url", item.get("link", "")),
-                        source_id=item.get("source_id", sid),
-                        description=norm_desc,
-                        category=item.get("category", "other"),
-                        published_date=item.get("published", item.get("published_date", None)),
-                        raw_data=item,
-                    )
+                    from src.models.opportunity_dto import NormalizedOpportunityDTO
+                    # If dict has raw_payload or DTO fields, convert via DTO for rich fidelity
+                    dto = NormalizedOpportunityDTO.from_dict({**item, "source_id": item.get("source_id", sid)})
+                    opp = dto.to_opportunity()
+                    if norm_desc:
+                        opp.description = norm_desc
                     raw_items.append(opp)
-                except Exception as conv_err:
-                    logger.debug(f"Skipping unconvertible item from {sid}: {conv_err}")
+                except Exception:
+                    try:
+                        opp = Opportunity(
+                            title=item.get("title", "Untitled"),
+                            url=item.get("url", item.get("link", "")),
+                            source_id=item.get("source_id", sid),
+                            description=norm_desc,
+                            category=item.get("category", "other"),
+                            published_date=item.get("published", item.get("published_date", None)),
+                            raw_data=item,
+                        )
+                        raw_items.append(opp)
+                    except Exception as conv_err:
+                        logger.debug(f"Skipping unconvertible item from {sid}: {conv_err}")
 
         pct = 15.0 + ((idx + 1) / total_results) * 45.0
         _notify("collecting", pct, f"Collected from {sid}", len(raw_items))
@@ -170,12 +191,36 @@ def run_pipeline_once(
     metrics.processing_time = time.time() - process_start
     duplicates_removed = len(raw_items) - len(processed_items)
 
-    # 4. Quality Intelligence Evaluation Phase
+    # 4. Quality Intelligence & Phase 6 Data Quality Engine Evaluation Phase
     _notify("processing", 75.0, "Evaluating Quality Intelligence", len(processed_items))
     quality_start = time.time()
     quality_evaluated = qe.evaluate_batch(processed_items)
-    accepted_quality = [opp for opp in quality_evaluated if not opp.is_rejected]
-    rejected_items = [opp for opp in quality_evaluated if opp.is_rejected]
+
+    dqe = DataQualityEngine()
+    lifecycle_engine = LifecycleEngine()
+    quarantined_items: List[Opportunity] = []
+    dq_accepted: List[Opportunity] = []
+
+    for opp in quality_evaluated:
+        val_res = dqe.evaluate(opp)
+        opp.completeness_score = val_res.completeness_score
+        if val_res.is_quarantined:
+            opp.quality_status = "quarantined"
+            opp.quarantine_reason = val_res.quarantine_reason
+            opp.is_rejected = True
+            quarantined_items.append(opp)
+        else:
+            opp.quality_status = val_res.quality_status.value
+            opp.quarantine_reason = None
+            if not opp.is_rejected:
+                lc_res = lifecycle_engine.evaluate(opp)
+                opp.lifecycle_status = lc_res.lifecycle_status.value
+                dq_accepted.append(opp)
+            else:
+                quarantined_items.append(opp)
+
+    accepted_quality = dq_accepted
+    rejected_items = quarantined_items
     quality_time = time.time() - quality_start
 
     # 5. Production Intelligence Evaluation Phase
@@ -194,6 +239,7 @@ def run_pipeline_once(
     db_start = time.time()
     saved_count = 0
     persistence_success = False
+    persist_res = None
     sources_str = ",".join(getattr(search_plan, "sources_targeted", []))
 
     if not dry_run:
@@ -219,31 +265,90 @@ def run_pipeline_once(
                     sql_init_hist,
                     (run_id, started_iso, started_iso, "running", sources_str, len(raw_items), len(ranked_items), 0, ""),
                 )
+        except Exception as e:
+            logger.error(f"Failed to initialize SearchHistory record: {e}")
+
+        persistence_error = None
+        persist_res = None
+        try:
+            with db.transaction() as cursor:
                 for opp in ranked_items:
                     opp.run_id = run_id
-                saved_count = km.process_opportunity_batch(ranked_items)
+                for opp in quarantined_items:
+                    opp.run_id = run_id
+                persist_res = km.process_opportunity_batch(ranked_items + quarantined_items)
+                saved_count = getattr(persist_res, "saved_count", int(persist_res))
             persistence_success = True
+
+            try:
+                km.opp_repo.update_lifecycle_states()
+            except Exception as lce:
+                logger.warning(f"Could not update lifecycle states: {lce}")
+
+            # Phase 7: Process harvest notification events safely (never breaks harvest)
+            if persist_res:
+                try:
+                    from src.intelligence.notification_engine import NotificationEngine
+                    notif_engine = NotificationEngine(db_manager=db)
+                    notif_engine.process_harvest_events(
+                        new_items=getattr(persist_res, "new_items", []),
+                        updated_items=getattr(persist_res, "updated_items", []),
+                        reopened_items=getattr(persist_res, "reopened_items", []),
+                    )
+                except Exception as ne_err:
+                    logger.error(f"[Pipeline] NotificationEngine enqueue failed (harvest preserved): {ne_err}")
         except Exception as hist_err:
+            persistence_error = str(hist_err)
             logger.error(f"Database persistence failed: {hist_err}")
             persistence_success = False
+            saved_count = 0
     else:
         persistence_success = True
+        persistence_error = None
 
     metrics.db_update_time = time.time() - db_start
 
-    # 8. Notifications Phase — Strictly gated on successful database persistence
+    new_count = getattr(persist_res, "new_count", 0) if persist_res else 0
+    updated_count = getattr(persist_res, "updated_count", 0) if persist_res else 0
+    unchanged_count = getattr(persist_res, "unchanged_count", 0) if persist_res else 0
+    batch_dups = getattr(persist_res, "duplicate_count", 0) if persist_res else 0
+
+    # 8. Notifications Phase — Strictly gated on successful database persistence and presence of new/updated items
     notify_start = time.time()
     email_sent = False
+    email_error = None
     if not dry_run and send_email:
         if not persistence_success:
             logger.error("Email notification cancelled: Database persistence failed.")
             email_sent = False
+            email_error = "Database persistence failed"
         elif not db.ping():
             logger.error("Email notification cancelled: Database connection unreachable.")
             email_sent = False
+            email_error = "Database connection unreachable"
+        elif new_count == 0 and updated_count == 0:
+            logger.info("[Pipeline] Email notification skipped: 0 new or updated opportunities discovered.")
+            email_sent = False
+            email_error = None
         else:
-            email_res = ec.send_daily_digest()
-            email_sent = email_res.get("status") == "success"
+            try:
+                # Phase 7: Dispatch pending notifications via NotificationService
+                try:
+                    from src.services.notification_service import NotificationService
+                    notif_service = NotificationService(db_manager=db)
+                    notif_service.dispatch_pending()
+                except Exception as nse:
+                    logger.error(f"[Pipeline] Notification outbox dispatch error: {nse}")
+
+                # Call legacy/digest email client for backward-compatibility with tests/reporting
+                email_res = ec.send_daily_digest()
+                email_sent = email_res.get("status") == "success"
+                if not email_sent:
+                    email_error = email_res.get("error") or "Email sending failed"
+            except Exception as e:
+                logger.error(f"Failed to send email notification: {e}")
+                email_sent = False
+                email_error = str(e)
     metrics.notification_time = time.time() - notify_start
 
     finished_time = time.time()
@@ -259,14 +364,17 @@ def run_pipeline_once(
                 status = ?,
                 items_collected = ?,
                 items_after_dedup = ?,
-                items_emailed = ?
+                items_emailed = ?,
+                errors = ?
             WHERE run_id = ?;
         """
+        history_status = "success" if persistence_success else "failed"
+        history_err = "" if persistence_success else (persistence_error or "Persistence failed")
         try:
             with db.transaction() as cursor:
                 cursor.execute(
                     sql_update_hist,
-                    (finished_iso, "success", len(raw_items), len(ranked_items), saved_count if email_sent else 0, run_id),
+                    (finished_iso, history_status, len(raw_items), len(ranked_items), saved_count if email_sent else 0, history_err, run_id),
                 )
         except Exception as e:
             logger.warning(f"Could not update pipeline run history in DB: {e}")
@@ -286,11 +394,17 @@ def run_pipeline_once(
     log_block.extend([
         f"Raw Items:\n{len(raw_items)}",
         "",
-        f"Duplicates Removed:\n{duplicates_removed}",
+        f"Duplicates Removed:\n{duplicates_removed + batch_dups}",
         "",
         f"Quality Accepted:\n{len(accepted_items)}",
         "",
         f"Quality Rejected:\n{len(rejected_items)}",
+        "",
+        f"New Opportunities:\n{new_count}",
+        "",
+        f"Updated Opportunities:\n{updated_count}",
+        "",
+        f"Unchanged Opportunities:\n{unchanged_count}",
         "",
         f"Saved:\n{saved_count if not dry_run else 0}",
         "",
@@ -299,9 +413,14 @@ def run_pipeline_once(
     ])
     logger.info("\n".join(log_block))
 
+    pipeline_status = "success" if persistence_success else "failed"
+    pipeline_success = persistence_success
+
     return {
-        "success": True,
-        "status": "success",
+        "success": pipeline_success,
+        "status": pipeline_status,
+        "error": persistence_error,
+        "email_error": email_error,
         "run_id": run_id,
         "started": started_iso,
         "finished": finished_iso,
@@ -311,7 +430,10 @@ def run_pipeline_once(
         "raw_items": len(raw_items),
         "items_collected": len(raw_items),
         "items_processed": len(processed_items),
-        "duplicates": duplicates_removed,
+        "duplicates": duplicates_removed + batch_dups,
+        "items_new": new_count,
+        "items_updated": updated_count,
+        "items_unchanged": unchanged_count,
         "accepted": len(accepted_items),
         "items_quality_accepted": len(accepted_items),
         "rejected": len(rejected_items),

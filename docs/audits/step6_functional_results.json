@@ -1,0 +1,22 @@
+{
+  "1_migration_idempotency": "PASS",
+  "2_health_endpoints": "PASS",
+  "3_admin_setup": "PASS",
+  "4_user_registration_login": "PASS",
+  "5_admin_login": "PASS",
+  "6_admin_mfa": "PASS",
+  "7_session_lifecycle": "PASS",
+  "8_csrf_protection": "PASS",
+  "9_user_isolation": "PASS",
+  "10_admin_authorization": "PASS",
+  "11_opportunity_deduplication": "PASS",
+  "12_search_filtering": "PASS",
+  "13_saved_opportunities": "PASS",
+  "14_user_preferences": "PASS",
+  "15_notification_outbox": "PASS",
+  "16_audit_logs": "PASS",
+  "17_scan_jobs": "PASS",
+  "18_webhook_idempotency": "PASS",
+  "19_failure_retry": "PASS",
+  "20_cleanup": "PASS"
+}

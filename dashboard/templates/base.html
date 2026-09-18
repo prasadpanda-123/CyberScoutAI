@@ -18,71 +18,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   
-  <!-- Tailwind CSS CDN with Stitch Design System Tokens -->
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <script>
-    tailwind.config = {
-      darkMode: "class",
-      theme: {
-        extend: {
-          colors: {
-            "surface-bright": "#31394d",
-            "on-secondary": "#00354a",
-            "bg-card-hover": "#1E293B",
-            "outline": "#89929b",
-            "surface-container-lowest": "#060e20",
-            "text-muted": "#64748B",
-            "on-secondary-container": "#00374d",
-            "on-tertiary": "#4b2800",
-            "error-container": "#93000a",
-            "inverse-surface": "#dae2fd",
-            "primary": "#93ccff",
-            "surface-container": "#171f33",
-            "info": "#06B6D4",
-            "primary-fixed": "#cce5ff",
-            "on-primary-fixed": "#001d31",
-            "on-error-container": "#ffdad6",
-            "on-tertiary-container": "#412200",
-            "outline-variant": "#3f4850",
-            "surface-container-high": "#222a3d",
-            "danger": "#EF4444",
-            "primary-container": "#3198dc",
-            "surface-container-highest": "#2d3449",
-            "border-subtle": "#1E293B",
-            "surface-variant": "#2d3449",
-            "surface": "#0b1326",
-            "on-primary-container": "#002c47",
-            "warning": "#F59E0B",
-            "on-surface-variant": "#bfc7d2",
-            "on-background": "#dae2fd",
-            "text-secondary": "#94A3B8",
-            "primary-fixed-dim": "#93ccff",
-            "on-surface": "#dae2fd",
-            "secondary-fixed-dim": "#7bd0ff",
-            "error": "#ffb4ab",
-            "surface-dim": "#0b1326",
-            "bg-surface": "#0B0F19",
-            "secondary-fixed": "#c4e7ff",
-            "surface-container-low": "#131b2e",
-            "bg-body": "#070B14",
-            "text-primary": "#F8FAFC",
-            "success": "#10B981",
-            "admin-accent": "#EF4444"
-          },
-          fontFamily: {
-            "sans": ["Inter", "system-ui", "sans-serif"],
-            "mono": ["JetBrains Mono", "monospace"]
-          },
-          spacing: {
-            "sidebar-width": "260px"
-          }
-        }
-      }
-    }
-  </script>
-  
+  <!-- Precompiled Static Tailwind CSS & Stitch Design System Theme -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
-  <script>
+  <script nonce="{{ csp_nonce }}">
     (function() {
       const savedTheme = localStorage.getItem('cyberscout-theme') || 'dark';
       document.documentElement.setAttribute('data-theme', savedTheme);
@@ -101,11 +40,11 @@
 <body class="bg-bg-body text-text-primary antialiased min-h-screen flex flex-col selection:bg-primary-container selection:text-on-primary-container">
 
   <!-- Mobile Overlay -->
-  <div id="mobileOverlay" class="fixed inset-0 bg-black/60 z-40 hidden md:hidden" onclick="toggleMobileSidebar()"></div>
+  <div id="mobileOverlay" class="fixed inset-0 bg-black/60 z-40 hidden md:hidden"></div>
 
   <!-- Floating Sidebar Open Button (Notion-style) -->
-  <button type="button" id="sidebarExpandBtn" onclick="handleSidebarOpen()" class="sidebar-expand-btn fixed top-3.5 left-3.5 z-40" title="Open sidebar (Ctrl+\)">
-    <svg class="w-4 h-4 text-text-secondary hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  <button type="button" id="sidebarExpandBtn" class="sidebar-expand-btn fixed top-3.5 left-3.5 z-40" title="Open sidebar (Ctrl+\)" aria-label="Open sidebar">
+    <svg class="w-4 h-4 text-text-secondary hover:text-white transition-colors pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
     </svg>
   </button>
@@ -125,14 +64,14 @@
       </a>
       <div class="flex items-center">
         <!-- Notion Retract Button (Desktop) -->
-        <button type="button" id="sidebarCollapseBtn" onclick="toggleDesktopSidebar()" class="sidebar-collapse-btn" title="Close sidebar (Ctrl+\)">
-          <svg class="w-4 h-4 text-text-muted hover:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <button type="button" id="sidebarCollapseBtn" class="sidebar-collapse-btn" title="Close sidebar (Ctrl+\)" aria-label="Collapse sidebar">
+          <svg class="w-4 h-4 text-text-muted hover:text-primary transition-colors pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
           </svg>
         </button>
         <!-- Mobile Drawer Close Button -->
-        <button type="button" class="md:hidden p-1.5 text-text-muted hover:text-text-primary ml-1" onclick="toggleMobileSidebar()">
-          <span class="material-symbols-outlined text-[20px]">close</span>
+        <button type="button" id="sidebarMobileCloseBtn" class="md:hidden p-1.5 text-text-muted hover:text-text-primary ml-1" aria-label="Close sidebar">
+          <span class="material-symbols-outlined text-[20px] pointer-events-none">close</span>
         </button>
       </div>
     </div>
@@ -142,35 +81,45 @@
       <div class="px-2 mb-1 text-[11px] font-semibold text-text-muted uppercase tracking-wider">Workspace</div>
       
       <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors {% if active_page == 'dashboard' %}text-primary font-bold bg-surface-container-high border-l-2 border-primary{% else %}text-on-surface-variant hover:bg-bg-card-hover hover:text-on-surface{% endif %}" href="/dashboard">
-        <span class="material-symbols-outlined text-[20px]" {% if active_page == 'dashboard' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>dashboard</span>
+        <span class="material-symbols-outlined text-[20px] {% if active_page == 'dashboard' %}icon-fill{% endif %}">dashboard</span>
         <span class="text-sm">Overview</span>
       </a>
 
       <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors {% if active_page == 'opportunities' and not (request.args.get('view') == 'saved') %}text-primary font-bold bg-surface-container-high border-l-2 border-primary{% else %}text-on-surface-variant hover:bg-bg-card-hover hover:text-on-surface{% endif %}" href="/opportunities">
-        <span class="material-symbols-outlined text-[20px]" {% if active_page == 'opportunities' and not (request.args.get('view') == 'saved') %}style="font-variation-settings: 'FILL' 1;"{% endif %}>travel_explore</span>
+        <span class="material-symbols-outlined text-[20px] {% if active_page == 'opportunities' and not (request.args.get('view') == 'saved') %}icon-fill{% endif %}">travel_explore</span>
         <span class="text-sm">Opportunities</span>
       </a>
 
       <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors {% if request.args.get('view') == 'saved' %}text-warning font-bold bg-surface-container-high border-l-2 border-warning{% else %}text-on-surface-variant hover:bg-bg-card-hover hover:text-on-surface{% endif %}" href="/opportunities?view=saved">
-        <span class="material-symbols-outlined text-[20px] text-warning" style="font-variation-settings: 'FILL' 1;">bookmark</span>
+        <span class="material-symbols-outlined text-[20px] text-warning icon-fill">bookmark</span>
         <span class="text-sm">Saved Items</span>
         <span id="navSavedBadge" class="ml-auto text-[11px] font-mono font-bold bg-surface-container-highest text-warning px-2 py-0.5 rounded-full">0</span>
       </a>
 
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors {% if active_page == 'insights' %}text-primary font-bold bg-surface-container-high border-l-2 border-primary{% else %}text-on-surface-variant hover:bg-bg-card-hover hover:text-on-surface{% endif %}" href="/insights">
+        <span class="material-symbols-outlined text-[20px] {% if active_page == 'insights' %}icon-fill{% endif %}">psychology</span>
+        <span class="text-sm">Insights</span>
+      </a>
+
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors {% if active_page == 'analytics' %}text-primary font-bold bg-surface-container-high border-l-2 border-primary{% else %}text-on-surface-variant hover:bg-bg-card-hover hover:text-on-surface{% endif %}" href="/analytics">
+        <span class="material-symbols-outlined text-[20px] {% if active_page == 'analytics' %}icon-fill{% endif %}">bar_chart</span>
+        <span class="text-sm">Analytics</span>
+      </a>
+
       <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors {% if active_page == 'notifications' %}text-primary font-bold bg-surface-container-high border-l-2 border-primary{% else %}text-on-surface-variant hover:bg-bg-card-hover hover:text-on-surface{% endif %}" href="/notifications">
-        <span class="material-symbols-outlined text-[20px]" {% if active_page == 'notifications' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>notifications</span>
+        <span class="material-symbols-outlined text-[20px] {% if active_page == 'notifications' %}icon-fill{% endif %}">notifications</span>
         <span class="text-sm">Notifications</span>
       </a>
 
       <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors {% if active_page == 'reports' %}text-primary font-bold bg-surface-container-high border-l-2 border-primary{% else %}text-on-surface-variant hover:bg-bg-card-hover hover:text-on-surface{% endif %}" href="/reports">
-        <span class="material-symbols-outlined text-[20px]" {% if active_page == 'reports' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>description</span>
+        <span class="material-symbols-outlined text-[20px] {% if active_page == 'reports' %}icon-fill{% endif %}">description</span>
         <span class="text-sm">Reports</span>
       </a>
 
       {% if session.get('role') in ['Admin', 'Super Admin', 'Administrator'] or session.get('admin_authenticated') %}
       <div class="mt-4 pt-3 border-t border-border-subtle px-2 mb-1 text-[11px] font-semibold text-danger uppercase tracking-wider">Administration</div>
       <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-danger hover:bg-danger/10 transition-colors font-medium text-sm" href="/admin/dashboard">
-        <span class="material-symbols-outlined text-[20px] text-danger" style="font-variation-settings: 'FILL' 1;">admin_panel_settings</span>
+        <span class="material-symbols-outlined text-[20px] text-danger icon-fill">admin_panel_settings</span>
         <span>Admin Command</span>
       </a>
       {% endif %}
@@ -257,7 +206,7 @@
     </div>
   </div>
 
-  <script>
+  <script nonce="{{ csp_nonce }}">
     function isDesktop() {
       return window.innerWidth >= 768;
     }
@@ -265,6 +214,24 @@
     function toggleDesktopSidebar() {
       const isCollapsed = document.body.classList.toggle('sidebar-collapsed');
       localStorage.setItem('cyberscout_sidebar_collapsed', isCollapsed ? 'true' : 'false');
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar) {
+        if (isCollapsed) {
+          sidebar.classList.add('-translate-x-full');
+          sidebar.classList.remove('md:translate-x-0');
+        } else {
+          sidebar.classList.remove('-translate-x-full');
+          sidebar.classList.add('md:translate-x-0');
+        }
+      }
+    }
+
+    function handleSidebarCollapse() {
+      if (isDesktop()) {
+        toggleDesktopSidebar();
+      } else {
+        toggleMobileSidebar();
+      }
     }
 
     function handleSidebarOpen() {
@@ -278,30 +245,80 @@
     function toggleMobileSidebar() {
       const sidebar = document.getElementById('sidebar');
       const overlay = document.getElementById('mobileOverlay');
+      if (!sidebar) return;
       const isClosed = sidebar.classList.contains('-translate-x-full');
       if (isClosed) {
         sidebar.classList.remove('-translate-x-full');
-        overlay.classList.remove('hidden');
+        if (overlay) overlay.classList.remove('hidden');
       } else {
         sidebar.classList.add('-translate-x-full');
-        overlay.classList.add('hidden');
+        if (overlay) overlay.classList.add('hidden');
       }
     }
 
-    // Initialize sidebar state on DOM load
-    document.addEventListener('DOMContentLoaded', () => {
+    function setupSidebarEventListeners() {
       const isCollapsed = localStorage.getItem('cyberscout_sidebar_collapsed') === 'true';
       if (isCollapsed && isDesktop()) {
         document.body.classList.add('sidebar-collapsed');
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar) {
+          sidebar.classList.add('-translate-x-full');
+          sidebar.classList.remove('md:translate-x-0');
+        }
       }
       document.documentElement.classList.remove('sidebar-collapsed-init');
-    });
+
+      const collapseBtn = document.getElementById('sidebarCollapseBtn');
+      if (collapseBtn) {
+        collapseBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleSidebarCollapse();
+        });
+      }
+
+      const expandBtn = document.getElementById('sidebarExpandBtn');
+      if (expandBtn) {
+        expandBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleSidebarOpen();
+        });
+      }
+
+      const mobileOverlay = document.getElementById('mobileOverlay');
+      if (mobileOverlay) {
+        mobileOverlay.addEventListener('click', (e) => {
+          e.preventDefault();
+          toggleMobileSidebar();
+        });
+      }
+
+      const mobileCloseBtn = document.getElementById('sidebarMobileCloseBtn');
+      if (mobileCloseBtn) {
+        mobileCloseBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          toggleMobileSidebar();
+        });
+      }
+
+      const scanCloseBtn = document.getElementById('scanModalCloseBtn');
+      if (scanCloseBtn) {
+        scanCloseBtn.addEventListener('click', closeScanModal);
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupSidebarEventListeners);
+    } else {
+      setupSidebarEventListeners();
+    }
 
     // Notion Keyboard Shortcut (Ctrl+\ or Cmd+\)
     document.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
         e.preventDefault();
-        toggleDesktopSidebar();
+        handleSidebarCollapse();
       }
     });
 
@@ -336,10 +353,13 @@
       title.innerText = 'Initializing Pipeline...';
       sub.innerText = 'Connecting to collectors...';
 
-      fetch('/api/run', {
+      fetch('/admin/api/run', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dry_run: false })
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ dry_run: false, csrf_token: '{{ csrf_token }}' })
       })
       .then(async r => {
         const data = await r.json();
@@ -354,7 +374,7 @@
 
         const poller = setInterval(async () => {
           try {
-            const res = await fetch('/api/jobs/' + jobId);
+            const res = await fetch('/admin/api/jobs/' + jobId);
             if (!res.ok) {
               clearInterval(poller);
               spinner.classList.add('hidden');

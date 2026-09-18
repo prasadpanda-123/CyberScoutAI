@@ -1,0 +1,79 @@
+{
+  "user_lookup_by_username": {
+    "planning_time_ms": 0.088,
+    "execution_time_ms": 0.034,
+    "node_type": "Index Scan",
+    "total_cost": 2.37,
+    "actual_rows": 0,
+    "buffers": {
+      "shared_hit": 1,
+      "shared_read": 0
+    }
+  },
+  "user_lookup_by_uuid": {
+    "planning_time_ms": 0.085,
+    "execution_time_ms": 0.032,
+    "node_type": "Index Scan",
+    "total_cost": 2.37,
+    "actual_rows": 0,
+    "buffers": {
+      "shared_hit": 1,
+      "shared_read": 0
+    }
+  },
+  "opportunity_search_vector": {
+    "planning_time_ms": 0.251,
+    "execution_time_ms": 0.045,
+    "node_type": "Limit",
+    "total_cost": 1.04,
+    "actual_rows": 5,
+    "buffers": {
+      "shared_hit": 1,
+      "shared_read": 0
+    }
+  },
+  "saved_opportunities_join": {
+    "planning_time_ms": 0.331,
+    "execution_time_ms": 0.046,
+    "node_type": "Nested Loop",
+    "total_cost": 3.44,
+    "actual_rows": 0,
+    "buffers": {
+      "shared_hit": 1,
+      "shared_read": 0
+    }
+  },
+  "notification_outbox_lookup": {
+    "planning_time_ms": 0.12,
+    "execution_time_ms": 0.035,
+    "node_type": "Index Scan",
+    "total_cost": 2.36,
+    "actual_rows": 0,
+    "buffers": {
+      "shared_hit": 1,
+      "shared_read": 0
+    }
+  },
+  "audit_logs_recent": {
+    "planning_time_ms": 0.09,
+    "execution_time_ms": 0.044,
+    "node_type": "Limit",
+    "total_cost": 2.14,
+    "actual_rows": 14,
+    "buffers": {
+      "shared_hit": 3,
+      "shared_read": 0
+    }
+  },
+  "server_sessions_lookup": {
+    "planning_time_ms": 0.476,
+    "execution_time_ms": 0.039,
+    "node_type": "Seq Scan",
+    "total_cost": 1.39,
+    "actual_rows": 0,
+    "buffers": {
+      "shared_hit": 1,
+      "shared_read": 0
+    }
+  }
+}

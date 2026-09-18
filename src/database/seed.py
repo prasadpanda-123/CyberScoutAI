@@ -29,12 +29,15 @@ class SeedManager:
         self.kw_repo = KeywordRepository(self.db_manager)
 
     def seed_sources(self) -> int:
-        """Seeds default sources from configuration."""
+        """Seeds default sources from configuration and authoritative catalog."""
+        count = 0
         sources_cfg = config.get("sources", {})
-        if not sources_cfg:
-            logger.warning("No sources configuration found to seed.")
-            return 0
-        count = self.source_repo.sync_from_config(sources_cfg)
+        if sources_cfg:
+            count += self.source_repo.sync_from_config(sources_cfg)
+        try:
+            count += self.source_repo.sync_authoritative_sources()
+        except Exception as e:
+            logger.warning(f"Authoritative sources seeding notice: {e}")
         logger.info(f"Seeded {count} sources into database.")
         return count
 
@@ -79,17 +82,21 @@ class SeedManager:
         from src.database.admin_repository import AdminRepository
         admin_repo = AdminRepository(self.db_manager)
 
-        # Seed primary Admin account into Admins table if not present
-        existing_admin = admin_repo.get_by_email("admin@cyberscout.ai")
+        # Seed primary Admin account into Admins table if not present by email or username
+        existing_admin = admin_repo.get_by_email("admin@cyberscout.ai") or admin_repo.get_by_username("admin")
         if not existing_admin:
-            admin_repo.create_admin(
-                username="admin",
-                email="admin@cyberscout.ai",
-                password="Admin@CyberScout2026!",
-                role="Admin",
-            )
-            logger.info("Seeded primary Admin account ('admin@cyberscout.ai') into Admins table.")
-            return 1
+            try:
+                admin_repo.create_admin(
+                    username="admin",
+                    email="admin@cyberscout.ai",
+                    password="Admin@CyberScout2026!",
+                    role="Admin",
+                )
+                logger.info("Seeded primary Admin account ('admin@cyberscout.ai') into Admins table.")
+                return 1
+            except Exception as e:
+                logger.debug(f"Admin seeding collision handled safely: {e}")
+                return 0
         return 0
 
     def run_all_seeds(self) -> None:

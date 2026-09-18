@@ -67,6 +67,8 @@ class LogRepository:
         """
         Queries AppLogs with filtering, search, pagination, and total count.
         """
+        page = max(1, int(page))
+        limit = max(1, min(int(limit), 200))
         offset = max(0, (page - 1) * limit)
         conditions: List[str] = []
         params: List[Any] = []

@@ -4,23 +4,23 @@ This document outlines completed engineering milestones and future architectural
 
 ---
 
-## 🟢 Completed Milestones (v1.0.0 – v1.1.1)
+## 🟢 Completed Milestones (v1.0.0 – v1.2.0)
 
-- [x] **Phase 0 — Research & Architecture Specification**: Requirements gathering, zero-cost constraints.
-- [x] **Phase 1 — Core Foundation**: Bootstrap pipeline, logging engine, Database connection manager.
-- [x] **Phase 2 — Search Intelligence**: Keyword engine, query builder, validation, search planner.
-- [x] **Phase 3.1 — Universal Collection Framework**: BaseCollector, HTTP client, rate limiter, cache, robots.txt.
-- [x] **Phase 3.2 — Core Collectors**: RSS/Atom collector, GitHub API collector, YouTube RSS, CTFtime API.
-- [x] **Phase 4 — Processing Engine**: Validation, HTML cleaning, normalization, deduplication, quality check.
-- [x] **Phase 5 — Opportunity Intelligence**: Dynamic scoring rules, P0-P3 priority ranking engine.
-- [x] **Phase 6 — Knowledge Base**: Opportunity state transitions, archive manager, trend retention.
-- [x] **Phase 7 — Notification Engine**: Jinja2 HTML email digest renderer, SMTP sender with backoff retry.
-- [x] **Phase 9 — Automation Engine**: Background daemon thread, YAML scheduler, signal handling.
-- [x] **Phase 10 — Production Hardening**: 112 automated unit tests, memory leak audit, release v1.0.0.
-- [x] **Phase 11 — Web Dashboard & Control Center**: Flask presentation layer, 11 HTML pages, REST API.
-- [x] **v1.1.1 — Repository Professionalization**: Open-source governance, CI workflows, docs.
+- [x] **Phase 0 — Research & Architecture Specification**: Zero-cost constraints, threat modeling, schema specification.
+- [x] **Phase 1 — Core Foundation & PostgreSQL Hardening**: PostgreSQL connection pooling, migrations, RLS policies, audit logging.
+- [x] **Phase 2 — Universal Collection Framework**: Rate limiting, exponential backoff, circuit breaking, source definitions.
+- [x] **Phase 3 — Administrative Security & Multi-Factor Auth**: Admin/User table isolation, TOTP MFA, brute-force rate-limiting.
+- [x] **Phase 4 — SSR Search Portal & Deduplication Engine**: Server-rendered search, faceted filtering, SHA-256 canonical deduplication.
+- [x] **Phase 5 — Opportunity Intelligence & Matching**: Dynamic priority ranking, rule weights, skill extraction, eligibility criteria.
+- [x] **Phase 6 — Data Quality & Lifecycle Engine**: Quarantine state transitions, automated validation rules, decay management.
+- [x] **Phase 7 — Notifications & Outbox Survivability**: Transactional outbox pattern, quiet hours evaluator, responsive HTML digest renderer.
+- [x] **Phase 8 — Observability, Analytics & Source Health**: Diagnostic dashboards, health telemetry, source anomaly detection.
+- [x] **Phase 9 — Explainable Matching Intelligence**: Deterministic similarity engine, skill normalizer, audit-ready reasoning.
+- [x] **Phase 10 — Production Reliability & Disaster Recovery**: Context-managed pooling, transactional SQL backups, restore drills, liveness/readiness probes.
+- [x] **Phase 11 — Final Security Audit & Production Release**: 50-point security matrix (CSRF, IDOR, XSS, HMAC webhooks, RLS enforcement, session rotation).
 
 ---
+
 
 ## 🔮 Future Vision (v1.2+ Roadmap)
 

@@ -64,9 +64,16 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 function schedAction(action) {
-  fetch('/api/scheduler/' + action, { method: 'POST' })
+  fetch('/admin/api/scheduler/' + action, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': '{{ csrf_token }}'
+    },
+    body: JSON.stringify({ csrf_token: '{{ csrf_token }}' })
+  })
     .then(async r => {
       const rawText = await r.text();
       try {

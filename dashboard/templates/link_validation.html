@@ -18,7 +18,7 @@
                     {% for item in valid_links %}
                     <tr>
                         <td>{{ item.title }}</td>
-                        <td class="text-truncate" style="max-width: 300px;"><a href="{{ item.url }}" target="_blank" class="text-info">{{ item.url }}</a></td>
+                        <td class="text-truncate max-w-[300px]"><a href="{{ item.url }}" target="_blank" class="text-info">{{ item.url }}</a></td>
                         <td><span class="badge bg-success">{{ item.link_status }}</span></td>
                         <td><span class="badge bg-primary">{{ item.verification_status }}</span></td>
                     </tr>

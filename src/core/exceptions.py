@@ -69,6 +69,19 @@ class CollectorError(CyberScoutError):
     pass
 
 
+class ParserError(CollectorError):
+    """Exception raised for errors during HTML, XML, or API response parsing."""
+
+    pass
+
+
+class RateLimitError(CollectorError):
+    """Exception raised when an upstream source responds with 429 Too Many Requests or throttling."""
+
+    pass
+
+
+
 class ValidationError(CyberScoutError):
     """Exception raised when model validation fails."""
 

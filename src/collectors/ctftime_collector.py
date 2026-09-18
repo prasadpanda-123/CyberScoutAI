@@ -15,6 +15,7 @@ from src.core.logging import get_logger
 from src.intelligence.planner_models import SearchTask
 from src.models.enums import OpportunityCategory, Status
 from src.models.opportunity import Opportunity
+from src.models.opportunity_dto import NormalizedOpportunityDTO
 
 logger = get_logger(__name__)
 
@@ -32,6 +33,69 @@ class CtftimeCollector(BaseCollector):
     def collector_name(self) -> str:
         return "CTFtime Collector"
 
+    def discover(self, task: Optional[SearchTask] = None) -> List[str]:
+        target = task.target_url if task and task.target_url else "https://ctftime.org/api/v1/events/"
+        return [target]
+
+    def fetch(self, target: str) -> Any:
+        now_ts = int(time.time())
+        future_ts = now_ts + (30 * 86400)
+        params = {
+            "limit": "20",
+            "start": str(now_ts),
+            "finish": str(future_ts),
+        }
+        status_code, content = self.context.http_client.get(
+            target,
+            params=params,
+            source_id=self.source_id,
+        )
+        if status_code != 200:
+            return None
+        return content
+
+    def validate(self, raw_data: Any) -> bool:
+        if raw_data is None:
+            return False
+        if isinstance(raw_data, str):
+            return len(raw_data.strip()) > 2
+        if isinstance(raw_data, (dict, list)):
+            return len(raw_data) > 0
+        return False
+
+    def parse(self, raw_payload: Any) -> List[Dict[str, Any]]:
+        if not raw_payload:
+            return []
+        events = parse_json_content(raw_payload)
+        return events if isinstance(events, list) else []
+
+    def normalize(self, raw_item: Dict[str, Any]) -> Optional[NormalizedOpportunityDTO]:
+        title = raw_item.get("title", "").strip()
+        url = raw_item.get("url") or raw_item.get("ctftime_url")
+        if not title or not url:
+            return None
+        fmt = raw_item.get("format", "Jeopardy")
+        location = raw_item.get("location", "Online")
+        desc = raw_item.get("description") or f"{fmt} CTF event (Location: {location})"
+        from src.models.enums import OpportunityType, PricingType
+        event_id = str(raw_item.get("id")) if raw_item.get("id") else None
+        return NormalizedOpportunityDTO(
+            title=f"CTF: {title}",
+            url=url,
+            source_id=self.source_id,
+            source_external_id=event_id,
+            description=desc,
+            provider="CTFtime",
+            opportunity_type=OpportunityType.CTF.value,
+            categories=["ctf", "competition", "cybersecurity"],
+            tags=[fmt.lower(), "ctf", "competition"],
+            start_date=raw_item.get("start"),
+            deadline=raw_item.get("finish"),
+            pricing_type=PricingType.FREE.value,
+            is_free=True,
+            raw_payload=raw_item,
+        )
+
     def collect(self, task: SearchTask) -> CollectorResult:
         """
         Executes CTFTime API collection.
@@ -46,34 +110,20 @@ class CtftimeCollector(BaseCollector):
         errors: List[str] = []
         opportunities: List[Dict[str, Any]] = []
 
-        # Add timestamp window params for upcoming events
-        now_ts = int(time.time())
-        future_ts = now_ts + (30 * 86400)  # Next 30 days
-        params = {
-            "limit": "20",
-            "start": str(now_ts),
-            "finish": str(future_ts),
-        }
-
         try:
-            status_code, content = self.context.http_client.get(
-                target_url,
-                params=params,
-                source_id=self.source_id,
-            )
-            if status_code != 200:
+            content = self.fetch(target_url)
+            if content is None:
                 return CollectorResult(
                     source_id=self.source_id,
                     status="failed",
-                    errors=[f"CTFtime API returned status {status_code} for URL '{target_url}'."],
+                    errors=[f"CTFtime API failed to return data for URL '{target_url}'."],
                 )
 
-            events = parse_json_content(content)
-            if isinstance(events, list):
-                for event in events:
-                    norm = self.normalize_item(event, task)
-                    if norm:
-                        opportunities.append(norm.to_dict())
+            events = self.parse(content)
+            for event in events:
+                norm = self.normalize_item(event, task)
+                if norm:
+                    opportunities.append(norm.to_dict())
 
             return CollectorResult(
                 source_id=self.source_id,

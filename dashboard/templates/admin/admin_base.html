@@ -18,53 +18,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   
-  <!-- Tailwind CSS CDN with Admin Color Tokens -->
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <script>
-    tailwind.config = {
-      darkMode: "class",
-      theme: {
-        extend: {
-          colors: {
-            "surface-bright": "#31394d",
-            "bg-card-hover": "#1E293B",
-            "outline": "#89929b",
-            "surface-container-lowest": "#060e20",
-            "text-muted": "#64748B",
-            "danger": "#EF4444",
-            "admin-accent": "#EF4444",
-            "primary": "#93ccff",
-            "surface-container": "#171f33",
-            "info": "#06B6D4",
-            "outline-variant": "#3f4850",
-            "surface-container-high": "#222a3d",
-            "surface-container-highest": "#2d3449",
-            "border-subtle": "#1E293B",
-            "surface-variant": "#2d3449",
-            "surface": "#0b1326",
-            "warning": "#F59E0B",
-            "text-secondary": "#94A3B8",
-            "bg-surface": "#0B0F19",
-            "surface-container-low": "#131b2e",
-            "bg-body": "#070B14",
-            "text-primary": "#F8FAFC",
-            "success": "#10B981"
-          },
-          fontFamily: {
-            "sans": ["Inter", "system-ui", "sans-serif"],
-            "mono": ["JetBrains Mono", "monospace"]
-          }
-        }
-      }
-    }
-  </script>
+  <!-- Precompiled Static Tailwind CSS & Admin Theme -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
   {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-bg-body text-text-primary antialiased min-h-screen flex flex-col selection:bg-admin-accent/30 selection:text-white">
 
   <!-- Mobile Overlay -->
-  <div id="adminMobileOverlay" class="fixed inset-0 bg-black/70 z-40 hidden md:hidden" onclick="toggleAdminMobileSidebar()"></div>
+  <div id="adminMobileOverlay" class="fixed inset-0 bg-black/70 z-40 hidden md:hidden"></div>
 
   <!-- Admin SideNavBar -->
   <aside id="adminSidebar" class="fixed left-0 top-0 h-full w-[260px] bg-surface border-r border-admin-accent/20 flex flex-col py-5 px-3 z-50 transition-transform duration-300 md:translate-x-0 -translate-x-full shadow-[inset_0_0_20px_rgba(239,68,68,0.04)]">
@@ -81,14 +43,14 @@
       </a>
       <div class="flex items-center">
         <!-- Notion Collapse Button (Desktop) -->
-        <button type="button" id="adminSidebarCollapseBtn" onclick="toggleAdminDesktopSidebar()" class="sidebar-collapse-btn" title="Close sidebar (Ctrl+\)">
-          <svg class="w-4 h-4 text-text-muted hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <button type="button" id="adminSidebarCollapseBtn" class="sidebar-collapse-btn" title="Close sidebar (Ctrl+\)" aria-label="Collapse sidebar">
+          <svg class="w-4 h-4 text-text-muted hover:text-white transition-colors pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
           </svg>
         </button>
         <!-- Mobile Drawer Close Button -->
-        <button type="button" class="md:hidden p-1.5 text-text-muted hover:text-text-primary ml-1" onclick="toggleAdminMobileSidebar()">
-          <span class="material-symbols-outlined text-[20px]">close</span>
+        <button type="button" id="adminSidebarMobileCloseBtn" class="md:hidden p-1.5 text-text-muted hover:text-text-primary ml-1" aria-label="Close sidebar">
+          <span class="material-symbols-outlined text-[20px] pointer-events-none">close</span>
         </button>
       </div>
     </div>
@@ -98,52 +60,72 @@
       <div class="px-2 mb-1 text-[11px] font-semibold text-admin-accent/80 uppercase tracking-wider">Administration</div>
 
       <a href="{{ url_for('admin_ui.admin_dashboard') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_dashboard' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_dashboard' %}text-admin-accent{% endif %}" {% if active_page == 'admin_dashboard' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>admin_panel_settings</span>
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_dashboard' %}text-admin-accent icon-fill{% endif %}">admin_panel_settings</span>
         <span>Dashboard</span>
       </a>
 
+      <a href="{{ url_for('admin_ui.admin_analytics') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_analytics' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_analytics' %}text-admin-accent icon-fill{% endif %}">analytics</span>
+        <span>Analytics</span>
+      </a>
+
       <a href="{{ url_for('admin_ui.admin_collectors') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_collectors' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_collectors' %}text-admin-accent{% endif %}" {% if active_page == 'admin_collectors' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>settings_input_component</span>
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_collectors' %}text-admin-accent icon-fill{% endif %}">settings_input_component</span>
         <span>Collectors</span>
       </a>
 
+      <a href="{{ url_for('admin_ui.admin_source_health') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_source_health' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_source_health' %}text-admin-accent icon-fill{% endif %}">monitor_heart</span>
+        <span>Source Health</span>
+      </a>
+
+      <a href="{{ url_for('admin_ui.admin_data_quality') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_data_quality' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_data_quality' %}text-admin-accent icon-fill{% endif %}">verified_user</span>
+        <span>Data Quality</span>
+      </a>
+
       <a href="{{ url_for('admin_ui.admin_scheduler') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_scheduler' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_scheduler' %}text-admin-accent{% endif %}" {% if active_page == 'admin_scheduler' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>schedule</span>
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_scheduler' %}text-admin-accent icon-fill{% endif %}">schedule</span>
         <span>Scheduler</span>
       </a>
 
       <a href="{{ url_for('admin_ui.admin_logs') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_logs' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_logs' %}text-admin-accent{% endif %}" {% if active_page == 'admin_logs' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>terminal</span>
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_logs' %}text-admin-accent icon-fill{% endif %}">terminal</span>
         <span>Logs & Audit</span>
       </a>
 
       <a href="{{ url_for('admin_ui.admin_users') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_users' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_users' %}text-admin-accent{% endif %}" {% if active_page == 'admin_users' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>group</span>
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_users' %}text-admin-accent icon-fill{% endif %}">group</span>
         <span>User Accounts</span>
       </a>
 
       <a href="{{ url_for('admin_ui.admin_configuration') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_configuration' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_configuration' %}text-admin-accent{% endif %}" {% if active_page == 'admin_configuration' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>tune</span>
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_configuration' %}text-admin-accent icon-fill{% endif %}">tune</span>
         <span>Configuration</span>
       </a>
 
       <a href="{{ url_for('admin_ui.admin_diagnostics') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_diagnostics' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_diagnostics' %}text-admin-accent{% endif %}" {% if active_page == 'admin_diagnostics' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>analytics</span>
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_diagnostics' %}text-admin-accent icon-fill{% endif %}">analytics</span>
         <span>Diagnostics</span>
       </a>
 
       <a href="{{ url_for('admin_ui.admin_system') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_system' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_system' %}text-admin-accent{% endif %}" {% if active_page == 'admin_system' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>memory</span>
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_system' %}text-admin-accent icon-fill{% endif %}">memory</span>
         <span>System Info</span>
       </a>
 
+      <a href="{{ url_for('admin_ui.admin_reliability') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_reliability' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_reliability' %}text-admin-accent icon-fill{% endif %}">health_and_safety</span>
+        <span>Reliability & Telemetry</span>
+      </a>
+
       <a href="{{ url_for('admin_ui.admin_email') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_email' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_email' %}text-admin-accent{% endif %}" {% if active_page == 'admin_email' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>mail</span>
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_email' %}text-admin-accent icon-fill{% endif %}">mail</span>
         <span>Email Control</span>
       </a>
 
       <a href="{{ url_for('admin_ui.admin_reports') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_reports' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_reports' %}text-admin-accent{% endif %}" {% if active_page == 'admin_reports' %}style="font-variation-settings: 'FILL' 1;"{% endif %}>folder</span>
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_reports' %}text-admin-accent icon-fill{% endif %}">folder</span>
         <span>Reports Center</span>
       </a>
     </nav>
@@ -168,9 +150,9 @@
     <header class="sticky top-0 z-30 h-14 bg-surface/90 backdrop-blur-md border-b border-border-subtle px-4 md:px-8 flex items-center justify-between">
       <div class="flex items-center gap-3">
         <!-- Floating Expand / Toggle Button (Hidden on Desktop when Sidebar is Open) -->
-        <button type="button" id="adminSidebarExpandBtn" class="sidebar-expand-btn" onclick="handleAdminSidebarOpen()" title="Open sidebar (Ctrl+\)">
-          <svg class="w-4 h-4 text-text-secondary hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16" />
+        <button type="button" id="adminSidebarExpandBtn" class="sidebar-expand-btn" title="Open sidebar (Ctrl+\)" aria-label="Open sidebar">
+          <svg class="w-4 h-4 text-text-secondary hover:text-white transition-colors pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-danger/10 border border-danger/30 text-[11px] font-mono text-danger font-bold">
@@ -227,7 +209,7 @@
     </footer>
   </div>
 
-  <script>
+  <script nonce="{{ csp_nonce }}">
     function isAdminDesktop() {
       return window.innerWidth >= 768;
     }
@@ -235,6 +217,24 @@
     function toggleAdminDesktopSidebar() {
       const isCollapsed = document.body.classList.toggle('sidebar-collapsed');
       localStorage.setItem('cyberscout_admin_sidebar_collapsed', isCollapsed ? 'true' : 'false');
+      const sidebar = document.getElementById('adminSidebar');
+      if (sidebar) {
+        if (isCollapsed) {
+          sidebar.classList.add('-translate-x-full');
+          sidebar.classList.remove('md:translate-x-0');
+        } else {
+          sidebar.classList.remove('-translate-x-full');
+          sidebar.classList.add('md:translate-x-0');
+        }
+      }
+    }
+
+    function handleAdminSidebarCollapse() {
+      if (isAdminDesktop()) {
+        toggleAdminDesktopSidebar();
+      } else {
+        toggleAdminMobileSidebar();
+      }
     }
 
     function handleAdminSidebarOpen() {
@@ -248,27 +248,73 @@
     function toggleAdminMobileSidebar() {
       const sidebar = document.getElementById('adminSidebar');
       const overlay = document.getElementById('adminMobileOverlay');
+      if (!sidebar) return;
       const isClosed = sidebar.classList.contains('-translate-x-full');
       if (isClosed) {
         sidebar.classList.remove('-translate-x-full');
-        overlay.classList.remove('hidden');
+        if (overlay) overlay.classList.remove('hidden');
       } else {
         sidebar.classList.add('-translate-x-full');
-        overlay.classList.add('hidden');
+        if (overlay) overlay.classList.add('hidden');
       }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    function setupAdminSidebarEventListeners() {
       const isCollapsed = localStorage.getItem('cyberscout_admin_sidebar_collapsed') === 'true';
       if (isCollapsed && isAdminDesktop()) {
         document.body.classList.add('sidebar-collapsed');
+        const sidebar = document.getElementById('adminSidebar');
+        if (sidebar) {
+          sidebar.classList.add('-translate-x-full');
+          sidebar.classList.remove('md:translate-x-0');
+        }
       }
-    });
+
+      const collapseBtn = document.getElementById('adminSidebarCollapseBtn');
+      if (collapseBtn) {
+        collapseBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleAdminSidebarCollapse();
+        });
+      }
+
+      const expandBtn = document.getElementById('adminSidebarExpandBtn');
+      if (expandBtn) {
+        expandBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleAdminSidebarOpen();
+        });
+      }
+
+      const mobileOverlay = document.getElementById('adminMobileOverlay');
+      if (mobileOverlay) {
+        mobileOverlay.addEventListener('click', (e) => {
+          e.preventDefault();
+          toggleAdminMobileSidebar();
+        });
+      }
+
+      const mobileCloseBtn = document.getElementById('adminSidebarMobileCloseBtn');
+      if (mobileCloseBtn) {
+        mobileCloseBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          toggleAdminMobileSidebar();
+        });
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupAdminSidebarEventListeners);
+    } else {
+      setupAdminSidebarEventListeners();
+    }
 
     document.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
         e.preventDefault();
-        toggleAdminDesktopSidebar();
+        handleAdminSidebarCollapse();
       }
     });
   </script>

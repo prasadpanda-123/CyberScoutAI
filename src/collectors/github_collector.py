@@ -15,6 +15,7 @@ from src.core.logging import get_logger
 from src.intelligence.planner_models import SearchTask
 from src.models.enums import OpportunityCategory, Status
 from src.models.opportunity import Opportunity
+from src.models.opportunity_dto import NormalizedOpportunityDTO
 
 logger = get_logger(__name__)
 
@@ -32,6 +33,62 @@ class GithubSearchCollector(BaseCollector):
     def collector_name(self) -> str:
         return "GitHub Search Collector"
 
+    def discover(self, task: Optional[SearchTask] = None) -> List[str]:
+        if task and task.target_url:
+            return [task.target_url]
+        return ["https://api.github.com/search/repositories?q=cybersecurity+tool&sort=stars&order=desc"]
+
+    def fetch(self, target: str) -> Any:
+        token = os.environ.get("GITHUB_TOKEN")
+        headers = {}
+        if token:
+            headers["Authorization"] = f"token {token}"
+        status_code, content = self.context.http_client.get(
+            target,
+            headers=headers,
+            source_id=self.source_id,
+        )
+        if status_code != 200:
+            return None
+        return content
+
+    def validate(self, raw_data: Any) -> bool:
+        if raw_data is None:
+            return False
+        if isinstance(raw_data, str):
+            return len(raw_data.strip()) > 2
+        if isinstance(raw_data, (dict, list)):
+            return len(raw_data) > 0
+        return False
+
+    def parse(self, raw_payload: Any) -> List[Dict[str, Any]]:
+        if not raw_payload:
+            return []
+        payload = parse_json_content(raw_payload)
+        return payload.get("items", []) if isinstance(payload, dict) else []
+
+    def normalize(self, raw_item: Dict[str, Any]) -> Optional[NormalizedOpportunityDTO]:
+        full_name = (raw_item.get("full_name") or raw_item.get("name") or "").strip()
+        html_url = (raw_item.get("html_url") or raw_item.get("url") or "").strip()
+        if not full_name or not html_url:
+            return None
+        desc = raw_item.get("description") or f"GitHub repository: {full_name}"
+        topics = raw_item.get("topics", [])
+        from src.models.enums import OpportunityType, PricingType
+        return NormalizedOpportunityDTO(
+            title=f"Tool: {full_name}",
+            url=html_url,
+            source_id=self.source_id,
+            description=desc,
+            provider="GitHub",
+            opportunity_type=OpportunityType.OPEN_SOURCE.value,
+            categories=["open_source", "security_tool"],
+            tags=list(set(["github", "tool"] + topics)),
+            pricing_type=PricingType.FREE.value,
+            is_free=True,
+            raw_payload=raw_item,
+        )
+
     def collect(self, task: SearchTask) -> CollectorResult:
         """
         Executes GitHub REST API search query.
@@ -46,28 +103,16 @@ class GithubSearchCollector(BaseCollector):
         errors: List[str] = []
         opportunities: List[Dict[str, Any]] = []
 
-        # Optional GitHub Personal Access Token
-        token = os.environ.get("GITHUB_TOKEN")
-        headers = {}
-        if token:
-            headers["Authorization"] = f"token {token}"
-
         try:
-            status_code, content = self.context.http_client.get(
-                target_url,
-                headers=headers,
-                source_id=self.source_id,
-            )
-            if status_code != 200:
+            content = self.fetch(target_url)
+            if content is None:
                 return CollectorResult(
                     source_id=self.source_id,
                     status="failed",
-                    errors=[f"GitHub API returned status {status_code} for URL '{target_url}'."],
+                    errors=[f"GitHub API failed to return data for URL '{target_url}'."],
                 )
 
-            payload = parse_json_content(content)
-            items = payload.get("items", [])
-
+            items = self.parse(content)
             for item in items:
                 norm = self.normalize_item(item, task)
                 if norm:
