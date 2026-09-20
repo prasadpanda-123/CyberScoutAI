@@ -338,7 +338,7 @@ def admin_verify_otp():
         # Standard OTP Verification
         raw_code = request.form.get("otp_code", "")
         import re
-        otp_code = re.sub(r"[\s\-\u200b\u00a0\ufeff]", "", str(raw_code).strip())
+        otp_code = re.sub(r"[\s\-\u200b\u00a0\ufeff]", "", raw_code.strip())
 
         # Check hash BEFORE incrementing failed attempts
         if AdminSecurityManager.verify_otp_code(otp_code, otp_hash):

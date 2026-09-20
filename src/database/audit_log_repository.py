@@ -165,8 +165,8 @@ class AuditLogRepository:
         Retrieves paginated audit log entries with optional filters.
         Safely searches user UUIDs or admin integer identities and escapes LIKE wildcards (SEC-07).
         """
-        page = max(1, int(page))
-        limit = max(1, min(int(limit), 200))
+        page = max(1, page)
+        limit = max(1, min(limit, 200))
         where_clauses: List[str] = []
         params: List[Any] = []
 

@@ -8,7 +8,7 @@ session regeneration, and audit logging hooks for the Administrative Portal.
 import datetime
 import re
 import secrets
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 from src.core.logging import get_logger
 from src.database.audit_log_repository import AuditLogRepository
@@ -25,8 +25,8 @@ class AdminSecurityManager:
     MAX_FAILED_ATTEMPTS = 5
     LOCKOUT_DURATION_MINUTES = 15
 
-    # Memory store for failed login tracking: key=(ip, username) -> list of datetime timestamps
-    _failed_login_attempts: Dict[Tuple[str, str], list] = {}
+    # Memory store for failed login tracking: key=(ip, username, attempt_type) -> list of datetime timestamps
+    _failed_login_attempts: Dict[Tuple[Any, ...], list] = {}
 
     def __init__(
         self,
@@ -174,7 +174,7 @@ class AdminSecurityManager:
         """
         import hashlib
         import re
-        clean_code = re.sub(r"[\s\-\u200b\u00a0\ufeff]", "", str(otp_code).strip())
+        clean_code = re.sub(r"[\s\-\u200b\u00a0\ufeff]", "", otp_code.strip())
         return hashlib.sha256(clean_code.encode("utf-8")).hexdigest()
 
     @classmethod
@@ -189,7 +189,7 @@ class AdminSecurityManager:
         import re
         if not otp_code or not stored_otp_hash or not isinstance(otp_code, str):
             return False
-        clean_code = re.sub(r"[\s\-\u200b\u00a0\ufeff]", "", str(otp_code).strip())
+        clean_code = re.sub(r"[\s\-\u200b\u00a0\ufeff]", "", otp_code.strip())
         if len(clean_code) != 6 or not clean_code.isdigit():
             return False
         computed_hash = hashlib.sha256(clean_code.encode("utf-8")).hexdigest()
@@ -370,7 +370,7 @@ class AdminSecurityManager:
     def store_pending_password_change(
         cls,
         target_type: str,
-        account_id: int,
+        account_id: Union[int, str],
         username: str,
         email: str,
         new_password_hash: str,

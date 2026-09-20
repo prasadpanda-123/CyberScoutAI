@@ -7,7 +7,7 @@ concurrency without sticky sessions.
 
 from datetime import datetime, timezone
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 from src.core.exceptions import DatabaseError, RepositoryError
 from src.core.logging import get_logger
@@ -53,6 +53,10 @@ class MfaRepository:
             with self.db_manager.transaction() as cursor:
                 cursor.execute(sql)
                 try:
+                    try:
+                        cursor.execute('ALTER TABLE "PendingMfa" ALTER COLUMN account_id TYPE VARCHAR(64) USING account_id::text;')
+                    except Exception:
+                        pass
                     cursor.execute('ALTER TABLE "PendingMfa" ENABLE ROW LEVEL SECURITY;')
                     rls_policy_sql = """
                     DO $$
@@ -222,7 +226,7 @@ class MfaRepository:
         self,
         token: str,
         target_type: str,
-        account_id: int,
+        account_id: Union[int, str],
         username: str,
         email: str,
         new_password_hash: str,

@@ -599,7 +599,7 @@ class DatabaseManager:
         with self.transaction() as cursor:
             if user_id:
                 try:
-                    cursor.execute("SET LOCAL app.current_user_id = %s;", (str(user_id),))
+                    cursor.execute("SET LOCAL app.current_user_id = %s;", (user_id,))
                 except Exception:
                     pass
             yield cursor
