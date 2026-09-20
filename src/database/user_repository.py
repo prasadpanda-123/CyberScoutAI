@@ -89,7 +89,7 @@ class UserRepository:
             )
             row = cursor.fetchone()
             conn.commit()
-            user_id = row[0] if row else None
+            user_id = str(row[0]) if row and row[0] is not None else None
             return {
                 "id": user_id,
                 "username": username.strip(),
@@ -132,7 +132,7 @@ class UserRepository:
 
             if check_password_hash(row_d.get("password_hash", ""), password):
                 user_dict = {
-                    "id": row_d.get("id"),
+                    "id": str(row_d.get("id")) if row_d.get("id") is not None else None,
                     "username": row_d.get("username"),
                     "email": row_d.get("email"),
                     "role": row_d.get("role"),

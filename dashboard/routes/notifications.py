@@ -198,7 +198,7 @@ def update_preferences():
     try:
         pref_repo.save_preferences(user_id=user_id, preferences=existing_prefs)
         audit_repo.log_event(
-            category="USER_PROFILE",
+            event_type="USER_PROFILE",
             action="NOTIFICATION_PREFERENCES_UPDATED",
             status="SUCCESS",
             user_id=user_id,

@@ -177,6 +177,7 @@ def toggle_save_form(opportunity_id: str):
 
     try:
         res = opp_service.toggle_save_opportunity(str(user_id), opportunity_id)
+        session["_cached_saved_count"] = res.get("saved_count", 0)
         if res.get("saved"):
             flash("Opportunity saved to bookmarks.", "success")
         else:
@@ -209,6 +210,7 @@ def toggle_save_api(opportunity_id: str):
 
     try:
         res = opp_service.toggle_save_opportunity(str(user_id), opportunity_id)
+        session["_cached_saved_count"] = res.get("saved_count", 0)
         return jsonify({
             "status": "success",
             "saved": res["saved"],

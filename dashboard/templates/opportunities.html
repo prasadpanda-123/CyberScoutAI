@@ -503,13 +503,13 @@
             }
 
             // Update badge counts if present
-            const badge = document.getElementById('savedCountBadge');
-            if (badge && data.saved_count !== undefined) {
-              badge.innerText = data.saved_count;
-            }
-            const navBadge = document.getElementById('navSavedBadge');
-            if (navBadge && data.saved_count !== undefined) {
-              navBadge.innerText = data.saved_count;
+            if (typeof window.updateBookmarkCount === 'function' && data.saved_count !== undefined) {
+              window.updateBookmarkCount(data.saved_count);
+            } else {
+              const badge = document.getElementById('savedCountBadge');
+              if (badge && data.saved_count !== undefined) badge.innerText = data.saved_count;
+              const navBadge = document.getElementById('navSavedBadge');
+              if (navBadge && data.saved_count !== undefined) navBadge.innerText = data.saved_count;
             }
           } else {
             // Fallback to standard form submission

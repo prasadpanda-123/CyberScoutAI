@@ -7,6 +7,8 @@ and transactional session management for PostgreSQL via SQLAlchemy.
 
 from contextlib import contextmanager
 from datetime import datetime, timezone
+import re
+import threading
 import time
 import traceback
 from typing import Any, Dict, Generator, List, Optional
@@ -19,6 +21,15 @@ from src.database.engine import create_db_engine, get_engine, get_masked_db_host
 from src.database.session import get_db_session, get_session_factory
 
 logger = get_logger(__name__)
+
+CORE_TABLES = (
+    "Sources", "Opportunities", "Users", "SearchHistory", "EmailHistory",
+    "AppLogs", "Preferences", "Statistics", "Keywords", "AuditLogs",
+    "ScanJobs", "PendingMfa", "ServerSessions", "SavedOpportunities",
+    "UserPreferences", "UserSearchHistory", "NotificationOutbox",
+    "Admins", "LoginAttempts", "SourceHealth"
+)
+_TABLE_REGEX = re.compile(rf'\b(?<!["\'])({"|".join(CORE_TABLES)})(?!["\'])\b')
 
 
 class PgRow:
@@ -55,11 +66,12 @@ class PgCursorAdapter:
         self._cursor = raw_cursor
 
     def _fix_sql(self, sql: str) -> str:
+        if not sql:
+            return sql
         if "?" in sql and "%s" not in sql:
             sql = sql.replace("?", "%s")
-        import re
-        for tbl in ["Sources", "Opportunities", "Users", "SearchHistory", "EmailHistory", "AppLogs", "Preferences", "Statistics", "Keywords", "AuditLogs", "ScanJobs", "PendingMfa", "ServerSessions", "SavedOpportunities", "UserPreferences", "UserSearchHistory", "NotificationOutbox"]:
-            sql = re.sub(rf'\b(?<!["\']){tbl}(?!["\'])\b', f'"{tbl}"', sql)
+        if any(tbl in sql for tbl in CORE_TABLES):
+            sql = _TABLE_REGEX.sub(r'"\1"', sql)
         return sql
 
     def execute(self, sql: str, parameters=()):
@@ -193,6 +205,17 @@ class DatabaseManager:
     """
     Database Connection & Infrastructure Manager for PostgreSQL.
     """
+    _instance: Optional["DatabaseManager"] = None
+    _lock = threading.Lock()
+
+    def __new__(cls, custom_url: Optional[str] = None, **kwargs):
+        if custom_url:
+            return super().__new__(cls)
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+                cls._instance._initialized = False
+            return cls._instance
 
     def __init__(self, custom_url: Optional[str] = None, **kwargs):
         """
@@ -202,14 +225,25 @@ class DatabaseManager:
             custom_url: Optional override PostgreSQL database connection URL.
             **kwargs: Ignored legacy parameters for backward compatibility.
         """
+        if getattr(self, "_initialized", False) and not custom_url:
+            return
         self.custom_url = custom_url
         self._engine = None
-        self._connection = None
+        self._local = threading.local()
         self._last_check_iso: Optional[str] = None
         self._last_successful_query_iso: Optional[str] = None
         self._last_failure_timestamp_iso: Optional[str] = None
         self._last_failure_reason: Optional[str] = None
         self._retry_attempts: int = 0
+        self._initialized = True
+
+    @property
+    def _connection(self) -> Optional[PgConnectionAdapter]:
+        return getattr(self._local, "connection", None)
+
+    @_connection.setter
+    def _connection(self, conn: Optional[PgConnectionAdapter]) -> None:
+        self._local.connection = conn
 
     def get_engine(self) -> Engine:
         """Gets active SQLAlchemy engine for this manager instance (reusing singleton engine)."""
@@ -359,9 +393,9 @@ class DatabaseManager:
                     ('ServerSessions', 'serversessions_policy', 'CREATE POLICY serversessions_policy ON "ServerSessions" FOR ALL USING (true) WITH CHECK (true);'),
                     ('SearchHistory', 'searchhistory_policy', 'CREATE POLICY searchhistory_policy ON "SearchHistory" FOR ALL USING (true) WITH CHECK (true);'),
                     ('LoginAttempts', 'loginattempts_policy', 'CREATE POLICY loginattempts_policy ON "LoginAttempts" FOR ALL USING (true) WITH CHECK (true);'),
-                    ('SavedOpportunities', 'savedopportunities_policy', 'CREATE POLICY savedopportunities_policy ON "SavedOpportunities" FOR ALL USING (true) WITH CHECK (true);'),
-                    ('UserPreferences', 'userpreferences_policy', 'CREATE POLICY userpreferences_policy ON "UserPreferences" FOR ALL USING (true) WITH CHECK (true);'),
-                    ('UserSearchHistory', 'usersearchhistory_policy', 'CREATE POLICY usersearchhistory_policy ON "UserSearchHistory" FOR ALL USING (true) WITH CHECK (true);'),
+                    ('SavedOpportunities', 'savedopportunities_policy', 'CREATE POLICY savedopportunities_policy ON "SavedOpportunities" FOR ALL USING (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR NULLIF(current_setting(\'app.current_user_id\', true), \'\') IS NULL) WITH CHECK (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR NULLIF(current_setting(\'app.current_user_id\', true), \'\') IS NULL);'),
+                    ('UserPreferences', 'userpreferences_policy', 'CREATE POLICY userpreferences_policy ON "UserPreferences" FOR ALL USING (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR NULLIF(current_setting(\'app.current_user_id\', true), \'\') IS NULL) WITH CHECK (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR NULLIF(current_setting(\'app.current_user_id\', true), \'\') IS NULL);'),
+                    ('UserSearchHistory', 'usersearchhistory_policy', 'CREATE POLICY usersearchhistory_policy ON "UserSearchHistory" FOR ALL USING (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR NULLIF(current_setting(\'app.current_user_id\', true), \'\') IS NULL) WITH CHECK (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR NULLIF(current_setting(\'app.current_user_id\', true), \'\') IS NULL);'),
                     ('NotificationOutbox', 'notification_outbox_policy', 'CREATE POLICY notification_outbox_policy ON "NotificationOutbox" FOR ALL USING (true) WITH CHECK (true);'),
                 ]
 
@@ -371,7 +405,11 @@ class DatabaseManager:
                             SELECT 1 FROM pg_policies 
                             WHERE LOWER(tablename) = LOWER(%s) AND LOWER(policyname) = LOWER(%s);
                         """, (tablename, policyname))
-                        if not cursor.fetchone():
+                        exists = cursor.fetchone()
+                        if exists and force:
+                            cursor.execute(f'DROP POLICY IF EXISTS {policyname} ON "{tablename}";')
+                            cursor.execute(sql)
+                        elif not exists:
                             cursor.execute(sql)
                     except Exception as pe:
                         logger.debug(f"Notice on policy {tablename}.{policyname}: {pe}")
@@ -551,6 +589,20 @@ class DatabaseManager:
                 cursor.close()
             except Exception:
                 pass
+
+    @contextmanager
+    def user_context(self, user_id: Optional[str] = None) -> Generator[Any, None, None]:
+        """
+        Sets PostgreSQL session user context for RLS row isolation during user-scoped operations.
+        Ensures queries are restricted strictly to user_id when active.
+        """
+        with self.transaction() as cursor:
+            if user_id:
+                try:
+                    cursor.execute("SET LOCAL app.current_user_id = %s;", (str(user_id),))
+                except Exception:
+                    pass
+            yield cursor
 
     def check_connection_with_backoff(self, max_retries: int = 5) -> bool:
         """

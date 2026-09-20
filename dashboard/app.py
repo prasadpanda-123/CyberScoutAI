@@ -195,11 +195,16 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
         user_id = session.get("user_id") or session.get("admin_user_id")
         saved_count = 0
         if user_id:
-            try:
-                from src.database.opportunity_repository import OpportunityRepository
-                saved_count = OpportunityRepository().count_saved_opportunities(str(user_id))
-            except Exception:
-                saved_count = 0
+            cached_count = session.get("_cached_saved_count")
+            if cached_count is not None:
+                saved_count = cached_count
+            else:
+                try:
+                    from src.database.opportunity_repository import OpportunityRepository
+                    saved_count = OpportunityRepository().count_saved_opportunities(str(user_id))
+                    session["_cached_saved_count"] = saved_count
+                except Exception:
+                    saved_count = 0
 
         return {
             "app_info": get_version_info(),

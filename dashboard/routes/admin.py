@@ -1195,12 +1195,12 @@ def admin_quarantine_action():
         with db.transaction() as cursor:
             if action == "approve":
                 cursor.execute(
-                    'UPDATE "Opportunities" SET quality_status = \'passed\', is_rejected = FALSE, quarantine_reason = NULL WHERE id = ?;',
+                    'UPDATE "Opportunities" SET quality_status = \'passed\', is_rejected = FALSE, quarantine_reason = NULL WHERE id = %s;',
                     (opportunity_id,)
                 )
             else:
                 cursor.execute(
-                    'UPDATE "Opportunities" SET quality_status = \'rejected\', is_rejected = TRUE, lifecycle_status = \'removed\', status = \'archived\' WHERE id = ?;',
+                    'UPDATE "Opportunities" SET quality_status = \'rejected\', is_rejected = TRUE, lifecycle_status = \'removed\', status = \'archived\' WHERE id = %s;',
                     (opportunity_id,)
                 )
 

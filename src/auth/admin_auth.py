@@ -10,8 +10,11 @@ import re
 import secrets
 from typing import Dict, Optional, Tuple
 
+from src.core.logging import get_logger
 from src.database.audit_log_repository import AuditLogRepository
 from src.database.user_repository import UserRepository
+
+logger = get_logger(__name__)
 
 
 class AdminSecurityManager:

@@ -1,4 +1,7 @@
+import hashlib
 import secrets
+import time
+from typing import Dict, Any, Optional
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
 from src.auth.admin_auth import AdminSecurityManager
@@ -14,6 +17,75 @@ user_repo = UserRepository()
 admin_repo = AdminRepository()
 audit_repo = AuditLogRepository()
 
+_PASSWORD_RESETS: Dict[str, Dict[str, Any]] = {}
+
+
+def _store_password_reset_token(user_id: str, raw_token: str, email: str) -> None:
+    token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+    _PASSWORD_RESETS[token_hash] = {
+        "user_id": user_id,
+        "email": email,
+        "expires_at": time.time() + 3600,  # 1 hour
+    }
+
+
+def _verify_password_reset_token(raw_token: str) -> Optional[Dict[str, Any]]:
+    if not raw_token or not isinstance(raw_token, str):
+        return None
+    token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+    entry = _PASSWORD_RESETS.get(token_hash)
+    if not entry:
+        return None
+    if time.time() > entry.get("expires_at", 0):
+        _PASSWORD_RESETS.pop(token_hash, None)
+        return None
+    return entry
+
+
+def _invalidate_password_reset_token(raw_token: str) -> None:
+    if raw_token and isinstance(raw_token, str):
+        token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+        _PASSWORD_RESETS.pop(token_hash, None)
+
+
+def _send_password_reset_email(email: str, username: str, raw_token: str) -> bool:
+    try:
+        from src.notifier.providers.brevo_provider import BrevoEmailProvider
+        reset_link = url_for("auth_ui.reset_password", token=raw_token, _external=True)
+        html_content = f"""
+        <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #2d3748; border-radius: 8px; background: #0f172a; color: #f8fafc;">
+          <h2 style="color: #38bdf8;">CyberScout AI Password Reset</h2>
+          <p>Hello {username},</p>
+          <p>We received a request to reset your password. Click the button below to set a new password:</p>
+          <div style="margin: 24px 0;">
+            <a href="{reset_link}" style="background: #0284c7; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Reset Password</a>
+          </div>
+          <p style="font-size: 12px; color: #94a3b8;">This link expires in 1 hour. If you did not make this request, you can safely ignore this email.</p>
+        </div>
+        """
+        plain_content = f"Hello {username},\n\nReset your password here: {reset_link}\n\nExpires in 1 hour."
+        provider = BrevoEmailProvider()
+        res = provider.send_email(
+            html_content=html_content,
+            plain_content=plain_content,
+            subject="CyberScout AI — Password Reset Request",
+            recipient=email,
+        )
+        return bool(res.get("status") == "success")
+    except Exception as e:
+        logger.warning(f"Could not dispatch password reset email via Brevo: {e}")
+        return False
+
+
+@auth_bp.before_request
+def ensure_csrf_token():
+    """Ensures a CSRF token is present in the session for public authentication routes."""
+    try:
+        if "user_csrf_token" not in session and "admin_csrf_token" not in session:
+            session["user_csrf_token"] = AdminSecurityManager.generate_csrf_token()
+    except Exception as e:
+        logger.warning(f"Error ensuring user_csrf_token: {e}")
+
 
 @auth_bp.route("/setup", methods=["GET", "POST"])
 def setup():
@@ -24,6 +96,13 @@ def setup():
         return redirect(url_for("admin_ui.admin_login"))
 
     if request.method == "POST":
+        csrf_token = request.form.get("csrf_token", "").strip()
+        expected_csrf = session.get("admin_csrf_token") or session.get("user_csrf_token")
+        if not expected_csrf or not csrf_token or not AdminSecurityManager.verify_csrf_token(expected_csrf, csrf_token):
+            audit_repo.log_event("AUTH", "SETUP_FAILED", "CSRF_FAILED", source_ip=client_ip, details="CSRF token validation failed on first-run setup")
+            flash("CSRF validation failed. Please try again.", "danger")
+            return render_template("setup.html"), 400
+
         username = request.form.get("username", "").strip()
         email = request.form.get("email", "").strip()
         password = request.form.get("password", "").strip()
@@ -77,7 +156,7 @@ def login():
 
         # 0. CSRF Token Validation
         session_csrf = session.get("user_csrf_token") or session.get("admin_csrf_token")
-        if session_csrf and csrf_token and not secrets.compare_digest(session_csrf, csrf_token):
+        if not session_csrf or not csrf_token or not secrets.compare_digest(session_csrf, csrf_token):
             audit_repo.log_event("AUTH", "USER_LOGIN", "CSRF_FAILED", username=identifier or "Anonymous", source_ip=client_ip, details="CSRF token validation failed on user login")
             flash("CSRF validation failed. Please try again.", "danger")
             raw_next_arg = request.args.get("next", "")
@@ -152,6 +231,13 @@ def register():
         return redirect(url_for("dashboard_ui.index"))
 
     if request.method == "POST":
+        csrf_token = request.form.get("csrf_token", "").strip()
+        expected_csrf = session.get("user_csrf_token") or session.get("admin_csrf_token")
+        if not expected_csrf or not csrf_token or not secrets.compare_digest(expected_csrf, csrf_token):
+            audit_repo.log_event("AUTH", "USER_REGISTER", "CSRF_FAILED", source_ip=client_ip, details="CSRF validation failed on registration")
+            flash("CSRF validation failed. Please try again.", "danger")
+            return render_template("register.html"), 400
+
         username = request.form.get("username", "").strip()
         email = request.form.get("email", "").strip()
         password = request.form.get("password", "").strip()
@@ -193,14 +279,68 @@ def logout():
 
 @auth_bp.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
-    """Handles password reset request flow."""
+    """Handles password reset request flow with CSRF protection and token generation."""
     client_ip = get_client_ip(request)
     if request.method == "POST":
-        email = request.form.get("email", "").strip()
+        csrf_token = request.form.get("csrf_token", "").strip()
+        expected_csrf = session.get("user_csrf_token") or session.get("admin_csrf_token")
+        if not expected_csrf or not csrf_token or not secrets.compare_digest(expected_csrf, csrf_token):
+            audit_repo.log_event("AUTH", "FORGOT_PASSWORD", "CSRF_FAILED", source_ip=client_ip, details="CSRF validation failed on forgot-password")
+            flash("CSRF validation failed. Please try again.", "danger")
+            return render_template("forgot_password.html"), 400
+
+        email = request.form.get("email", "").strip().lower()
+        if email:
+            target_user = user_repo.get_by_email(email)
+            if target_user:
+                raw_token = secrets.token_urlsafe(32)
+                _store_password_reset_token(str(target_user["id"]), raw_token, target_user["email"])
+                _send_password_reset_email(target_user["email"], target_user.get("username", "User"), raw_token)
+
         audit_repo.log_event("AUTH", "FORGOT_PASSWORD", "REQUESTED", source_ip=client_ip, details=f"Password reset requested for {email}")
         flash(f"If an account exists for '{email}', password reset instructions have been dispatched.", "info")
         return redirect(url_for("auth_ui.login"))
     return render_template("forgot_password.html")
+
+
+@auth_bp.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token: str):
+    """Renders reset password page and applies new credentials."""
+    client_ip = get_client_ip(request)
+    token_record = _verify_password_reset_token(token)
+    if not token_record:
+        flash("Password reset link is invalid or has expired. Please request a new one.", "danger")
+        return redirect(url_for("auth_ui.forgot_password"))
+
+    if request.method == "POST":
+        csrf_token = request.form.get("csrf_token", "").strip()
+        expected_csrf = session.get("user_csrf_token") or session.get("admin_csrf_token")
+        if not expected_csrf or not csrf_token or not secrets.compare_digest(expected_csrf, csrf_token):
+            flash("CSRF validation failed. Please try again.", "danger")
+            return render_template("reset_password.html", token=token), 400
+
+        new_password = request.form.get("new_password", "").strip()
+        confirm_password = request.form.get("confirm_password", "").strip()
+
+        if not new_password or len(new_password) < 8:
+            flash("Password must be at least 8 characters long.", "danger")
+            return render_template("reset_password.html", token=token)
+        if new_password != confirm_password:
+            flash("Passwords do not match.", "danger")
+            return render_template("reset_password.html", token=token)
+
+        user_id = token_record["user_id"]
+        try:
+            user_repo.update_password(user_id, new_password)
+            _invalidate_password_reset_token(token)
+            audit_repo.log_event("AUTH", "PASSWORD_RESET_COMPLETE", "SUCCESS", user_id=user_id, source_ip=client_ip, details="User successfully completed password reset flow")
+            flash("Password updated successfully! Please sign in with your new credentials.", "success")
+            return redirect(url_for("auth_ui.login"))
+        except Exception as e:
+            logger.error(f"Error updating user password on reset: {e}")
+            flash(f"Failed to reset password: {e}", "danger")
+
+    return render_template("reset_password.html", token=token)
 
 
 @auth_bp.route("/profile", methods=["GET", "POST"])

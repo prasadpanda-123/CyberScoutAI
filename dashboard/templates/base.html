@@ -93,7 +93,7 @@
       <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors {% if request.args.get('view') == 'saved' %}text-warning font-bold bg-surface-container-high border-l-2 border-warning{% else %}text-on-surface-variant hover:bg-bg-card-hover hover:text-on-surface{% endif %}" href="/opportunities?view=saved">
         <span class="material-symbols-outlined text-[20px] text-warning icon-fill">bookmark</span>
         <span class="text-sm">Saved Items</span>
-        <span id="navSavedBadge" class="ml-auto text-[11px] font-mono font-bold bg-surface-container-highest text-warning px-2 py-0.5 rounded-full">0</span>
+        <span id="navSavedBadge" class="ml-auto text-[11px] font-mono font-bold bg-surface-container-highest text-warning px-2 py-0.5 rounded-full">{{ saved_count|default(0) }}</span>
       </a>
 
       <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors {% if active_page == 'insights' %}text-primary font-bold bg-surface-container-high border-l-2 border-primary{% else %}text-on-surface-variant hover:bg-bg-card-hover hover:text-on-surface{% endif %}" href="/insights">
@@ -322,14 +322,16 @@
       }
     });
 
-    // Hydrate Bookmarks Count in Sidebar
-    (function() {
+    // Provide global helper for client-side bookmark badge synchronization
+    window.updateBookmarkCount = function(count) {
+      const badge = document.getElementById('navSavedBadge');
+      if (badge) badge.innerText = count;
+      const dash = document.getElementById('dashSavedCount');
+      if (dash) dash.innerText = count;
       try {
-        const b = JSON.parse(localStorage.getItem('cyberscout_bookmarks') || '[]');
-        const badge = document.getElementById('navSavedBadge');
-        if (badge) badge.innerText = b.length;
+        localStorage.setItem('cyberscout_bookmarks_count', count);
       } catch(e) {}
-    })();
+    };
 
     function closeScanModal() {
       document.getElementById('scanModal').classList.add('hidden');

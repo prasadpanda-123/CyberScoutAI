@@ -78,9 +78,31 @@ class SeedManager:
         return count
 
     def seed_users(self) -> int:
-        """Seeds default Admin user ('admin@cyberscout.ai') into Admins table idempotently."""
+        """Seeds default Admin user ('admin@cyberscout.ai') into Admins table safely with production guard (SEC-01)."""
+        import os
         from src.database.admin_repository import AdminRepository
+        from src.auth.admin_auth import AdminSecurityManager
+
         admin_repo = AdminRepository(self.db_manager)
+
+        app_env = (os.getenv("APP_ENV") or os.getenv("CYBERSCOUT_ENV") or "").strip().lower()
+        is_production = app_env == "production"
+
+        initial_admin_pw = (
+            os.getenv("CYBERSCOUT_INITIAL_ADMIN_PASSWORD", "").strip()
+            or os.getenv("INITIAL_ADMIN_PASSWORD", "").strip()
+        )
+
+        # In production environments, never seed a hardcoded default password
+        if is_production and not initial_admin_pw:
+            logger.info("Production environment: skipping default admin seeding. Complete first-run setup via /setup.")
+            return 0
+
+        admin_password = initial_admin_pw or "Admin@CyberScout2026!"
+        is_strong, _ = AdminSecurityManager.validate_password_strength(admin_password)
+        if not is_strong and is_production:
+            logger.warning("Configured production initial admin password violates complexity requirements. Skipping seeding.")
+            return 0
 
         # Seed primary Admin account into Admins table if not present by email or username
         existing_admin = admin_repo.get_by_email("admin@cyberscout.ai") or admin_repo.get_by_username("admin")
@@ -89,7 +111,7 @@ class SeedManager:
                 admin_repo.create_admin(
                     username="admin",
                     email="admin@cyberscout.ai",
-                    password="Admin@CyberScout2026!",
+                    password=admin_password,
                     role="Admin",
                 )
                 logger.info("Seeded primary Admin account ('admin@cyberscout.ai') into Admins table.")

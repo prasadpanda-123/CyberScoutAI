@@ -60,16 +60,16 @@
     </div>
 
     <!-- Saved Items -->
-    <div class="bg-surface rounded-xl p-5 border border-border-subtle relative overflow-hidden group hover:border-primary/40 transition-colors">
+    <a href="/opportunities?view=saved" class="bg-surface rounded-xl p-5 border border-border-subtle relative overflow-hidden group hover:border-warning/40 transition-colors block">
       <div class="flex justify-between items-start mb-3">
-        <span class="text-xs font-semibold text-text-muted uppercase tracking-wider">Saved Bookmarks</span>
+        <span class="text-xs font-semibold text-text-muted uppercase tracking-wider group-hover:text-text-primary transition-colors">Saved Bookmarks</span>
         <span class="material-symbols-outlined text-warning text-xl icon-fill">bookmark</span>
       </div>
       <div class="flex items-baseline gap-2">
-        <span id="dashSavedCount" class="text-3xl font-extrabold text-text-primary">0</span>
+        <span id="dashSavedCount" class="text-3xl font-extrabold text-text-primary">{{ saved_count|default(0) }}</span>
       </div>
-      <p class="text-[11px] text-text-muted mt-1.5">Locally pinned items</p>
-    </div>
+      <p class="text-[11px] text-text-muted mt-1.5">Bookmarked opportunities &rarr;</p>
+    </a>
   </div>
 
   <!-- Cyber Intelligence Domain Matrix (6 Launchpad Cards) -->
@@ -200,13 +200,12 @@
 
 {% block extra_scripts %}
 <script nonce="{{ csp_nonce }}">
-  // Hydrate Saved Count KPI on Dashboard
-  (function() {
-    try {
-      const b = JSON.parse(localStorage.getItem('cyberscout_bookmarks') || '[]');
-      const countEl = document.getElementById('dashSavedCount');
-      if (countEl) countEl.innerText = b.length;
-    } catch(e) {}
-  })();
+  // Server-rendered saved_count is authoritative.
+  window.addEventListener('storage', function(e) {
+    if (e.key === 'cyberscout_bookmarks_count') {
+      const el = document.getElementById('dashSavedCount');
+      if (el && e.newValue) el.innerText = e.newValue;
+    }
+  });
 </script>
 {% endblock %}
