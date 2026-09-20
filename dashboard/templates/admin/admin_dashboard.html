@@ -6,872 +6,555 @@
 {% block content %}
 <div class="space-y-6">
 
-  <!-- Top Hero Header Bar matching Screenshot -->
-  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-2">
+  <!-- Header Section -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border-subtle">
     <div>
-      <div class="flex items-center gap-2.5">
-        <span class="w-5 h-5 rounded-full border-2 border-emerald-400 flex items-center justify-center text-emerald-400">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-        </span>
-        <h2 class="text-xl sm:text-2xl font-bold text-white tracking-tight">Operational Control Center</h2>
-      </div>
-      <div class="flex items-center gap-2 mt-1.5">
-        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-        <span class="text-xs font-semibold text-emerald-400">All Systems Operational</span>
-      </div>
-      <p class="text-xs text-slate-400 mt-0.5">Monitor, control and manage your security operations</p>
+      <h2 class="text-xl sm:text-2xl font-bold text-admin-accent tracking-tight flex items-center gap-2">
+        <span class="material-symbols-outlined text-admin-accent">tune</span>
+        <span>Operational Control Center</span>
+      </h2>
+      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">High-privilege system controls, telemetry triggers, and audit trail.</p>
     </div>
-
-    <div class="flex flex-col items-start sm:items-end gap-1.5 self-stretch sm:self-auto">
-      <div class="text-[11px] text-slate-400">
-        Last updated: <span id="headerLastUpdated" class="text-slate-300 font-mono">Sep 16, 2025 10:42:18 AM</span>
-      </div>
-      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span>All Services Healthy</span>
-      </div>
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-mono text-danger bg-danger/10 border border-danger/30 px-3 py-1.5 rounded-lg flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-danger animate-pulse"></span>
+        <span>ROOT PRIVILEGES ACTIVE</span>
+      </span>
     </div>
   </div>
 
-  <!-- 4 Top KPI Metric Cards matching Screenshot -->
+  <!-- Real-Time Telemetry Action Alert Banner -->
+  <div id="adminActionAlert" class="hidden p-4 rounded-xl border text-xs flex items-center justify-between">
+    <div class="flex items-center gap-2" id="adminActionAlertContent"></div>
+    <button type="button" onclick="document.getElementById('adminActionAlert').classList.add('hidden')" class="text-current opacity-70 hover:opacity-100">
+      <span class="material-symbols-outlined text-[16px]">close</span>
+    </button>
+  </div>
+
+  <!-- Telemetry KPIs -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    <!-- Card 1: Total Opportunities -->
-    <div class="bg-[#0e1726] border border-[#1c2a42] rounded-2xl p-5 flex justify-between items-start shadow-sm">
-      <div class="space-y-1">
-        <span class="text-xs font-semibold text-slate-400">Total Opportunities</span>
-        <div class="text-3xl font-bold text-white tracking-tight">{{ summary.total_opportunities|default(553) }}</div>
-        <div class="text-xs font-semibold text-emerald-400 pt-0.5">+12% from last week</div>
+    <div class="bg-surface rounded-xl p-5 border border-border-subtle space-y-1">
+      <div class="flex justify-between items-start">
+        <span class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Total Opps In DB</span>
+        <span class="material-symbols-outlined text-primary text-xl">database</span>
       </div>
-      <div class="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-500 flex items-center justify-center shrink-0">
-        <span class="material-symbols-outlined text-2xl">bar_chart</span>
-      </div>
+      <div class="text-3xl font-extrabold text-text-primary">{{ summary.total_opportunities|default(0) }}</div>
+      <p class="text-[11px] text-text-muted">Indexed in PostgreSQL</p>
     </div>
 
-    <!-- Card 2: Registered Targets -->
-    <div class="bg-[#0e1726] border border-[#1c2a42] rounded-2xl p-5 flex justify-between items-start shadow-sm">
-      <div class="space-y-1">
-        <span class="text-xs font-semibold text-slate-400">Registered Targets</span>
-        <div class="text-3xl font-bold text-emerald-400 tracking-tight">15</div>
-        <div class="text-xs text-slate-400 pt-0.5">Active monitoring</div>
+    <div class="bg-surface rounded-xl p-5 border border-border-subtle space-y-1">
+      <div class="flex justify-between items-start">
+        <span class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Ingested Today</span>
+        <span class="material-symbols-outlined text-success text-xl">new_releases</span>
       </div>
-      <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-        <span class="material-symbols-outlined text-2xl">radar</span>
-      </div>
+      <div class="text-3xl font-extrabold text-success">{{ summary.today_opportunities|default(0) }}</div>
+      <p class="text-[11px] text-text-muted">Last 24-hour cycle</p>
     </div>
 
-    <!-- Card 3: Scheduled Scans -->
-    <div class="bg-[#0e1726] border border-[#1c2a42] rounded-2xl p-5 flex justify-between items-start shadow-sm">
-      <div class="space-y-1">
-        <span class="text-xs font-semibold text-slate-400">Scheduled Scans</span>
-        <div class="text-3xl font-bold text-amber-400 tracking-tight">8</div>
-        <div class="text-xs text-slate-400 pt-0.5">2 running, 6 pending</div>
+    <div class="bg-surface rounded-xl p-5 border border-border-subtle space-y-1">
+      <div class="flex justify-between items-start">
+        <span class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Expiring &le; 7 Days</span>
+        <span class="material-symbols-outlined text-warning text-xl">timer</span>
       </div>
-      <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
-        <span class="material-symbols-outlined text-2xl">schedule</span>
-      </div>
+      <div class="text-3xl font-extrabold text-warning">{{ summary.closing_soon_count|default(0) }}</div>
+      <p class="text-[11px] text-text-muted">Application urgency</p>
     </div>
 
-    <!-- Card 4: Database Size -->
-    <div class="bg-[#0e1726] border border-[#1c2a42] rounded-2xl p-5 flex justify-between items-start shadow-sm">
-      <div class="space-y-1">
-        <span class="text-xs font-semibold text-slate-400">Database Size</span>
-        <div class="text-3xl font-bold text-sky-400 tracking-tight flex items-baseline gap-1">
-          <span>1.2</span>
-          <span class="text-base font-semibold text-sky-300">GB</span>
-        </div>
-        <div class="text-xs text-slate-400 pt-0.5">PostgreSQL &bull; Healthy</div>
+    <div class="bg-surface rounded-xl p-5 border border-border-subtle space-y-1">
+      <div class="flex justify-between items-start">
+        <span class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Database Latency</span>
+        <span class="material-symbols-outlined text-info text-xl">speed</span>
       </div>
-      <div class="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0">
-        <span class="material-symbols-outlined text-2xl">database</span>
-      </div>
+      <div class="text-3xl font-extrabold text-info">{{ summary.db_latency_ms|default(1.2) }} <span class="text-sm font-normal text-text-muted">ms</span></div>
+      <p class="text-[11px] text-text-muted">PostgreSQL Engine Pool</p>
     </div>
   </div>
 
-  <!-- Primary System Control Actions (11-Card Overview Matrix) -->
-  <div class="bg-[#0e1726] border border-[#1c2a42] rounded-2xl p-5 sm:p-6 space-y-5 shadow-sm">
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-[#1c2a42]">
-      <div>
-        <div class="flex items-center gap-2">
-          <span class="material-symbols-outlined text-amber-400 text-xl">bolt</span>
-          <h3 class="text-base font-bold text-white tracking-wide">System Control Actions</h3>
-        </div>
-        <p class="text-xs text-slate-400 mt-0.5">Execute system operations, maintenance tasks, and automation.</p>
-      </div>
-      <span class="text-xs font-medium text-slate-400">11 Actions Available</span>
-    </div>
-
-    <!-- 11 Action Cards Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
-      <!-- 1. Execute Scan Now -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-700 transition-colors">
-        <div class="space-y-1.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-blue-500 text-[18px]">play_arrow</span>
-              <span class="text-xs font-bold text-white">Execute Scan Now</span>
-            </div>
-            <span id="badge-top-scan" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-          </div>
-          <p class="text-xs text-slate-400">Trigger full harvester pipeline</p>
-        </div>
-        <div class="space-y-2.5">
-          <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono">
-            <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-              <div id="bar-top-scan" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-            </div>
-            <span id="percent-top-scan">0%</span>
-          </div>
-          <button type="button" id="btnRunScan" onclick="handleAdminAction('execute_scan', '/admin/api/run', { label: 'Execute Scan Now', loadText: 'Scanning...' })" class="admin-ctrl-btn w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold text-xs transition-colors shadow-sm">
-            Start Scan
-          </button>
-        </div>
-      </div>
-
-      <!-- 2. Send Test Email -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-700 transition-colors">
-        <div class="space-y-1.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-blue-400 text-[18px]">mail</span>
-              <span class="text-xs font-bold text-white">Send Test Email</span>
-            </div>
-            <span id="badge-top-email" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-          </div>
-          <p class="text-xs text-slate-400">Verify Brevo email dispatch</p>
-        </div>
-        <div class="space-y-2.5">
-          <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono">
-            <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-              <div id="bar-top-email" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-            </div>
-            <span id="percent-top-email">0%</span>
-          </div>
-          <button type="button" id="btnTestEmail" onclick="handleAdminAction('send_test_email', '/admin/api/email/test', { label: 'Send Test Email', loadText: 'Sending...' })" class="admin-ctrl-btn w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold text-xs transition-colors shadow-sm">
-            Send Test Email
-          </button>
-        </div>
-      </div>
-
-      <!-- 3. Send Report Now -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-700 transition-colors">
-        <div class="space-y-1.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-amber-500 text-[18px]">send</span>
-              <span class="text-xs font-bold text-white">Send Report Now</span>
-            </div>
-            <span id="badge-top-report" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-          </div>
-          <p class="text-xs text-slate-400">Generate and send report via email</p>
-        </div>
-        <div class="space-y-2.5">
-          <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono">
-            <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-              <div id="bar-top-report" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-            </div>
-            <span id="percent-top-report">0%</span>
-          </div>
-          <button type="button" id="btnReportNow" onclick="handleAdminAction('send_report_now', '/admin/api/report/trigger', { label: 'Send Daily Report', loadText: 'Compiling...' })" class="admin-ctrl-btn w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold text-xs transition-colors shadow-sm">
-            Send Report
-          </button>
-        </div>
-      </div>
-
-      <!-- 4. Refresh Analytics -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-700 transition-colors">
-        <div class="space-y-1.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-emerald-400 text-[18px]">analytics</span>
-              <span class="text-xs font-bold text-white">Refresh Analytics</span>
-            </div>
-            <span id="badge-top-analytics" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-          </div>
-          <p class="text-xs text-slate-400">Recalculate statistical tables</p>
-        </div>
-        <div class="space-y-2.5">
-          <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono">
-            <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-              <div id="bar-top-analytics" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-            </div>
-            <span id="percent-top-analytics">0%</span>
-          </div>
-          <button type="button" id="btnRefreshAnalytics" onclick="handleAdminAction('refresh_analytics', '/admin/api/analytics/refresh', { label: 'Refresh Analytics', loadText: 'Recalculating...' })" class="admin-ctrl-btn w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold text-xs transition-colors shadow-sm">
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      <!-- 5. Pause Scheduler -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-700 transition-colors">
-        <div class="space-y-1.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-blue-400 text-[18px]">pause</span>
-              <span class="text-xs font-bold text-white">Pause Scheduler</span>
-            </div>
-            <span id="badge-top-pause" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-          </div>
-          <p class="text-xs text-slate-400">Halt background cron jobs</p>
-        </div>
-        <div class="space-y-2.5">
-          <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono">
-            <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-              <div id="bar-top-pause" class="h-full bg-amber-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-            </div>
-            <span id="percent-top-pause">0%</span>
-          </div>
-          <button type="button" id="btnPauseSched" onclick="handleAdminAction('pause_scheduler', '/admin/api/scheduler/pause', { label: 'Pause Scheduler', loadText: 'Pausing...' })" class="admin-ctrl-btn w-full py-2 rounded-lg bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white font-semibold text-xs transition-colors shadow-sm">
-            Pause
-          </button>
-        </div>
-      </div>
-
-      <!-- 6. Resume Scheduler -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-700 transition-colors">
-        <div class="space-y-1.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-emerald-400 text-[18px]">play_circle</span>
-              <span class="text-xs font-bold text-white">Resume Scheduler</span>
-            </div>
-            <span id="badge-top-resume" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-          </div>
-          <p class="text-xs text-slate-400">Resume background cron daemon</p>
-        </div>
-        <div class="space-y-2.5">
-          <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono">
-            <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-              <div id="bar-top-resume" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-            </div>
-            <span id="percent-top-resume">0%</span>
-          </div>
-          <button type="button" id="btnResumeSched" onclick="handleAdminAction('resume_scheduler', '/admin/api/scheduler/resume', { label: 'Resume Scheduler', loadText: 'Resuming...' })" class="admin-ctrl-btn w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold text-xs transition-colors shadow-sm">
-            Resume
-          </button>
-        </div>
-      </div>
-
-      <!-- 7. Restart Scheduler -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-700 transition-colors">
-        <div class="space-y-1.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-amber-500 text-[18px]">restart_alt</span>
-              <span class="text-xs font-bold text-white">Restart Scheduler</span>
-            </div>
-            <span id="badge-top-restart" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-          </div>
-          <p class="text-xs text-slate-400">Restart background worker</p>
-        </div>
-        <div class="space-y-2.5">
-          <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono">
-            <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-              <div id="bar-top-restart" class="h-full bg-amber-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-            </div>
-            <span id="percent-top-restart">0%</span>
-          </div>
-          <button type="button" id="btnRestartSched" onclick="handleAdminAction('restart_scheduler', '/admin/api/scheduler/restart', { label: 'Restart Scheduler', loadText: 'Restarting...' })" class="admin-ctrl-btn w-full py-2 rounded-lg bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white font-semibold text-xs transition-colors shadow-sm">
-            Restart
-          </button>
-        </div>
-      </div>
-
-      <!-- 8. Purge > 30d Records -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-700 transition-colors">
-        <div class="space-y-1.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-rose-500 text-[18px]">delete</span>
-              <span class="text-xs font-bold text-white">Purge &gt; 30d Records</span>
-            </div>
-            <span id="badge-top-purge" class="text-[10px] font-semibold text-rose-400 bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 rounded-full">Caution</span>
-          </div>
-          <p class="text-xs text-slate-400">Clean stale opportunities</p>
-        </div>
-        <div class="space-y-2.5">
-          <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono">
-            <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-              <div id="bar-top-purge" class="h-full bg-rose-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-            </div>
-            <span id="percent-top-purge">0%</span>
-          </div>
-          <button type="button" id="btnClearOld" onclick="openPurgeModal()" class="admin-ctrl-btn w-full py-2 rounded-lg bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-semibold text-xs transition-colors shadow-sm">
-            Purge Records
-          </button>
-        </div>
-      </div>
-
-      <!-- 9. Test DB Ping -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-700 transition-colors">
-        <div class="space-y-1.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-sky-400 text-[18px]">database</span>
-              <span class="text-xs font-bold text-white">Test DB Ping</span>
-            </div>
-            <span id="badge-top-ping" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-          </div>
-          <p class="text-xs text-slate-400">Execute SELECT 1 check</p>
-        </div>
-        <div class="space-y-2.5">
-          <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono">
-            <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-              <div id="bar-top-ping" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-            </div>
-            <span id="percent-top-ping">0%</span>
-          </div>
-          <button type="button" id="btnTestDB" onclick="handleAdminAction('test_db', '/admin/api/db/test', { label: 'Test DB Ping', loadText: 'Testing Ping...' })" class="admin-ctrl-btn w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold text-xs transition-colors shadow-sm">
-            Test Connection
-          </button>
-        </div>
-      </div>
-
-      <!-- 10. Reconnect Database -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-700 transition-colors">
-        <div class="space-y-1.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-cyan-400 text-[18px]">sync</span>
-              <span class="text-xs font-bold text-white">Reconnect Database</span>
-            </div>
-            <span id="badge-top-reconnect" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-          </div>
-          <p class="text-xs text-slate-400">Dispose &amp; reset engine pool</p>
-        </div>
-        <div class="space-y-2.5">
-          <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono">
-            <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-              <div id="bar-top-reconnect" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-            </div>
-            <span id="percent-top-reconnect">0%</span>
-          </div>
-          <button type="button" id="btnReconnectDB" onclick="handleAdminAction('db_reconnect', '/admin/api/db/reconnect', { label: 'Reconnect Database', loadText: 'Reconnecting...' })" class="admin-ctrl-btn w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold text-xs transition-colors shadow-sm">
-            Reconnect
-          </button>
-        </div>
-      </div>
-
-      <!-- 11. Show DB Info -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-700 transition-colors">
-        <div class="space-y-1.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-blue-400 text-[18px]">info</span>
-              <span class="text-xs font-bold text-white">Show DB Info</span>
-            </div>
-            <span id="badge-top-dbinfo" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-          </div>
-          <p class="text-xs text-slate-400">Inspect schema table row counts</p>
-        </div>
-        <div class="space-y-2.5">
-          <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono">
-            <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-              <div id="bar-top-dbinfo" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-            </div>
-            <span id="percent-top-dbinfo">0%</span>
-          </div>
-          <button type="button" id="btnDBInfo" onclick="handleAdminAction('db_info', '/admin/api/db/info', { label: 'Show DB Info', method: 'GET', showModal: true })" class="admin-ctrl-btn w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold text-xs transition-colors shadow-sm">
-            Show Info
-          </button>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- System Telemetry & Action Console matching Screenshot -->
-  <div class="bg-[#0e1726] border border-[#1c2a42] rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm">
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-[#1c2a42]">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-mono text-sm font-bold shadow-inner">
-          &gt;_
+  <!-- Always-Visible Operational Command & Telemetry Console -->
+  <div id="actionConsoleCard" class="bg-surface rounded-2xl border border-admin-accent/40 shadow-xl shadow-black/30 p-5 sm:p-6 space-y-4 transition-all duration-300">
+    <!-- Console Header & Status Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border-subtle">
+      <div class="flex items-center gap-3.5">
+        <div id="consoleIconContainer" class="w-10 h-10 rounded-xl bg-admin-accent/15 border border-admin-accent/30 flex items-center justify-center text-admin-accent shrink-0 shadow-sm">
+          <span id="consoleIcon" class="material-symbols-outlined text-xl">terminal</span>
         </div>
         <div>
-          <div class="flex items-center gap-2">
-            <h3 class="text-sm sm:text-base font-bold text-white tracking-wide">System Telemetry &amp; Action Console</h3>
-            <span id="consoleLiveBadge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-semibold">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>Live</span>
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <h3 id="consoleActionTitle" class="text-sm sm:text-base font-bold text-text-primary tracking-tight">System Telemetry &amp; Action Console</h3>
+            <span id="consoleStatusBadge" class="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full tracking-wider bg-success/15 text-success border border-success/30 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>
+              <span>STANDBY / ARMED</span>
             </span>
           </div>
-          <p class="text-xs text-slate-400 mt-0.5">Real-time system logs, action status, and telemetry output.</p>
+          <p id="consoleJobId" class="text-[11px] text-text-muted font-mono mt-0.5">11 privileged endpoints connected &bull; Real-time stage tracking active</p>
         </div>
       </div>
-
-      <div class="flex items-center gap-3 self-end sm:self-center">
-        <!-- Auto-scroll toggle -->
-        <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer select-none">
-          <span>Auto-scroll</span>
-          <input type="checkbox" id="autoScrollToggle" checked class="w-4 h-4 rounded text-blue-600 bg-slate-900 border-slate-700 focus:ring-blue-500">
-        </label>
-        <!-- Clear logs button -->
-        <button type="button" onclick="clearTerminalLogs()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700/80 bg-slate-800/60 hover:bg-slate-800 text-xs text-slate-300 transition-colors">
-          <span class="material-symbols-outlined text-[14px]">delete</span>
-          <span>Clear</span>
+      <div class="flex items-center gap-4 self-end sm:self-center">
+        <div class="text-right">
+          <div class="text-[10px] text-text-muted uppercase tracking-wider font-semibold">Stopwatch</div>
+          <div id="consoleTimer" class="font-mono text-sm font-bold text-text-secondary">00:00s</div>
+        </div>
+        <button type="button" id="btnDismissConsole" onclick="resetActionConsoleToStandby()" title="Reset to Standby" class="p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-container-high transition-colors">
+          <span class="material-symbols-outlined text-[18px]">restart_alt</span>
         </button>
       </div>
     </div>
 
-    <!-- Terminal Output Screen -->
-    <div class="rounded-xl bg-[#050811] border border-[#141e30] p-4 font-mono text-xs text-slate-300 max-h-56 overflow-y-auto space-y-1.5 shadow-inner" id="terminalLogContainer">
-      <div class="flex items-center gap-2">
-        <span class="text-slate-500">[10:42:01]</span>
-        <span class="text-emerald-400 font-bold">INFO</span>
-        <span class="text-slate-200">System initialized successfully</span>
+    <!-- Live Telemetry Status Pills Strip -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      <div class="px-3 py-2 rounded-lg bg-surface-container-low border border-border-subtle flex items-center gap-2">
+        <span class="material-symbols-outlined text-[16px] text-primary">autorenew</span>
+        <div class="truncate">
+          <div class="text-[9px] uppercase font-bold text-text-muted">Pipeline Worker</div>
+          <div id="telemetryWorkerStatus" class="text-xs font-semibold text-text-primary">Online / Idle</div>
+        </div>
       </div>
-      <div class="flex items-center gap-2">
-        <span class="text-slate-500">[10:42:05]</span>
-        <span class="text-emerald-400 font-bold">INFO</span>
-        <span class="text-slate-200">Database connection established (PostgreSQL 15.4)</span>
+      <div class="px-3 py-2 rounded-lg bg-surface-container-low border border-border-subtle flex items-center gap-2">
+        <span class="material-symbols-outlined text-[16px] text-info">dns</span>
+        <div class="truncate">
+          <div class="text-[9px] uppercase font-bold text-text-muted">PostgreSQL Pool</div>
+          <div class="text-xs font-semibold text-info">{{ summary.db_latency_ms|default(1.2) }} ms</div>
+        </div>
       </div>
-      <div class="flex items-center gap-2">
-        <span class="text-slate-500">[10:42:05]</span>
-        <span class="text-emerald-400 font-bold">INFO</span>
-        <span class="text-slate-200">Scheduler status: <span class="text-emerald-400 font-bold">RUNNING</span> (6 jobs)</span>
+      <div class="px-3 py-2 rounded-lg bg-surface-container-low border border-border-subtle flex items-center gap-2">
+        <span class="material-symbols-outlined text-[16px] text-warning">schedule</span>
+        <div class="truncate">
+          <div class="text-[9px] uppercase font-bold text-text-muted">Scheduler Daemon</div>
+          <div class="text-xs font-semibold text-warning">Active (Daily)</div>
+        </div>
       </div>
-      <div class="flex items-center gap-2">
-        <span class="text-slate-500">[10:42:07]</span>
-        <span class="text-emerald-400 font-bold">INFO</span>
-        <span class="text-slate-200">Email service: Connected (Brevo)</span>
+      <div class="px-3 py-2 rounded-lg bg-surface-container-low border border-border-subtle flex items-center gap-2">
+        <span class="material-symbols-outlined text-[16px] text-success">mark_email_read</span>
+        <div class="truncate">
+          <div class="text-[9px] uppercase font-bold text-text-muted">SMTP Relay</div>
+          <div class="text-xs font-semibold text-success">Brevo TLS 587</div>
+        </div>
       </div>
-      <div class="flex items-center gap-2">
-        <span class="text-slate-500">[10:42:10]</span>
-        <span class="text-emerald-400 font-bold">INFO</span>
-        <span class="text-slate-200">All services healthy</span>
+    </div>
+
+    <!-- Live Dynamic Progress Bar -->
+    <div class="space-y-1.5">
+      <div class="flex justify-between items-center text-xs">
+        <span id="consoleStageText" class="font-medium text-text-secondary flex items-center gap-2 text-[11px] sm:text-xs">
+          <span class="w-2 h-2 rounded-full bg-success"></span>
+          <span>Engine ready for operator command. Select an action below.</span>
+        </span>
+        <span id="consolePercentText" class="font-mono font-bold text-text-muted text-[11px]">READY</span>
       </div>
-      <div class="flex items-center gap-2">
-        <span class="text-slate-500">[10:42:18]</span>
-        <span class="text-emerald-400 font-bold">INFO</span>
-        <span class="text-slate-200">Dashboard loaded successfully</span>
+      <div class="w-full h-2 bg-surface-container-highest rounded-full overflow-hidden p-0.5">
+        <div id="consoleProgressBar" class="h-full bg-success/40 rounded-full transition-all duration-300 ease-out" style="width: 100%;"></div>
+      </div>
+    </div>
+
+    <!-- Interactive Terminal Log Window -->
+    <div class="rounded-xl bg-black/60 border border-border-subtle overflow-hidden font-mono text-[11px]">
+      <div class="px-3 py-1.5 bg-surface-container-low border-b border-border-subtle flex items-center justify-between text-text-muted text-[10px]">
+        <div class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-danger/80 inline-block"></span>
+          <span class="w-2 h-2 rounded-full bg-warning/80 inline-block"></span>
+          <span class="w-2 h-2 rounded-full bg-success/80 inline-block"></span>
+          <span class="ml-1 text-text-secondary font-semibold">telemetry-stream.log</span>
+        </div>
+        <span class="text-[9px] text-text-muted">LIVE AUDIT STREAM</span>
+      </div>
+      <div id="consoleTerminalLog" class="p-3 max-h-32 overflow-y-auto space-y-1 text-text-secondary leading-relaxed select-text">
+        <div class="text-admin-accent flex items-center gap-1">
+          <span class="text-text-muted">[SYSTEM]</span>
+          <span>&gt; CyberScout AI Operational Command Engine loaded with ROOT privileges.</span>
+        </div>
+        <div class="text-text-muted flex items-center gap-1">
+          <span class="text-text-muted">[STATUS]</span>
+          <span>&gt; 11 administrative endpoints registered: Scan, Email, Report, Analytics, Scheduler, Database.</span>
+        </div>
+        <div class="text-success flex items-center gap-1">
+          <span class="text-text-muted">[READY]</span>
+          <span>&gt; Ready for operator dispatch. Click any control card below to execute with live telemetry.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Result / Details Drawer -->
+    <div id="consoleResultDrawer" class="hidden p-4 rounded-xl bg-surface-container-low border border-success/30 text-xs space-y-2">
+      <div class="font-bold text-success flex items-center justify-between">
+        <div class="flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[18px]">task_alt</span>
+          <span>Execution Completed Successfully</span>
+        </div>
+        <button type="button" onclick="document.getElementById('consoleResultDrawer').classList.add('hidden')" class="text-text-muted hover:text-text-primary text-[11px]">Dismiss</button>
+      </div>
+      <div id="consoleResultContent" class="text-text-secondary leading-relaxed font-mono text-[11px] break-all bg-surface p-3 rounded-lg border border-border-subtle"></div>
+    </div>
+
+    <!-- Error Drawer with Retry -->
+    <div id="consoleErrorDrawer" class="hidden p-4 rounded-xl bg-danger/10 border border-danger/30 text-xs space-y-2.5">
+      <div class="font-bold text-danger flex items-center justify-between">
+        <div class="flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[18px]">error</span>
+          <span>Action Execution Failed</span>
+        </div>
+        <button type="button" onclick="document.getElementById('consoleErrorDrawer').classList.add('hidden')" class="text-text-muted hover:text-text-primary text-[11px]">Dismiss</button>
+      </div>
+      <div id="consoleErrorContent" class="text-danger leading-relaxed text-[11px] font-mono"></div>
+      <div class="pt-1 flex items-center gap-2">
+        <button type="button" id="btnConsoleRetry" onclick="retryLastAction()" class="px-3.5 py-1.5 rounded-lg bg-danger hover:bg-danger/90 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm">
+          <span class="material-symbols-outlined text-[15px]">refresh</span>
+          <span>Retry Action</span>
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- Section 1 – Harvester & Ingestion Pipeline matching Screenshot -->
-  <div class="bg-[#0e1726] border border-[#1c2a42] rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm">
-    <div class="flex items-center justify-between pb-3 border-b border-[#1c2a42]">
-      <div class="flex items-center gap-2.5">
-        <span class="w-3 h-3 rounded-sm bg-blue-500"></span>
-        <h3 class="text-sm sm:text-base font-bold text-white tracking-wide">Section 1 &mdash; Harvester &amp; Ingestion Pipeline</h3>
+  <!-- Administrative Action Matrix: 4 Categorized Functional Sectors -->
+  <div class="space-y-6">
+
+    <!-- Sector 1: Core Harvester & Ingestion Engine -->
+    <div class="bg-surface rounded-2xl border border-border-subtle p-5 sm:p-6 space-y-4 shadow-sm">
+      <div class="flex items-center justify-between pb-3 border-b border-border-subtle">
+        <div class="flex items-center gap-2.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
+          <h3 class="text-xs sm:text-sm font-bold text-text-primary uppercase tracking-wider">Sector 1 &bull; Harvester &amp; Ingestion Pipeline</h3>
+        </div>
+        <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">Data Ingestion</span>
       </div>
-      <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span>Live Pipeline</span>
-      </span>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        <!-- 1. Execute Scan -->
+        <button type="button" id="btnRunScan" onclick="handleAdminAction('execute_scan', '/admin/api/run', { label: 'Execute Scan Now', loadText: 'Scanning Sources...' })" class="admin-ctrl-btn p-4 rounded-xl border border-primary/40 bg-primary/10 hover:bg-primary/20 hover:border-primary text-text-primary transition-all text-left space-y-2 group shadow-sm hover:shadow-md hover:scale-[1.01] active:scale-95">
+          <div class="flex items-center justify-between">
+            <div class="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-surface-container-lowest transition-colors">
+              <span class="material-symbols-outlined text-[18px]">play_arrow</span>
+            </div>
+            <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-primary/20 text-primary border border-primary/30">LIVE PIPELINE</span>
+          </div>
+          <div>
+            <div class="font-bold text-xs sm:text-sm text-text-primary group-hover:text-primary transition-colors flex items-center gap-1.5">
+              <span>Execute Scan Now</span>
+              <span class="w-1.5 h-1.5 rounded-full bg-success"></span>
+            </div>
+            <p class="text-[11px] text-text-secondary mt-0.5">Trigger complete collection, deduplication &amp; vector scoring loop.</p>
+          </div>
+        </button>
+      </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <!-- Control Panel -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <span class="material-symbols-outlined text-blue-500 text-2xl">play_arrow</span>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="text-sm font-bold text-white">Execute Scan Now</span>
-                <span id="badge-sec1-scan" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-              </div>
-              <p class="text-xs text-slate-400 mt-0.5">Target domains collection, deduplication &amp; sector scoring.</p>
-            </div>
-          </div>
-          <button type="button" onclick="handleAdminAction('execute_scan', '/admin/api/run', { label: 'Execute Scan Now', loadText: 'Scanning...' })" class="admin-ctrl-btn px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold text-xs transition-colors shrink-0 shadow-sm">
-            Start Pipeline
-          </button>
+    <!-- Sector 2: Dispatcher & Intelligence Engine -->
+    <div class="bg-surface rounded-2xl border border-border-subtle p-5 sm:p-6 space-y-4 shadow-sm">
+      <div class="flex items-center justify-between pb-3 border-b border-border-subtle">
+        <div class="flex items-center gap-2.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-info"></span>
+          <h3 class="text-xs sm:text-sm font-bold text-text-primary uppercase tracking-wider">Sector 2 &bull; Dispatcher &amp; Intelligence Engine</h3>
         </div>
-        <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono pt-2">
-          <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-            <div id="bar-sec1-scan" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-          </div>
-          <span id="percent-sec1-scan">0%</span>
-        </div>
+        <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-info/10 text-info border border-info/20">Communication</span>
       </div>
 
-      <!-- Current Scan Status -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex items-center gap-4">
-        <div class="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0">
-          <span class="material-symbols-outlined text-2xl">schedule</span>
-        </div>
-        <div>
-          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Current Scan Status</div>
-          <div id="scanStatusMain" class="text-sm font-bold text-white mt-0.5">No active scan</div>
-          <div id="scanStatusSub" class="text-xs text-slate-400 mt-0.5">Click &ldquo;Start Pipeline&rdquo; to begin a new scan.</div>
-        </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        <!-- 2. Send Test Email -->
+        <button type="button" id="btnTestEmail" onclick="handleAdminAction('send_test_email', '/admin/api/email/test', { label: 'Send Test Email', loadText: 'Sending Test Email...' })" class="admin-ctrl-btn p-4 rounded-xl border border-border-subtle bg-surface-container-low hover:bg-surface-container-high hover:border-info/40 text-text-primary transition-all text-left space-y-2 group shadow-sm hover:scale-[1.01] active:scale-95">
+          <div class="flex items-center justify-between">
+            <div class="w-8 h-8 rounded-lg bg-info/15 text-info flex items-center justify-center group-hover:bg-info group-hover:text-white transition-colors">
+              <span class="material-symbols-outlined text-[18px]">mail</span>
+            </div>
+            <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-info/15 text-info border border-info/30">BREVO TLS 587</span>
+          </div>
+          <div>
+            <div class="font-bold text-xs sm:text-sm text-text-primary group-hover:text-info transition-colors">Send Test Email</div>
+            <p class="text-[11px] text-text-secondary mt-0.5">Verify Brevo outbound SMTP handshake and template rendering.</p>
+          </div>
+        </button>
+
+        <!-- 3. Send Daily Report Now -->
+        <button type="button" id="btnReportNow" onclick="handleAdminAction('send_report_now', '/admin/api/report/trigger', { label: 'Send Daily Report', loadText: 'Compiling Daily Digest...' })" class="admin-ctrl-btn p-4 rounded-xl border border-border-subtle bg-surface-container-low hover:bg-surface-container-high hover:border-warning/40 text-text-primary transition-all text-left space-y-2 group shadow-sm hover:scale-[1.01] active:scale-95">
+          <div class="flex items-center justify-between">
+            <div class="w-8 h-8 rounded-lg bg-warning/15 text-warning flex items-center justify-center group-hover:bg-warning group-hover:text-black transition-colors">
+              <span class="material-symbols-outlined text-[18px]">send</span>
+            </div>
+            <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-warning/15 text-warning border border-warning/30">REPORT DIGEST</span>
+          </div>
+          <div>
+            <div class="font-bold text-xs sm:text-sm text-text-primary group-hover:text-warning transition-colors">Send Report Now</div>
+            <p class="text-[11px] text-text-secondary mt-0.5">Immediately compile and dispatch midnight intelligence digest.</p>
+          </div>
+        </button>
+
+        <!-- 4. Refresh Analytics -->
+        <button type="button" id="btnRefreshAnalytics" onclick="handleAdminAction('refresh_analytics', '/admin/api/analytics/refresh', { label: 'Refresh Analytics', loadText: 'Recalculating Stats...' })" class="admin-ctrl-btn p-4 rounded-xl border border-border-subtle bg-surface-container-low hover:bg-surface-container-high hover:border-success/40 text-text-primary transition-all text-left space-y-2 group shadow-sm hover:scale-[1.01] active:scale-95">
+          <div class="flex items-center justify-between">
+            <div class="w-8 h-8 rounded-lg bg-success/15 text-success flex items-center justify-center group-hover:bg-success group-hover:text-white transition-colors">
+              <span class="material-symbols-outlined text-[18px]">analytics</span>
+            </div>
+            <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-success/15 text-success border border-success/30">STATS CACHE</span>
+          </div>
+          <div>
+            <div class="font-bold text-xs sm:text-sm text-text-primary group-hover:text-success transition-colors">Refresh Analytics</div>
+            <p class="text-[11px] text-text-secondary mt-0.5">Recalculate statistical tables, provider health &amp; distributions.</p>
+          </div>
+        </button>
       </div>
     </div>
-  </div>
 
-  <!-- Section 2 – Intelligence Engine matching Screenshot -->
-  <div class="bg-[#0e1726] border border-[#1c2a42] rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm">
-    <div class="flex items-center gap-2.5 pb-3 border-b border-[#1c2a42]">
-      <span class="w-3 h-3 rounded-sm bg-purple-500"></span>
-      <h3 class="text-sm sm:text-base font-bold text-white tracking-wide">Section 2 &mdash; Intelligence Engine</h3>
-    </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <!-- Card 1: Send Test Email -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2.5">
-            <span class="material-symbols-outlined text-blue-400 text-xl">mail</span>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-bold text-white">Send Test Email</span>
-                <span id="badge-sec2-email" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-              </div>
-              <p class="text-[11px] text-slate-400 mt-0.5">Verify Brevo email configuration.</p>
-            </div>
-          </div>
-          <button type="button" onclick="handleAdminAction('send_test_email', '/admin/api/email/test', { label: 'Send Test Email', loadText: 'Sending...' })" class="admin-ctrl-btn px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors shrink-0">
-            Send Test
-          </button>
+    <!-- Sector 3: Automation & Daemon Lifecycle -->
+    <div class="bg-surface rounded-2xl border border-border-subtle p-5 sm:p-6 space-y-4 shadow-sm">
+      <div class="flex items-center justify-between pb-3 border-b border-border-subtle">
+        <div class="flex items-center gap-2.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-warning"></span>
+          <h3 class="text-xs sm:text-sm font-bold text-text-primary uppercase tracking-wider">Sector 3 &bull; Automation &amp; Daemon Lifecycle</h3>
         </div>
-        <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono pt-1">
-          <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-            <div id="bar-sec2-email" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-          </div>
-          <span id="percent-sec2-email">0%</span>
-        </div>
+        <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-warning/10 text-warning border border-warning/20">Cron Workers</span>
       </div>
 
-      <!-- Card 2: Refresh Analytics -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2.5">
-            <span class="material-symbols-outlined text-emerald-400 text-xl">analytics</span>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-bold text-white">Refresh Analytics</span>
-                <span id="badge-sec2-analytics" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-              </div>
-              <p class="text-[11px] text-slate-400 mt-0.5">Rebuild statistical tables and caches.</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        <!-- 5. Pause Scheduler -->
+        <button type="button" id="btnPauseSched" onclick="handleAdminAction('pause_scheduler', '/admin/api/scheduler/pause', { label: 'Pause Scheduler', loadText: 'Pausing Daemon...' })" class="admin-ctrl-btn p-4 rounded-xl border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-2 group shadow-sm hover:scale-[1.01] active:scale-95">
+          <div class="flex items-center justify-between">
+            <div class="w-8 h-8 rounded-lg bg-surface-container text-text-secondary flex items-center justify-center group-hover:text-text-primary transition-colors">
+              <span class="material-symbols-outlined text-[18px]">pause</span>
             </div>
+            <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-surface-container text-text-muted border border-border-subtle">CRON DAEMON</span>
           </div>
-          <button type="button" onclick="handleAdminAction('refresh_analytics', '/admin/api/analytics/refresh', { label: 'Refresh Analytics', loadText: 'Recalculating...' })" class="admin-ctrl-btn px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors shrink-0">
-            Update Cache
-          </button>
-        </div>
-        <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono pt-1">
-          <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-            <div id="bar-sec2-analytics" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
+          <div>
+            <div class="font-bold text-xs sm:text-sm text-text-primary group-hover:text-text-secondary transition-colors">Pause Scheduler</div>
+            <p class="text-[11px] text-text-secondary mt-0.5">Temporarily halt scheduled background harvesting tasks.</p>
           </div>
-          <span id="percent-sec2-analytics">0%</span>
-        </div>
-      </div>
+        </button>
 
-      <!-- Card 3: Send Report Now -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2.5">
-            <span class="material-symbols-outlined text-amber-500 text-xl">send</span>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-bold text-white">Send Report Now</span>
-                <span id="badge-sec2-report" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-              </div>
-              <p class="text-[11px] text-slate-400 mt-0.5">Generate and email intelligence report.</p>
+        <!-- 6. Resume Scheduler -->
+        <button type="button" id="btnResumeSched" onclick="handleAdminAction('resume_scheduler', '/admin/api/scheduler/resume', { label: 'Resume Scheduler', loadText: 'Resuming Daemon...' })" class="admin-ctrl-btn p-4 rounded-xl border border-border-subtle bg-surface-container-low hover:bg-surface-container-high hover:border-success/40 text-text-primary transition-all text-left space-y-2 group shadow-sm hover:scale-[1.01] active:scale-95">
+          <div class="flex items-center justify-between">
+            <div class="w-8 h-8 rounded-lg bg-success/15 text-success flex items-center justify-center group-hover:bg-success group-hover:text-white transition-colors">
+              <span class="material-symbols-outlined text-[18px]">play_circle</span>
             </div>
+            <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-success/15 text-success border border-success/30">UNPAUSE</span>
           </div>
-          <button type="button" onclick="handleAdminAction('send_report_now', '/admin/api/report/trigger', { label: 'Send Daily Report', loadText: 'Compiling...' })" class="admin-ctrl-btn px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors shrink-0">
-            Send Report
-          </button>
-        </div>
-        <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono pt-1">
-          <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-            <div id="bar-sec2-report" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
+          <div>
+            <div class="font-bold text-xs sm:text-sm text-text-primary group-hover:text-success transition-colors">Resume Scheduler</div>
+            <p class="text-[11px] text-text-secondary mt-0.5">Unpause and re-engage continuous cron daemon triggers.</p>
           </div>
-          <span id="percent-sec2-report">0%</span>
-        </div>
+        </button>
+
+        <!-- 7. Restart Scheduler -->
+        <button type="button" id="btnRestartSched" onclick="handleAdminAction('restart_scheduler', '/admin/api/scheduler/restart', { label: 'Restart Scheduler', loadText: 'Restarting Worker...' })" class="admin-ctrl-btn p-4 rounded-xl border border-border-subtle bg-surface-container-low hover:bg-surface-container-high hover:border-warning/40 text-text-primary transition-all text-left space-y-2 group shadow-sm hover:scale-[1.01] active:scale-95">
+          <div class="flex items-center justify-between">
+            <div class="w-8 h-8 rounded-lg bg-warning/15 text-warning flex items-center justify-center group-hover:bg-warning group-hover:text-black transition-colors">
+              <span class="material-symbols-outlined text-[18px]">restart_alt</span>
+            </div>
+            <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-warning/15 text-warning border border-warning/30">WORKER REBOOT</span>
+          </div>
+          <div>
+            <div class="font-bold text-xs sm:text-sm text-text-primary group-hover:text-warning transition-colors">Restart Scheduler</div>
+            <p class="text-[11px] text-text-secondary mt-0.5">Safely terminate thread and initialize fresh worker instance.</p>
+          </div>
+        </button>
       </div>
     </div>
-  </div>
 
-  <!-- Section 3 – Automation & Schedulers matching Screenshot -->
-  <div class="bg-[#0e1726] border border-[#1c2a42] rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm">
-    <div class="flex items-center gap-2.5 pb-3 border-b border-[#1c2a42]">
-      <span class="w-3 h-3 rounded-sm bg-amber-500"></span>
-      <h3 class="text-sm sm:text-base font-bold text-white tracking-wide">Section 3 &mdash; Automation &amp; Schedulers</h3>
-    </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <!-- Card 1: Pause Scheduler -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2.5">
-            <span class="material-symbols-outlined text-blue-400 text-xl">pause</span>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-bold text-white">Pause Scheduler</span>
-                <span id="badge-sec3-pause" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-              </div>
-              <p class="text-[11px] text-slate-400 mt-0.5">Temporarily halt scheduled tasks.</p>
-            </div>
-          </div>
-          <button type="button" onclick="handleAdminAction('pause_scheduler', '/admin/api/scheduler/pause', { label: 'Pause Scheduler', loadText: 'Pausing...' })" class="admin-ctrl-btn px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs transition-colors shrink-0">
-            Pause
-          </button>
+    <!-- Sector 4: Database Infrastructure & Maintenance -->
+    <div class="bg-surface rounded-2xl border border-border-subtle p-5 sm:p-6 space-y-4 shadow-sm">
+      <div class="flex items-center justify-between pb-3 border-b border-border-subtle">
+        <div class="flex items-center gap-2.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-danger"></span>
+          <h3 class="text-xs sm:text-sm font-bold text-text-primary uppercase tracking-wider">Sector 4 &bull; Database Infrastructure &amp; Safeguards</h3>
         </div>
-        <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono pt-1">
-          <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-            <div id="bar-sec3-pause" class="h-full bg-amber-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-          </div>
-          <span id="percent-sec3-pause">0%</span>
-        </div>
+        <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-danger/10 text-danger border border-danger/20">Storage &amp; Engine</span>
       </div>
 
-      <!-- Card 2: Resume Scheduler -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2.5">
-            <span class="material-symbols-outlined text-emerald-400 text-xl">play_circle</span>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-bold text-white">Resume Scheduler</span>
-                <span id="badge-sec3-resume" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-              </div>
-              <p class="text-[11px] text-slate-400 mt-0.5">Resume scheduled automation.</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <!-- 8. Purge Old Records (Safeguarded) -->
+        <button type="button" id="btnClearOld" onclick="openPurgeModal()" class="admin-ctrl-btn p-4 rounded-xl border border-danger/40 bg-danger/10 hover:bg-danger/20 hover:border-danger text-text-primary transition-all text-left space-y-2 group shadow-sm hover:scale-[1.01] active:scale-95">
+          <div class="flex items-center justify-between">
+            <div class="w-8 h-8 rounded-lg bg-danger/20 text-danger flex items-center justify-center group-hover:bg-danger group-hover:text-white transition-colors">
+              <span class="material-symbols-outlined text-[18px]">delete_sweep</span>
             </div>
+            <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-danger/20 text-danger border border-danger/30">SAFEGUARDED</span>
           </div>
-          <button type="button" onclick="handleAdminAction('resume_scheduler', '/admin/api/scheduler/resume', { label: 'Resume Scheduler', loadText: 'Resuming...' })" class="admin-ctrl-btn px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors shrink-0">
-            Resume
-          </button>
-        </div>
-        <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono pt-1">
-          <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-            <div id="bar-sec3-resume" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
+          <div>
+            <div class="font-bold text-xs sm:text-sm text-danger flex items-center gap-1">
+              <span>Purge &gt; 30d Records</span>
+              <span class="material-symbols-outlined text-[14px]">lock</span>
+            </div>
+            <p class="text-[11px] text-text-secondary mt-0.5">Preview eligible records and permanently remove expired entries.</p>
           </div>
-          <span id="percent-sec3-resume">0%</span>
-        </div>
-      </div>
+        </button>
 
-      <!-- Card 3: Restart Scheduler -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2.5">
-            <span class="material-symbols-outlined text-amber-500 text-xl">restart_alt</span>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-bold text-white">Restart Scheduler</span>
-                <span id="badge-sec3-restart" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-              </div>
-              <p class="text-[11px] text-slate-400 mt-0.5">Restart background worker.</p>
+        <!-- 9. Test DB Ping -->
+        <button type="button" id="btnTestDB" onclick="handleAdminAction('test_db', '/admin/api/db/test', { label: 'Test DB Ping', loadText: 'Testing Latency...' })" class="admin-ctrl-btn p-4 rounded-xl border border-border-subtle bg-surface-container-low hover:bg-surface-container-high hover:border-info/40 text-text-primary transition-all text-left space-y-2 group shadow-sm hover:scale-[1.01] active:scale-95">
+          <div class="flex items-center justify-between">
+            <div class="w-8 h-8 rounded-lg bg-info/15 text-info flex items-center justify-center group-hover:bg-info group-hover:text-white transition-colors">
+              <span class="material-symbols-outlined text-[18px]">cable</span>
             </div>
+            <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-info/15 text-info border border-info/30">PING</span>
           </div>
-          <button type="button" onclick="handleAdminAction('restart_scheduler', '/admin/api/scheduler/restart', { label: 'Restart Scheduler', loadText: 'Restarting...' })" class="admin-ctrl-btn px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs transition-colors shrink-0">
-            Restart
-          </button>
-        </div>
-        <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono pt-1">
-          <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-            <div id="bar-sec3-restart" class="h-full bg-amber-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
+          <div>
+            <div class="font-bold text-xs sm:text-sm text-text-primary group-hover:text-info transition-colors">Test DB Ping</div>
+            <p class="text-[11px] text-text-secondary mt-0.5">Execute live SELECT 1 query and measure pool latency.</p>
           </div>
-          <span id="percent-sec3-restart">0%</span>
-        </div>
+        </button>
+
+        <!-- 10. Reconnect Database -->
+        <button type="button" id="btnReconnectDB" onclick="handleAdminAction('db_reconnect', '/admin/api/db/reconnect', { label: 'Reconnect Database', loadText: 'Reconnecting Pool...' })" class="admin-ctrl-btn p-4 rounded-xl border border-border-subtle bg-surface-container-low hover:bg-surface-container-high hover:border-warning/40 text-text-primary transition-all text-left space-y-2 group shadow-sm hover:scale-[1.01] active:scale-95">
+          <div class="flex items-center justify-between">
+            <div class="w-8 h-8 rounded-lg bg-warning/15 text-warning flex items-center justify-center group-hover:bg-warning group-hover:text-black transition-colors">
+              <span class="material-symbols-outlined text-[18px]">sync</span>
+            </div>
+            <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-warning/15 text-warning border border-warning/30">POOL RESET</span>
+          </div>
+          <div>
+            <div class="font-bold text-xs sm:text-sm text-text-primary group-hover:text-warning transition-colors">Reconnect DB</div>
+            <p class="text-[11px] text-text-secondary mt-0.5">Safely dispose connection pool and establish fresh connections.</p>
+          </div>
+        </button>
+
+        <!-- 11. Database Info -->
+        <button type="button" id="btnDBInfo" onclick="handleAdminAction('db_info', '/admin/api/db/info', { label: 'Show DB Info', method: 'GET', showModal: true })" class="admin-ctrl-btn p-4 rounded-xl border border-border-subtle bg-surface-container-low hover:bg-surface-container-high hover:border-primary/40 text-text-primary transition-all text-left space-y-2 group shadow-sm hover:scale-[1.01] active:scale-95">
+          <div class="flex items-center justify-between">
+            <div class="w-8 h-8 rounded-lg bg-primary/15 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-surface-container-lowest transition-colors">
+              <span class="material-symbols-outlined text-[18px]">dataset</span>
+            </div>
+            <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-primary/15 text-primary border border-primary/30">METRICS</span>
+          </div>
+          <div>
+            <div class="font-bold text-xs sm:text-sm text-text-primary group-hover:text-primary transition-colors">Show DB Info</div>
+            <p class="text-[11px] text-text-secondary mt-0.5">Inspect table counts, database host and schema breakdown.</p>
+          </div>
+        </button>
       </div>
     </div>
-  </div>
 
-  <!-- Section 4 – Database & Safeguards matching Screenshot -->
-  <div class="bg-[#0e1726] border border-[#1c2a42] rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm">
-    <div class="flex items-center gap-2.5 pb-3 border-b border-[#1c2a42]">
-      <span class="w-3 h-3 rounded-sm bg-rose-500"></span>
-      <h3 class="text-sm sm:text-base font-bold text-white tracking-wide">Section 4 &mdash; Database &amp; Safeguards</h3>
-    </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <!-- Card 1: Purge > 30d Records -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2.5">
-            <span class="material-symbols-outlined text-rose-500 text-xl">delete</span>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-bold text-white">Purge &gt; 30d Records</span>
-                <span id="badge-sec4-purge" class="text-[10px] font-semibold text-rose-400 bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 rounded-full">Caution</span>
-              </div>
-              <p class="text-[11px] text-slate-400 mt-0.5">Remove stale records (older than 30 days).</p>
-            </div>
-          </div>
-          <button type="button" onclick="openPurgeModal()" class="admin-ctrl-btn px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition-colors shrink-0">
-            Purge
-          </button>
-        </div>
-        <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono pt-1">
-          <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-            <div id="bar-sec4-purge" class="h-full bg-rose-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-          </div>
-          <span id="percent-sec4-purge">0%</span>
-        </div>
-      </div>
-
-      <!-- Card 2: Test DB Ping -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2.5">
-            <span class="material-symbols-outlined text-sky-400 text-xl">database</span>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-bold text-white">Test DB Ping</span>
-                <span id="badge-sec4-ping" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-              </div>
-              <p class="text-[11px] text-slate-400 mt-0.5">Check DB latency and connection.</p>
-            </div>
-          </div>
-          <button type="button" onclick="handleAdminAction('test_db', '/admin/api/db/test', { label: 'Test DB Ping', loadText: 'Testing...' })" class="admin-ctrl-btn px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors shrink-0">
-            Test
-          </button>
-        </div>
-        <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono pt-1">
-          <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-            <div id="bar-sec4-ping" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-          </div>
-          <span id="percent-sec4-ping">0%</span>
-        </div>
-      </div>
-
-      <!-- Card 3: Reconnect DB -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2.5">
-            <span class="material-symbols-outlined text-cyan-400 text-xl">sync</span>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-bold text-white">Reconnect DB</span>
-                <span id="badge-sec4-reconnect" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-              </div>
-              <p class="text-[11px] text-slate-400 mt-0.5">Reset database engine pool.</p>
-            </div>
-          </div>
-          <button type="button" onclick="handleAdminAction('db_reconnect', '/admin/api/db/reconnect', { label: 'Reconnect Database', loadText: 'Reconnecting...' })" class="admin-ctrl-btn px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors shrink-0">
-            Reconnect
-          </button>
-        </div>
-        <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono pt-1">
-          <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-            <div id="bar-sec4-reconnect" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-          </div>
-          <span id="percent-sec4-reconnect">0%</span>
-        </div>
-      </div>
-
-      <!-- Card 4: Show DB Info -->
-      <div class="bg-[#0a101d] border border-[#19253b] rounded-xl p-4 flex flex-col justify-between space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2.5">
-            <span class="material-symbols-outlined text-blue-400 text-xl">info</span>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-bold text-white">Show DB Info</span>
-                <span id="badge-sec4-dbinfo" class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">Ready</span>
-              </div>
-              <p class="text-[11px] text-slate-400 mt-0.5">Show schema &amp; table row counts.</p>
-            </div>
-          </div>
-          <button type="button" onclick="handleAdminAction('db_info', '/admin/api/db/info', { label: 'Show DB Info', method: 'GET', showModal: true })" class="admin-ctrl-btn px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors shrink-0">
-            View Info
-          </button>
-        </div>
-        <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 font-mono pt-1">
-          <div class="h-1.5 bg-slate-800 rounded-full flex-1 overflow-hidden">
-            <div id="bar-sec4-dbinfo" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-          </div>
-          <span id="percent-sec4-dbinfo">0%</span>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- Destructive Purge Confirmation Modal -->
-  <div id="purgeModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-    <div class="bg-[#0e1726] rounded-2xl border border-rose-500/40 max-w-md w-full p-6 space-y-4 shadow-2xl">
-      <div class="flex items-center gap-3 text-rose-400">
-        <div class="w-10 h-10 rounded-xl bg-rose-500/15 flex items-center justify-center">
+  <div id="purgeModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div class="bg-surface rounded-2xl border border-danger/40 max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex items-center gap-3 text-danger">
+        <div class="w-10 h-10 rounded-xl bg-danger/15 flex items-center justify-center">
           <span class="material-symbols-outlined text-2xl">warning</span>
         </div>
         <div>
-          <h3 class="text-base font-bold text-white">Confirm Database Purge</h3>
-          <p class="text-xs text-rose-400 font-medium">Destructive Operation Safeguard</p>
+          <h3 class="text-base font-bold text-text-primary">Confirm Database Purge</h3>
+          <p class="text-xs text-danger font-medium">Destructive Operation Safeguard</p>
         </div>
       </div>
 
-      <div class="p-4 rounded-xl bg-[#0a101d] border border-[#19253b] space-y-2.5 text-xs">
-        <p class="text-slate-300">
-          You are about to purge stale opportunities discovered more than <strong class="text-white font-semibold">30 days ago</strong>.
+      <div class="p-4 rounded-xl bg-surface-container-low border border-border-subtle space-y-2 text-xs">
+        <p class="text-text-secondary">
+          You are about to purge stale opportunities discovered more than <strong class="text-text-primary">30 days ago</strong>.
         </p>
-        <div class="p-3 rounded-lg bg-[#0e1726] border border-[#19253b] flex items-center justify-between">
-          <span class="text-slate-400">Eligible Records:</span>
-          <span id="purgeEligibleCount" class="font-mono font-bold text-rose-400 text-sm">Querying...</span>
+        <div class="p-3 rounded-lg bg-surface border border-border-subtle flex items-center justify-between">
+          <span class="text-text-muted">Eligible Records:</span>
+          <span id="purgeEligibleCount" class="font-mono font-bold text-danger text-sm flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-xs animate-spin">sync</span>
+            <span>Calculating...</span>
+          </span>
         </div>
-        <div class="p-3 rounded-lg bg-[#0e1726] border border-[#19253b] flex items-center justify-between">
-          <span class="text-slate-400">Retention Cutoff:</span>
-          <span id="purgeCutoffDate" class="font-mono text-slate-300">--</span>
+        <div class="p-3 rounded-lg bg-surface border border-border-subtle flex items-center justify-between">
+          <span class="text-text-muted">Retention Cutoff:</span>
+          <span id="purgeCutoffDate" class="font-mono text-text-secondary">--</span>
         </div>
-        <p class="text-[11px] text-slate-500 italic pt-1">
+        <p class="text-[11px] text-text-muted italic pt-1">
           Note: This action permanently deletes eligible records from PostgreSQL. This cannot be reversed.
         </p>
       </div>
 
       <div class="flex items-center justify-end gap-3 pt-2">
-        <button type="button" onclick="closePurgeModal()" class="px-4 py-2 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-800 text-slate-300 text-xs font-semibold transition-colors">
+        <button type="button" onclick="closePurgeModal()" class="px-4 py-2 rounded-lg border border-border-subtle bg-surface-container-high hover:bg-surface-container-highest text-text-secondary text-xs font-semibold transition-colors">
           Cancel
         </button>
-        <button type="button" id="btnConfirmPurge" onclick="executeConfirmedPurge()" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5">
+        <button type="button" id="btnConfirmPurge" onclick="executeConfirmedPurge()" class="px-4 py-2 rounded-lg bg-danger hover:bg-danger/90 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5">
           <span class="material-symbols-outlined text-[16px]">delete_forever</span>
-          <span>Confirm &amp; Purge</span>
+          <span>Confirm &amp; Purge Records</span>
         </button>
       </div>
     </div>
   </div>
 
   <!-- Database Information Modal -->
-  <div id="dbInfoModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-    <div class="bg-[#0e1726] rounded-2xl border border-[#1c2a42] max-w-xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between pb-3 border-b border-[#1c2a42]">
+  <div id="dbInfoModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div class="bg-surface rounded-2xl border border-border-subtle max-w-xl w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-border-subtle">
         <div class="flex items-center gap-2.5">
-          <span class="material-symbols-outlined text-blue-500 text-2xl">database</span>
+          <span class="material-symbols-outlined text-primary text-2xl">database</span>
           <div>
-            <h3 class="text-sm font-bold text-white">PostgreSQL Schema &amp; Telemetry</h3>
-            <p id="dbInfoHostSubtitle" class="text-[11px] text-slate-400 font-mono">Host: localhost</p>
+            <h3 class="text-sm font-bold text-text-primary">PostgreSQL Schema &amp; Telemetry</h3>
+            <p id="dbInfoHostSubtitle" class="text-[11px] text-text-muted font-mono">Host: localhost</p>
           </div>
         </div>
-        <button type="button" onclick="closeDBInfoModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+        <button type="button" onclick="closeDBInfoModal()" class="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-container-high transition-colors">
           <span class="material-symbols-outlined text-[18px]">close</span>
         </button>
       </div>
 
+      <!-- Quick Metrics Grid -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <div class="p-3 rounded-lg bg-[#0a101d] border border-[#19253b] space-y-0.5">
-          <div class="text-[10px] uppercase font-bold text-slate-400">Status</div>
-          <div id="dbInfoStatus" class="font-bold text-xs text-emerald-400 flex items-center gap-1">
-            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <div class="p-3 rounded-lg bg-surface-container-low border border-border-subtle space-y-0.5">
+          <div class="text-[10px] uppercase font-bold text-text-muted">Status</div>
+          <div id="dbInfoStatus" class="font-bold text-xs text-success flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-success"></span>
             <span>Connected</span>
           </div>
         </div>
-        <div class="p-3 rounded-lg bg-[#0a101d] border border-[#19253b] space-y-0.5">
-          <div class="text-[10px] uppercase font-bold text-slate-400">Latency</div>
-          <div id="dbInfoLatency" class="font-bold font-mono text-xs text-sky-400">-- ms</div>
+        <div class="p-3 rounded-lg bg-surface-container-low border border-border-subtle space-y-0.5">
+          <div class="text-[10px] uppercase font-bold text-text-muted">Latency</div>
+          <div id="dbInfoLatency" class="font-bold font-mono text-xs text-info">-- ms</div>
         </div>
-        <div class="p-3 rounded-lg bg-[#0a101d] border border-[#19253b] space-y-0.5">
-          <div class="text-[10px] uppercase font-bold text-slate-400">Engine</div>
-          <div id="dbInfoEngine" class="font-bold text-xs text-slate-200 truncate">PostgreSQL</div>
+        <div class="p-3 rounded-lg bg-surface-container-low border border-border-subtle space-y-0.5">
+          <div class="text-[10px] uppercase font-bold text-text-muted">Engine</div>
+          <div id="dbInfoEngine" class="font-bold text-xs text-text-primary truncate">PostgreSQL</div>
         </div>
-        <div class="p-3 rounded-lg bg-[#0a101d] border border-[#19253b] space-y-0.5">
-          <div class="text-[10px] uppercase font-bold text-slate-400">Total Tables</div>
-          <div id="dbInfoTotalTables" class="font-bold font-mono text-xs text-white">--</div>
+        <div class="p-3 rounded-lg bg-surface-container-low border border-border-subtle space-y-0.5">
+          <div class="text-[10px] uppercase font-bold text-text-muted">Total Tables</div>
+          <div id="dbInfoTotalTables" class="font-bold font-mono text-xs text-text-primary">--</div>
         </div>
       </div>
 
+      <!-- Table Row Counts Breakdown -->
       <div class="space-y-2 pt-2">
-        <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Schema Table Row Counts</h4>
-        <div id="dbInfoTableGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 font-mono text-xs"></div>
+        <h4 class="text-xs font-bold text-text-secondary uppercase tracking-wider">Schema Table Row Counts</h4>
+        <div id="dbInfoTableGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 font-mono text-xs">
+          <!-- Populated via JS -->
+        </div>
       </div>
 
-      <div class="flex justify-end pt-3 border-t border-[#1c2a42]">
-        <button type="button" onclick="closeDBInfoModal()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold transition-colors">
+      <div class="flex justify-end pt-3 border-t border-border-subtle">
+        <button type="button" onclick="closeDBInfoModal()" class="px-4 py-2 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-text-primary text-xs font-semibold transition-colors">
           Close
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- Live Security Audit Trail (Recent Audits) -->
+  <div class="bg-surface rounded-xl border border-border-subtle overflow-hidden">
+    <div class="p-4 border-b border-border-subtle flex justify-between items-center bg-surface-container-low">
+      <h3 class="text-sm font-bold text-text-primary flex items-center gap-2">
+        <span class="material-symbols-outlined text-danger text-[18px]">security</span>
+        <span>Recent Security Audit Log Events</span>
+      </h3>
+      <a href="{{ url_for('admin_ui.admin_logs') }}" class="text-xs font-semibold text-admin-accent hover:underline flex items-center gap-1">
+        <span>View full audit log</span>
+        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+      </a>
+    </div>
+
+    <div class="divide-y divide-border-subtle font-mono text-xs">
+      {% for audit in recent_audits %}
+        <div class="p-3.5 hover:bg-bg-card-hover transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div class="flex items-center gap-3">
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded {% if audit.status == 'SUCCESS' %}bg-success/15 text-success border border-success/30{% else %}bg-danger/15 text-danger border border-danger/30{% endif %}">
+              {{ audit.status }}
+            </span>
+            <span class="text-text-primary font-bold">{{ audit.event_type }}</span>
+            <span class="text-text-secondary">/ {{ audit.action }}</span>
+          </div>
+          <div class="flex items-center gap-4 text-[11px] text-text-muted">
+            <span>User: {{ audit.username|default('anonymous') }}</span>
+            <span>IP: {{ audit.source_ip|default('127.0.0.1') }}</span>
+            <span>{{ audit.timestamp }}</span>
+          </div>
+        </div>
+      {% else %}
+        <div class="p-8 text-center text-text-muted text-xs">
+          No security audit events recorded yet.
+        </div>
+      {% endfor %}
     </div>
   </div>
 
@@ -881,28 +564,16 @@
 {% block extra_scripts %}
 <script nonce="{{ csp_nonce }}">
   let currentJobId = null;
-  let pollInterval = null;
   let activeActionKey = null;
-
-  // Key-to-Elements Mapping for Dual Updates (Top Overview + Section Detail)
-  const actionElementMap = {
-    'execute_scan': ['top-scan', 'sec1-scan'],
-    'send_test_email': ['top-email', 'sec2-email'],
-    'send_report_now': ['top-report', 'sec2-report'],
-    'refresh_analytics': ['top-analytics', 'sec2-analytics'],
-    'pause_scheduler': ['top-pause', 'sec3-pause'],
-    'resume_scheduler': ['top-resume', 'sec3-resume'],
-    'restart_scheduler': ['top-restart', 'sec3-restart'],
-    'purge_records': ['top-purge', 'sec4-purge'],
-    'test_db': ['top-ping', 'sec4-ping'],
-    'db_reconnect': ['top-reconnect', 'sec4-reconnect'],
-    'db_info': ['top-dbinfo', 'sec4-dbinfo']
-  };
+  let pollInterval = null;
+  let timerInterval = null;
+  let jobStartTime = null;
+  let lastActionParams = null;
+  let lastLoggedStage = null;
 
   document.addEventListener('DOMContentLoaded', () => {
-    updateDynamicTimestamps();
     checkActiveAction();
-
+    // Dismiss modals on Escape key
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closePurgeModal();
@@ -911,103 +582,40 @@
     });
   });
 
-  function updateDynamicTimestamps() {
-    const now = new Date();
-    const formatted = now.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    }) + ' ' + now.toLocaleTimeString('en-US');
-
-    const hElem = document.getElementById('headerLastUpdated');
-    const fElem = document.getElementById('footerLastUpdated');
-    if (hElem) hElem.textContent = formatted;
-    if (fElem) fElem.textContent = formatted;
-  }
-
   function getTimestamp() {
     const d = new Date();
     return d.toTimeString().split(' ')[0];
   }
 
-  function appendTerminalLog(message, level = 'INFO') {
-    const logElem = document.getElementById('terminalLogContainer');
+  function appendTerminalLog(message, level = 'info') {
+    const logElem = document.getElementById('consoleTerminalLog');
     if (!logElem) return;
+    const line = document.createElement('div');
+    let colorClass = 'text-text-secondary';
+    if (level === 'success') colorClass = 'text-success font-semibold';
+    if (level === 'danger') colorClass = 'text-danger font-semibold';
+    if (level === 'accent') colorClass = 'text-admin-accent font-semibold';
+    if (level === 'warning') colorClass = 'text-warning font-semibold';
 
-    const row = document.createElement('div');
-    row.className = 'flex items-center gap-2';
-
-    let levelColor = 'text-emerald-400';
-    if (level === 'ERROR' || level === 'FAILED') levelColor = 'text-rose-400';
-    if (level === 'WARN' || level === 'CAUTION') levelColor = 'text-amber-400';
-    if (level === 'DEBUG') levelColor = 'text-sky-400';
-
-    row.innerHTML = `
-      <span class="text-slate-500">[${getTimestamp()}]</span>
-      <span class="${levelColor} font-bold">${level}</span>
-      <span class="text-slate-200">${message}</span>
-    `;
-    logElem.appendChild(row);
-
-    const autoScroll = document.getElementById('autoScrollToggle');
-    if (!autoScroll || autoScroll.checked) {
-      logElem.scrollTop = logElem.scrollHeight;
-    }
+    line.className = `${colorClass} flex items-start gap-1.5`;
+    line.innerHTML = `<span class="text-text-muted shrink-0">[${getTimestamp()}]</span><span>&gt; ${message}</span>`;
+    logElem.appendChild(line);
+    logElem.scrollTop = logElem.scrollHeight;
   }
 
-  function clearTerminalLogs() {
-    const logElem = document.getElementById('terminalLogContainer');
-    if (logElem) {
-      logElem.innerHTML = `
-        <div class="flex items-center gap-2">
-          <span class="text-slate-500">[${getTimestamp()}]</span>
-          <span class="text-emerald-400 font-bold">INFO</span>
-          <span class="text-slate-200">Terminal console cleared by operator.</span>
-        </div>
-      `;
-    }
-  }
-
-  function updateActionProgress(actionKey, progressPercent, statusLabel = null) {
-    const targets = actionElementMap[actionKey] || [];
-    targets.forEach(targetId => {
-      const bar = document.getElementById(`bar-${targetId}`);
-      const percentText = document.getElementById(`percent-${targetId}`);
-      const badge = document.getElementById(`badge-${targetId}`);
-
-      if (bar) {
-        bar.style.width = `${Math.min(100, Math.max(0, progressPercent))}%`;
+  async function checkActiveAction() {
+    try {
+      const res = await fetch('/admin/api/actions/active', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      const data = await res.json();
+      if (data.success && data.active && data.job) {
+        showActionConsole(data.job.action_label || 'Action In Progress', data.job.job_id);
+        renderJobTelemetry(data.job);
+        startPolling(data.job.job_id);
       }
-      if (percentText) {
-        percentText.textContent = `${Math.round(progressPercent)}%`;
-      }
-      if (badge && statusLabel) {
-        badge.textContent = statusLabel;
-        if (statusLabel === 'Running...') {
-          badge.className = 'text-[10px] font-semibold text-blue-400 bg-blue-500/15 border border-blue-500/30 px-2 py-0.5 rounded-full animate-pulse';
-        } else if (statusLabel === 'Ready') {
-          badge.className = 'text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full';
-        } else if (statusLabel === 'Failed') {
-          badge.className = 'text-[10px] font-semibold text-rose-400 bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 rounded-full';
-        }
-      }
-    });
-
-    // If scanning, update the Section 1 "Current Scan Status" card
-    if (actionKey === 'execute_scan') {
-      const scanStatus = document.getElementById('scanStatusMain');
-      const scanSub = document.getElementById('scanStatusSub');
-      if (progressPercent > 0 && progressPercent < 100) {
-        if (scanStatus) scanStatus.innerHTML = '<span class="text-blue-400 animate-pulse flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px] animate-spin">sync</span><span>Scan in progress...</span></span>';
-        if (scanSub) scanSub.textContent = `Processing harvester stages (${Math.round(progressPercent)}%)...`;
-      } else if (progressPercent >= 100) {
-        if (scanStatus) scanStatus.innerHTML = '<span class="text-emerald-400">Scan Complete</span>';
-        if (scanSub) scanSub.textContent = 'All target domains harvested & indexed.';
-        setTimeout(() => {
-          if (scanStatus) scanStatus.textContent = 'No active scan';
-          if (scanSub) scanSub.textContent = 'Click "Start Pipeline" to begin a new scan.';
-        }, 5000);
-      }
+    } catch (e) {
+      console.debug('No active action detected:', e);
     }
   }
 
@@ -1022,49 +630,99 @@
     });
   }
 
-  async function checkActiveAction() {
-    try {
-      const res = await fetch('/admin/api/actions/active', {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-      });
-      const data = await res.json();
-      if (data.success && data.active && data.job) {
-        activeActionKey = data.job.action_key || 'execute_scan';
-        updateActionProgress(activeActionKey, data.job.progress || 10, 'Running...');
-        startPolling(data.job.job_id, activeActionKey);
-      }
-    } catch (e) {
-      console.debug('No active background action detected.');
+  function showActionConsole(title, jobId) {
+    document.getElementById('consoleActionTitle').textContent = title;
+    document.getElementById('consoleJobId').textContent = `Job ID: ${jobId || 'local-dispatch'}`;
+    document.getElementById('consoleResultDrawer').classList.add('hidden');
+    document.getElementById('consoleErrorDrawer').classList.add('hidden');
+    
+    const badge = document.getElementById('consoleStatusBadge');
+    badge.className = 'text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full tracking-wider bg-primary/15 text-primary border border-primary/30 flex items-center gap-1.5';
+    badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span><span>RUNNING</span>';
+    
+    const icon = document.getElementById('consoleIcon');
+    icon.textContent = 'sync';
+    icon.className = 'material-symbols-outlined text-xl animate-spin text-admin-accent';
+    
+    const iconContainer = document.getElementById('consoleIconContainer');
+    iconContainer.className = 'w-10 h-10 rounded-xl bg-admin-accent/15 border border-admin-accent/30 flex items-center justify-center shrink-0 shadow-sm text-admin-accent';
+    
+    setActionButtonsDisabled(true);
+  }
+
+  function resetActionConsoleToStandby() {
+    stopPolling();
+    stopTimer();
+    document.getElementById('consoleActionTitle').textContent = 'System Telemetry & Action Console';
+    document.getElementById('consoleJobId').textContent = '11 privileged endpoints connected • Real-time stage tracking active';
+    
+    const badge = document.getElementById('consoleStatusBadge');
+    badge.className = 'text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full tracking-wider bg-success/15 text-success border border-success/30 flex items-center gap-1.5';
+    badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span><span>STANDBY / ARMED</span>';
+    
+    const icon = document.getElementById('consoleIcon');
+    icon.textContent = 'terminal';
+    icon.className = 'material-symbols-outlined text-xl text-admin-accent';
+    
+    const iconContainer = document.getElementById('consoleIconContainer');
+    iconContainer.className = 'w-10 h-10 rounded-xl bg-admin-accent/15 border border-admin-accent/30 flex items-center justify-center shrink-0 shadow-sm text-admin-accent';
+
+    document.getElementById('consoleTimer').textContent = '00:00s';
+    document.getElementById('consoleStageText').innerHTML = '<span class="w-2 h-2 rounded-full bg-success"></span><span>Engine ready for operator command. Select an action below.</span>';
+    document.getElementById('consolePercentText').textContent = 'READY';
+    
+    const bar = document.getElementById('consoleProgressBar');
+    bar.style.width = '100%';
+    bar.className = 'h-full bg-success/40 rounded-full transition-all duration-300 ease-out';
+    
+    document.getElementById('consoleResultDrawer').classList.add('hidden');
+    document.getElementById('consoleErrorDrawer').classList.add('hidden');
+    setActionButtonsDisabled(false);
+    appendTerminalLog('Operator reset console state to STANDBY.', 'accent');
+  }
+
+  function startTimer(startTimeStr) {
+    stopTimer();
+    jobStartTime = startTimeStr ? new Date(startTimeStr).getTime() : Date.now();
+    const timerElem = document.getElementById('consoleTimer');
+
+    function update() {
+      const elapsedSec = Math.max(0, Math.floor((Date.now() - jobStartTime) / 1000));
+      const mins = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+      const secs = String(elapsedSec % 60).padStart(2, '0');
+      timerElem.textContent = `${mins}:${secs}s`;
+    }
+    update();
+    timerInterval = setInterval(update, 1000);
+  }
+
+  function stopTimer() {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
     }
   }
 
-  function startPolling(jobId, actionKey) {
+  function startPolling(jobId) {
     stopPolling();
     currentJobId = jobId;
+    startTimer();
 
     pollInterval = setInterval(async () => {
       try {
         const res = await fetch(`/admin/api/actions/${jobId}`, {
           headers: { 'X-Requested-With': 'XMLHttpRequest' }
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const job = await res.json();
-
-        updateActionProgress(actionKey, job.progress || 0, job.status === 'COMPLETED' ? 'Ready' : (job.status === 'FAILED' ? 'Failed' : 'Running...'));
-
-        if (job.current_stage) {
-          appendTerminalLog(`[STAGE] ${job.current_stage}`);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: Failed to fetch status`);
         }
+        const job = await res.json();
+        renderJobTelemetry(job);
 
         if (job.status === 'COMPLETED' || job.status === 'FAILED' || job.status === 'CANCELLED') {
           stopPolling();
+          stopTimer();
           setActionButtonsDisabled(false);
-          if (job.status === 'COMPLETED') {
-            appendTerminalLog(`Operation '${job.action_label || actionKey}' completed successfully.`, 'INFO');
-            setTimeout(() => updateActionProgress(actionKey, 0, 'Ready'), 4000);
-          } else {
-            appendTerminalLog(`Operation '${job.action_label || actionKey}' FAILED: ${job.error || 'Error'}`, 'ERROR');
-          }
         }
       } catch (err) {
         console.warn('Poll error:', err);
@@ -1079,15 +737,89 @@
     }
   }
 
+  function renderJobTelemetry(job) {
+    const stageElem = document.getElementById('consoleStageText');
+    const percentElem = document.getElementById('consolePercentText');
+    const barElem = document.getElementById('consoleProgressBar');
+    const badge = document.getElementById('consoleStatusBadge');
+    const icon = document.getElementById('consoleIcon');
+    const iconContainer = document.getElementById('consoleIconContainer');
+
+    // Stage & Progress
+    const stageStr = job.current_stage || 'Processing...';
+    stageElem.innerHTML = `<span class="w-2 h-2 rounded-full ${job.status === 'COMPLETED' ? 'bg-success' : (job.status === 'FAILED' ? 'bg-danger' : 'bg-admin-accent animate-ping')}"></span><span>${stageStr}</span>`;
+
+    if (stageStr !== lastLoggedStage && stageStr !== 'Processing...') {
+      lastLoggedStage = stageStr;
+      appendTerminalLog(`[STAGE] ${stageStr}`, job.status === 'COMPLETED' ? 'success' : 'info');
+    }
+
+    if (typeof job.progress === 'number' && job.progress >= 0) {
+      const p = Math.min(100, Math.max(0, job.progress));
+      percentElem.textContent = `${p.toFixed(0)}%`;
+      barElem.style.width = `${p}%`;
+      barElem.className = 'h-full bg-gradient-to-r from-primary via-admin-accent to-secondary rounded-full transition-all duration-300 ease-out';
+    } else {
+      percentElem.textContent = 'In progress';
+      barElem.style.width = '100%';
+      barElem.className = 'h-full bg-admin-accent/50 animate-pulse rounded-full';
+    }
+
+    // Status state
+    if (job.status === 'COMPLETED') {
+      badge.className = 'text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full tracking-wider bg-success/15 text-success border border-success/30 flex items-center gap-1.5';
+      badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-success"></span><span>COMPLETED</span>';
+      icon.textContent = 'check_circle';
+      icon.className = 'material-symbols-outlined text-xl text-success';
+      iconContainer.className = 'w-10 h-10 rounded-xl bg-success/15 border border-success/30 flex items-center justify-center shrink-0';
+
+      appendTerminalLog(`Operation '${job.action_label || 'Action'}' finished with status: COMPLETED.`, 'success');
+
+      // Show result drawer
+      const resDrawer = document.getElementById('consoleResultDrawer');
+      const resContent = document.getElementById('consoleResultContent');
+      resDrawer.classList.remove('hidden');
+
+      let detailsText = '';
+      if (job.result) {
+        if (job.result.message) detailsText += `<div class="text-text-primary mb-1"><strong>Message:</strong> ${job.result.message}</div>`;
+        if (job.result.opportunities_found !== undefined) detailsText += `<div><strong>Opportunities Found:</strong> ${job.result.opportunities_found}</div>`;
+        if (job.result.deleted_count !== undefined) detailsText += `<div class="text-danger"><strong>Records Purged:</strong> ${job.result.deleted_count}</div>`;
+        if (job.result.latency_ms !== undefined) detailsText += `<div><strong>Socket Latency:</strong> ${job.result.latency_ms} ms</div>`;
+        if (job.result.recalculated_providers !== undefined) detailsText += `<div><strong>Providers Recalculated:</strong> ${job.result.recalculated_providers}</div>`;
+        if (job.result.database_host !== undefined) detailsText += `<div><strong>Database Host:</strong> ${job.result.database_host}</div>`;
+        if (!detailsText) {
+          detailsText = `<pre class="whitespace-pre-wrap font-mono text-[11px]">${JSON.stringify(job.result, null, 2)}</pre>`;
+        }
+      } else {
+        detailsText = 'Operation completed successfully.';
+      }
+      resContent.innerHTML = detailsText;
+    } else if (job.status === 'FAILED') {
+      badge.className = 'text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full tracking-wider bg-danger/15 text-danger border border-danger/30 flex items-center gap-1.5';
+      badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-danger"></span><span>FAILED</span>';
+      icon.textContent = 'error';
+      icon.className = 'material-symbols-outlined text-xl text-danger';
+      iconContainer.className = 'w-10 h-10 rounded-xl bg-danger/15 border border-danger/30 flex items-center justify-center shrink-0';
+
+      appendTerminalLog(`Operation '${job.action_label || 'Action'}' FAILED: ${job.error || 'Unknown error'}`, 'danger');
+
+      const errDrawer = document.getElementById('consoleErrorDrawer');
+      const errContent = document.getElementById('consoleErrorContent');
+      errDrawer.classList.remove('hidden');
+      errContent.textContent = job.error || 'The requested operation encountered an unexpected error.';
+    }
+  }
+
   async function handleAdminAction(actionKey, endpoint, options = {}) {
+    lastActionParams = { actionKey, endpoint, options };
     const label = options.label || 'Action';
     const method = options.method || 'POST';
     const payload = options.payload || {};
+    lastLoggedStage = null;
 
-    activeActionKey = actionKey;
-    setActionButtonsDisabled(true);
-    updateActionProgress(actionKey, 15, 'Running...');
-    appendTerminalLog(`Triggering '${label}' via ${endpoint}`, 'INFO');
+    showActionConsole(label, 'initiating...');
+    appendTerminalLog(`Initiating system control: '${label}' via ${endpoint}`, 'accent');
 
     try {
       const fetchOpts = {
@@ -1107,44 +839,67 @@
       const data = await res.json();
 
       if (res.status === 409) {
-        appendTerminalLog(`Conflict: Another operation is currently running.`, 'WARN');
-        updateActionProgress(actionKey, 0, 'Ready');
+        renderJobTelemetry({
+          action_label: label,
+          status: 'FAILED',
+          progress: 100,
+          current_stage: 'Conflict',
+          error: data.error || 'Another operation is already executing. Please wait.'
+        });
         setActionButtonsDisabled(false);
         return;
       }
 
       if (!res.ok || data.success === false) {
-        appendTerminalLog(`Failed: ${data.error || data.message || 'Operation failed'}`, 'ERROR');
-        updateActionProgress(actionKey, 100, 'Failed');
+        renderJobTelemetry({
+          action_label: label,
+          status: 'FAILED',
+          progress: 100,
+          current_stage: 'Execution Failed',
+          error: data.error || data.message || `Server returned HTTP ${res.status}`
+        });
         setActionButtonsDisabled(false);
-        setTimeout(() => updateActionProgress(actionKey, 0, 'Ready'), 4000);
         return;
       }
 
+      // If action is DB Info and showModal requested
       if (options.showModal && actionKey === 'db_info') {
         renderDBInfoModal(data);
       }
 
+      // Check if job is tracked asynchronously
       if (data.job_id) {
-        appendTerminalLog(`Job registered: ID ${data.job_id}. Tracking real-time progress...`, 'INFO');
-        startPolling(data.job_id, actionKey);
+        document.getElementById('consoleJobId').textContent = `Job ID: ${data.job_id}`;
+        appendTerminalLog(`Job registered with ID ${data.job_id}. Awaiting telemetry streaming...`, 'info');
+        startPolling(data.job_id);
       } else if (data.job) {
-        updateActionProgress(actionKey, data.job.progress || 100, 'Ready');
-        appendTerminalLog(data.job.current_stage || data.message || 'Completed successfully', 'INFO');
+        renderJobTelemetry(data.job);
         setActionButtonsDisabled(false);
-        setTimeout(() => updateActionProgress(actionKey, 0, 'Ready'), 3000);
       } else {
-        updateActionProgress(actionKey, 100, 'Ready');
-        const detail = data.latency_ms ? ` (Latency: ${data.latency_ms}ms)` : (data.message ? ` — ${data.message}` : '');
-        appendTerminalLog(`Success: ${label} executed successfully${detail}`, 'INFO');
+        renderJobTelemetry({
+          action_label: label,
+          status: 'COMPLETED',
+          progress: 100,
+          current_stage: data.message || 'Completed successfully',
+          result: data
+        });
         setActionButtonsDisabled(false);
-        setTimeout(() => updateActionProgress(actionKey, 0, 'Ready'), 3000);
       }
     } catch (err) {
-      appendTerminalLog(`Network error during '${label}': ${err.message}`, 'ERROR');
-      updateActionProgress(actionKey, 100, 'Failed');
+      renderJobTelemetry({
+        action_label: label,
+        status: 'FAILED',
+        progress: 100,
+        current_stage: 'Network or client error',
+        error: err.message
+      });
       setActionButtonsDisabled(false);
-      setTimeout(() => updateActionProgress(actionKey, 0, 'Ready'), 3000);
+    }
+  }
+
+  function retryLastAction() {
+    if (lastActionParams) {
+      handleAdminAction(lastActionParams.actionKey, lastActionParams.endpoint, lastActionParams.options);
     }
   }
 
@@ -1154,10 +909,10 @@
     const countElem = document.getElementById('purgeEligibleCount');
     const cutoffElem = document.getElementById('purgeCutoffDate');
 
-    countElem.textContent = 'Calculating...';
+    countElem.innerHTML = '<span class="material-symbols-outlined text-xs animate-spin">sync</span><span>Querying database...</span>';
     cutoffElem.textContent = '...';
     modal.classList.remove('hidden');
-    appendTerminalLog('Opened Purge safeguard modal. Querying records older than 30 days...', 'WARN');
+    appendTerminalLog('Opened Destructive Purge safeguard modal. Querying records >30 days...', 'warning');
 
     try {
       const res = await fetch('/admin/api/opportunities/clear-old/preview?days=30', {
@@ -1167,7 +922,7 @@
       if (data.success) {
         countElem.textContent = `${data.eligible_count} record(s)`;
         cutoffElem.textContent = data.cutoff_date || '--';
-        appendTerminalLog(`Purge preview: ${data.eligible_count} records eligible for purge.`, 'WARN');
+        appendTerminalLog(`Purge preview: ${data.eligible_count} record(s) eligible before ${data.cutoff_date}`, 'warning');
       } else {
         countElem.textContent = 'Error querying';
       }
@@ -1182,10 +937,10 @@
 
   function executeConfirmedPurge() {
     closePurgeModal();
-    appendTerminalLog('Operator confirmed purge execution of records older than 30 days.', 'WARN');
+    appendTerminalLog('Operator confirmed purge execution of records >30 days.', 'danger');
     handleAdminAction('purge_records', '/admin/api/opportunities/clear-old', {
       label: 'Purge > 30d Records',
-      loadText: 'Purging...',
+      loadText: 'Purging Stale Records...',
       payload: { confirm: true, days: 30 }
     });
   }
@@ -1193,7 +948,7 @@
   // --- Database Info Modal Functions ---
   function renderDBInfoModal(metrics) {
     document.getElementById('dbInfoHostSubtitle').textContent = `Host: ${metrics.host || metrics.database_host || 'localhost'}`;
-    document.getElementById('dbInfoStatus').innerHTML = `<span class="w-2 h-2 rounded-full ${metrics.connected ? 'bg-emerald-400' : 'bg-rose-400'}"></span><span>${metrics.connected ? 'Connected' : 'Disconnected'}</span>`;
+    document.getElementById('dbInfoStatus').innerHTML = `<span class="w-2 h-2 rounded-full ${metrics.connected ? 'bg-success' : 'bg-danger'}"></span><span>${metrics.connected ? 'Connected' : 'Disconnected'}</span>`;
     document.getElementById('dbInfoLatency').textContent = `${metrics.latency_ms !== undefined ? metrics.latency_ms : '--'} ms`;
     document.getElementById('dbInfoEngine').textContent = metrics.version || 'PostgreSQL';
     document.getElementById('dbInfoTotalTables').textContent = metrics.tables || (metrics.table_counts ? Object.keys(metrics.table_counts).length : 0);
@@ -1204,18 +959,18 @@
     const tableNames = Object.keys(tableCounts);
 
     if (tableNames.length === 0) {
-      grid.innerHTML = '<div class="col-span-full text-slate-400 text-xs">No table row counts available.</div>';
+      grid.innerHTML = '<div class="col-span-full text-text-muted text-xs">No table row counts available.</div>';
     } else {
       tableNames.forEach(tName => {
         const item = document.createElement('div');
-        item.className = 'p-2.5 rounded-lg bg-[#0a101d] border border-[#19253b] flex justify-between items-center';
-        item.innerHTML = `<span class="text-slate-400 truncate text-[11px]" title="${tName}">${tName}</span><span class="font-bold text-white text-[11px]">${tableCounts[tName].toLocaleString()}</span>`;
+        item.className = 'p-2.5 rounded-lg bg-surface-container-low border border-border-subtle flex justify-between items-center';
+        item.innerHTML = `<span class="text-text-secondary truncate text-[11px]" title="${tName}">${tName}</span><span class="font-bold text-text-primary text-[11px]">${tableCounts[tName].toLocaleString()}</span>`;
         grid.appendChild(item);
       });
     }
 
     document.getElementById('dbInfoModal').classList.remove('hidden');
-    appendTerminalLog(`Database inspection loaded: ${tableNames.length} tables verified.`, 'INFO');
+    appendTerminalLog(`Loaded schema metadata: ${tableNames.length} tables inspected.`, 'info');
   }
 
   function closeDBInfoModal() {
@@ -1223,3 +978,4 @@
   }
 </script>
 {% endblock %}
+

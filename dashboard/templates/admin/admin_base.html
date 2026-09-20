@@ -56,117 +56,92 @@
     </div>
 
     <!-- Navigation Links -->
-    <nav class="flex-1 flex flex-col gap-1.5 overflow-y-auto mt-2">
-      <a href="{{ url_for('admin_ui.admin_dashboard') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium transition-all text-sm {% if active_page == 'admin_dashboard' %}text-white font-bold bg-blue-600 shadow-md shadow-blue-600/30{% else %}text-slate-400 hover:bg-slate-800/60 hover:text-slate-200{% endif %}">
-        <span class="material-symbols-outlined text-[20px] {% if active_page == 'admin_dashboard' %}text-white{% else %}text-slate-400{% endif %}">dashboard</span>
+    <nav class="flex-1 flex flex-col gap-1 overflow-y-auto">
+      <div class="px-2 mb-1 text-[11px] font-semibold text-admin-accent/80 uppercase tracking-wider">Administration</div>
+
+      <a href="{{ url_for('admin_ui.admin_dashboard') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_dashboard' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_dashboard' %}text-admin-accent icon-fill{% endif %}">admin_panel_settings</span>
         <span>Dashboard</span>
       </a>
 
-      <a href="{{ url_for('admin_ui.admin_scheduler') }}" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium transition-all text-sm {% if active_page == 'admin_scan' %}text-white font-bold bg-blue-600{% else %}text-slate-400 hover:bg-slate-800/60 hover:text-slate-200{% endif %}">
-        <div class="flex items-center gap-3">
-          <span class="material-symbols-outlined text-[20px] text-slate-400">radar</span>
-          <span>Scan</span>
-        </div>
-        <span class="material-symbols-outlined text-[16px] text-slate-500">chevron_right</span>
+      <a href="{{ url_for('admin_ui.admin_users') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_users' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_users' %}text-admin-accent icon-fill{% endif %}">group</span>
+        <span>User Accounts</span>
       </a>
 
-      <a href="{{ url_for('admin_ui.admin_reliability') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium transition-all text-sm {% if active_page == 'admin_intelligence' %}text-white font-bold bg-blue-600{% else %}text-slate-400 hover:bg-slate-800/60 hover:text-slate-200{% endif %}">
-        <span class="material-symbols-outlined text-[20px] text-slate-400">psychology</span>
-        <span>Intelligence</span>
+      <a href="{{ url_for('admin_ui.admin_scheduler') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page in ['admin_scheduler', 'admin_collectors'] %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page in ['admin_scheduler', 'admin_collectors'] %}text-admin-accent icon-fill{% endif %}">schedule</span>
+        <span>Scheduler &amp; Automation</span>
       </a>
 
-      <a href="{{ url_for('admin_ui.admin_dashboard') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium transition-all text-sm text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
-        <span class="material-symbols-outlined text-[20px] text-slate-400">inventory_2</span>
-        <span>Assets</span>
+      <a href="{{ url_for('admin_ui.admin_reports') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_reports' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_reports' %}text-admin-accent icon-fill{% endif %}">folder</span>
+        <span>Reports Center</span>
       </a>
 
-      <a href="{{ url_for('admin_ui.admin_reliability') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium transition-all text-sm text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
-        <span class="material-symbols-outlined text-[20px] text-slate-400">shield</span>
-        <span>Vulnerabilities</span>
+      <a href="{{ url_for('admin_ui.admin_logs') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_logs' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_logs' %}text-admin-accent icon-fill{% endif %}">terminal</span>
+        <span>Logs &amp; Audit</span>
       </a>
 
-      <a href="{{ url_for('admin_ui.admin_reports') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium transition-all text-sm {% if active_page == 'admin_reports' %}text-white font-bold bg-blue-600{% else %}text-slate-400 hover:bg-slate-800/60 hover:text-slate-200{% endif %}">
-        <span class="material-symbols-outlined text-[20px] text-slate-400">description</span>
-        <span>Reports</span>
-      </a>
-
-      <a href="{{ url_for('admin_ui.admin_scheduler') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium transition-all text-sm {% if active_page == 'admin_scheduler' %}text-white font-bold bg-blue-600{% else %}text-slate-400 hover:bg-slate-800/60 hover:text-slate-200{% endif %}">
-        <span class="material-symbols-outlined text-[20px] text-slate-400">autorenew</span>
-        <span>Automation</span>
-      </a>
-
-      <a href="{{ url_for('admin_ui.admin_reliability') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium transition-all text-sm text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
-        <span class="material-symbols-outlined text-[20px] text-slate-400">database</span>
-        <span>Database</span>
-      </a>
-
-      <a href="{{ url_for('admin_ui.admin_profile') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium transition-all text-sm {% if active_page == 'admin_profile' %}text-white font-bold bg-blue-600{% else %}text-slate-400 hover:bg-slate-800/60 hover:text-slate-200{% endif %}">
-        <span class="material-symbols-outlined text-[20px] text-slate-400">settings</span>
-        <span>Settings</span>
+      <a href="{{ url_for('admin_ui.admin_reliability') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page in ['admin_reliability', 'admin_system', 'admin_configuration', 'admin_diagnostics', 'admin_email', 'admin_data_quality', 'admin_analytics', 'admin_source_health'] %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page in ['admin_reliability', 'admin_system', 'admin_configuration', 'admin_diagnostics', 'admin_email', 'admin_data_quality', 'admin_analytics', 'admin_source_health'] %}text-admin-accent icon-fill{% endif %}">health_and_safety</span>
+        <span>System &amp; Telemetry</span>
       </a>
     </nav>
 
     <!-- Footer Profile Link -->
-    <div class="mt-auto pt-3 border-t border-slate-800">
-      <a class="flex items-center gap-3 px-3 py-2 rounded-xl transition-colors hover:bg-slate-800/50" href="{{ url_for('admin_ui.admin_profile') }}">
-        <div class="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
-          <span class="material-symbols-outlined text-[16px]">person</span>
+    <div class="mt-auto pt-3 border-t border-border-subtle">
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors {% if active_page == 'admin_profile' %}text-admin-accent font-bold bg-surface-container-high border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-bg-card-hover hover:text-on-surface{% endif %}" href="{{ url_for('admin_ui.admin_profile') }}">
+        <div class="h-8 w-8 rounded-full bg-admin-accent/10 text-admin-accent flex items-center justify-center font-bold text-xs border border-admin-accent/20 shrink-0">
+          {{ (current_admin.username or session.get('admin_username') or 'A')[0]|upper }}
         </div>
         <div class="overflow-hidden text-left flex-1">
-          <div class="text-xs font-semibold text-slate-200 truncate">{{ current_admin.username or session.get('admin_username') or 'Admin' }}</div>
-          <div class="text-[10px] text-slate-500 font-mono uppercase">Administrator</div>
+          <div class="text-sm font-semibold text-text-primary truncate">{{ current_admin.username or session.get('admin_username') or 'Administrator' }}</div>
         </div>
-        <span class="material-symbols-outlined text-slate-500 text-[16px]">chevron_right</span>
+        <span class="material-symbols-outlined text-text-muted text-[18px]">chevron_right</span>
       </a>
     </div>
   </aside>
 
   <!-- Top Bar & Main Canvas -->
-  <div id="adminMainWrapper" class="flex-1 md:ml-[260px] flex flex-col min-h-screen bg-[#070c16] text-slate-100 transition-all duration-300">
-    <!-- Top Header Bar matching Screenshot -->
-    <header class="sticky top-0 z-30 h-16 bg-[#09101d]/90 backdrop-blur-md border-b border-[#172338] px-4 md:px-8 flex items-center justify-between">
+  <div id="adminMainWrapper" class="flex-1 md:ml-[260px] flex flex-col min-h-screen transition-all duration-300">
+    <!-- Admin Top Bar -->
+    <header class="sticky top-0 z-30 h-14 bg-surface/90 backdrop-blur-md border-b border-border-subtle px-4 md:px-8 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <!-- Floating Expand / Toggle Button for Mobile / Collapsed -->
-        <button type="button" id="adminSidebarExpandBtn" class="sidebar-expand-btn text-slate-400 hover:text-white" title="Toggle sidebar (Ctrl+\)" aria-label="Toggle sidebar">
-          <span class="material-symbols-outlined text-[22px]">menu</span>
+        <!-- Floating Expand / Toggle Button (Hidden on Desktop when Sidebar is Open) -->
+        <button type="button" id="adminSidebarExpandBtn" class="sidebar-expand-btn" title="Open sidebar (Ctrl+\)" aria-label="Open sidebar">
+          <svg class="w-4 h-4 text-text-secondary hover:text-white transition-colors pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
         </button>
-        <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span class="text-xs font-bold text-slate-300 tracking-wide uppercase">Operational Control Center</span>
-        </div>
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-danger/10 border border-danger/30 text-[11px] font-mono text-danger font-bold">
+          <span class="w-1.5 h-1.5 rounded-full bg-danger animate-pulse"></span>
+          HIGH-PRIVILEGE BOUNDARY
+        </span>
       </div>
 
       <div class="flex items-center gap-4">
-        <!-- Notification Bell with Red Badge -->
-        <div class="relative cursor-pointer p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors">
-          <span class="material-symbols-outlined text-[20px]">notifications</span>
-          <span class="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#09101d]">2</span>
-        </div>
-
-        <!-- Admin Profile Pill -->
-        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/70 border border-slate-700/60 text-xs">
-          <div class="w-6 h-6 rounded-full bg-slate-700 text-slate-200 flex items-center justify-center text-xs">
-            <span class="material-symbols-outlined text-[15px]">person</span>
-          </div>
-          <span class="font-semibold text-slate-200">{{ current_admin.username or 'Admin' }}</span>
-          <span class="material-symbols-outlined text-[16px] text-slate-400">expand_more</span>
-        </div>
-
-        <!-- Logout Action -->
-        <a href="{{ url_for('admin_ui.admin_logout') }}" title="Logout" class="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 transition-colors">
-          <span class="material-symbols-outlined text-[18px]">power_settings_new</span>
+        <a href="{{ url_for('admin_ui.admin_profile') }}" class="hidden sm:flex items-center gap-2 text-xs text-decoration-none hover:opacity-80 transition-opacity">
+          <span class="text-text-muted">Operator:</span>
+          <span class="font-bold text-text-primary font-mono">{{ current_admin.username }}</span>
+          <span class="text-[10px] bg-surface-container-high border border-border-subtle px-2 py-0.5 rounded text-text-secondary uppercase">{{ current_admin.role }}</span>
+        </a>
+        <a href="{{ url_for('admin_ui.admin_logout') }}" class="bg-danger/10 hover:bg-danger text-danger hover:text-white border border-danger/30 text-xs font-bold px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[15px]">power_settings_new</span>
+          <span>Logout</span>
         </a>
       </div>
     </header>
 
     <!-- Main Content Area -->
-    <main class="flex-1 p-4 md:p-8 max-w-[1680px] w-full mx-auto space-y-6">
+    <main class="flex-1 p-4 md:p-8 max-w-[1600px] w-full mx-auto">
       <!-- Flash Alert Container -->
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-          <div class="space-y-2">
+          <div class="mb-6 space-y-2">
             {% for category, message in messages %}
-              <div class="p-3 rounded-xl border text-xs flex items-center justify-between {% if category == 'success' %}bg-emerald-500/10 border-emerald-500/30 text-emerald-400{% elif category in ['danger', 'error'] %}bg-rose-500/10 border-rose-500/30 text-rose-400{% elif category == 'warning' %}bg-amber-500/10 border-amber-500/30 text-amber-400{% else %}bg-blue-500/10 border-blue-500/30 text-blue-400{% endif %}">
+              <div class="p-3.5 rounded-lg border text-sm flex items-center justify-between {% if category == 'success' %}bg-success/10 border-success/30 text-success{% elif category in ['danger', 'error'] %}bg-danger/10 border-danger/30 text-danger{% elif category == 'warning' %}bg-warning/10 border-warning/30 text-warning{% else %}bg-info/10 border-info/30 text-info{% endif %}">
                 <div class="flex items-center gap-2">
                   <span class="material-symbols-outlined text-[18px]">
                     {% if category == 'success' %}check_circle{% elif category in ['danger', 'error'] %}error{% elif category == 'warning' %}warning{% else %}info{% endif %}
@@ -185,19 +160,11 @@
       {% block content %}{% endblock %}
     </main>
 
-    <!-- Footer matching screenshot -->
-    <footer class="border-t border-[#172338] py-4 px-4 md:px-8 text-xs text-slate-500 flex flex-col sm:flex-row justify-between items-center gap-3 bg-[#080e1a]">
-      <div class="flex items-center gap-2 font-medium">
-        <span class="material-symbols-outlined text-blue-500 text-[18px]">security</span>
-        <span class="text-slate-300 font-bold">CyberScout AI</span>
-        <span class="text-slate-500">v1.0.0 &bull; Secure &bull; Open Source &bull; Free Tier</span>
-      </div>
-      <div class="flex items-center gap-3 text-[11px]">
-        <span>Last updated: <span id="footerLastUpdated">Sep 16, 2025 10:42:18 AM</span></span>
-        <span class="text-emerald-400 font-semibold flex items-center gap-1.5">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>All systems operational</span>
-        </span>
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-border-subtle py-4 px-4 md:px-8 text-xs text-text-muted flex flex-col sm:flex-row justify-between items-center gap-2 bg-surface/50">
+      <div>CyberScout AI Administrative Control Surface · Strict RLS & MFA Protected</div>
+      <div class="flex items-center gap-2 font-mono">
+        <span class="text-danger">AUDIT LOGGING ACTIVE</span>
       </div>
     </footer>
   </div>
