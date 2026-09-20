@@ -740,14 +740,36 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
         with self.db_manager.transaction() as cursor:
             cursor.execute(sql, (Status.DUPLICATE.value, canonical_id, opp_id))
 
-    def delete_old_records(self, days: int = 30) -> int:
-        """Deletes opportunities discovered more than specified days ago."""
+    def count_old_records(self, days: int = 30) -> int:
+        """Counts opportunities discovered more than specified days ago without deleting."""
         from datetime import datetime, timedelta, timezone
         cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
-        sql = "DELETE FROM Opportunities WHERE discovered_date < ?;"
+        sql = 'SELECT COUNT(*) FROM "Opportunities" WHERE discovered_date < %s;'
+        try:
+            conn = self.db_manager.get_connection()
+            cursor = conn.cursor()
+            try:
+                cursor.execute(sql, (cutoff_date,))
+                row = cursor.fetchone()
+                if row:
+                    return int(row[0] if isinstance(row, (tuple, list)) else row.get("count", 0))
+                return 0
+            finally:
+                cursor.close()
+        except Exception as e:
+            from src.core.logging import get_logger
+            get_logger(__name__).error(f"Error counting old opportunities: {e}")
+            return 0
+
+    def delete_old_records(self, days: int = 30) -> int:
+        """Deletes opportunities discovered more than specified days ago using safe PostgreSQL query."""
+        from datetime import datetime, timedelta, timezone
+        cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+        sql = 'DELETE FROM "Opportunities" WHERE discovered_date < %s;'
         with self.db_manager.transaction() as cursor:
             cursor.execute(sql, (cutoff_date,))
             return cursor.rowcount if hasattr(cursor, "rowcount") and cursor.rowcount is not None else 0
+
 
     def save_opportunity_with_deduplication(self, opp: Opportunity) -> Tuple[str, bool]:
         """

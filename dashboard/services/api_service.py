@@ -92,51 +92,111 @@ class APIService:
             "result": None,
         }
 
-    def send_test_email(self) -> Dict[str, Any]:
-        """Triggers test notification email digest safely."""
+    def send_test_email(self, progress_cb: Optional[Any] = None) -> Dict[str, Any]:
+        """Triggers test notification email digest safely with stage reporting."""
         try:
+            if progress_cb:
+                progress_cb("Validating email provider configuration", 20.0, None)
+            
+            smtp_status = self.email_client.check_smtp_connectivity()
+            if smtp_status.get("status") == "failed":
+                raise RuntimeError(f"SMTP configuration error: {smtp_status.get('reason')}")
+
+            if progress_cb:
+                progress_cb("Composing test digest and transmitting via SMTP", 60.0, None)
+
             res = self.email_client.send_daily_digest(send_empty=True)
             if isinstance(res, dict) and res.get("status") == "failed":
-                return {"success": False, "status": "failed", "error": res.get("error", "Failed to send test email")}
-            return {"success": True, "status": "completed", "details": res, "message": "Test email sent successfully."}
+                raise RuntimeError(res.get("error", "Failed to send test email"))
+
+            if progress_cb:
+                progress_cb("Test email sent successfully", 100.0, {"details": res})
+
+            return {"success": True, "status": "completed", "details": res, "message": "Test email sent successfully via configured provider."}
         except Exception as e:
             return {"success": False, "status": "failed", "error": str(e)}
 
-    def send_daily_report_now(self) -> Dict[str, Any]:
-        """Executes the exact daily report email logic as scheduled midnight run."""
+    def send_daily_report_now(self, progress_cb: Optional[Any] = None) -> Dict[str, Any]:
+        """Executes the exact daily report email logic as scheduled midnight run with stage reporting."""
         try:
+            if progress_cb:
+                progress_cb("Compiling daily opportunity digest", 30.0, None)
+
             res = self.email_client.send_daily_digest(send_empty=True)
+            if isinstance(res, dict) and res.get("status") == "failed":
+                raise RuntimeError(res.get("error", "Daily report dispatch failed"))
+
+            if progress_cb:
+                progress_cb("Daily report email dispatched successfully", 100.0, {"details": res})
+
             return {
                 "success": True,
                 "status": "completed",
                 "details": res,
-                "message": "Daily report digest email generated and sent successfully."
+                "message": "Daily report digest email generated and dispatched successfully."
             }
         except Exception as e:
             return {"success": False, "status": "failed", "error": str(e)}
 
-    def clear_old_opportunities(self, days: int = 30) -> Dict[str, Any]:
+    def preview_old_opportunities(self, days: int = 30) -> Dict[str, Any]:
+        """Calculates count of opportunities eligible for purging without deleting."""
+        from datetime import datetime, timedelta, timezone
+        from src.database.opportunity_repository import OpportunityRepository
+        cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+        opp_repo = OpportunityRepository(db_manager=self.db_manager)
+        eligible_count = opp_repo.count_old_records(days=days)
+        return {
+            "success": True,
+            "eligible_count": eligible_count,
+            "cutoff_date": cutoff_date,
+            "days": days,
+            "message": f"{eligible_count} record(s) discovered prior to {cutoff_date} are eligible for purge."
+        }
+
+    def clear_old_opportunities(self, days: int = 30, progress_cb: Optional[Any] = None) -> Dict[str, Any]:
         """Deletes opportunities discovered more than specified days ago."""
         try:
+            if progress_cb:
+                progress_cb("Evaluating records eligible for purge", 25.0, None)
+
             from src.database.opportunity_repository import OpportunityRepository
             opp_repo = OpportunityRepository(db_manager=self.db_manager)
+            
+            if progress_cb:
+                progress_cb("Executing safe transactional purge", 65.0, None)
+
             deleted_count = opp_repo.delete_old_records(days=days)
+
+            if progress_cb:
+                progress_cb(f"Purge complete: {deleted_count} record(s) removed", 100.0, {"deleted_count": deleted_count})
+
             return {
                 "success": True,
                 "status": "completed",
                 "deleted_count": deleted_count,
-                "message": f"Cleaned up {deleted_count} opportunities older than {days} days."
+                "message": f"Successfully purged {deleted_count} opportunities older than {days} days."
             }
         except Exception as e:
             return {"success": False, "status": "failed", "error": str(e)}
 
-    def refresh_analytics(self) -> Dict[str, Any]:
+    def refresh_analytics(self, progress_cb: Optional[Any] = None) -> Dict[str, Any]:
         """Recalculates provider statistics and performance metrics in database."""
         try:
+            if progress_cb:
+                progress_cb("Reading opportunity records and providers", 25.0, None)
+
             from src.database.provider_statistics import ProviderStatisticsManager
             stats_mgr = ProviderStatisticsManager(db_manager=self.db_manager)
+
+            if progress_cb:
+                progress_cb("Aggregating metrics and updating provider scores", 65.0, None)
+
             res = stats_mgr.recalculate_all()
             recalculated = res.get("recalculated_providers", 0)
+
+            if progress_cb:
+                progress_cb(f"Analytics refreshed ({recalculated} providers updated)", 100.0, res)
+
             return {
                 "success": True,
                 "status": "completed",
@@ -145,6 +205,28 @@ class APIService:
             }
         except Exception as e:
             return {"success": False, "status": "failed", "error": str(e)}
+
+    def reconnect_database(self, progress_cb: Optional[Any] = None) -> Dict[str, Any]:
+        """Resets engine and verifies PostgreSQL reconnection."""
+        try:
+            if progress_cb:
+                progress_cb("Disposing database engine pool", 30.0, None)
+
+            res = self.db_manager.reconnect()
+
+            if progress_cb:
+                progress_cb("Verifying connection latency and health", 80.0, None)
+
+            if not res.get("success", False):
+                raise RuntimeError(res.get("error") or res.get("message") or "Database reconnect failed")
+
+            if progress_cb:
+                progress_cb(f"Reconnected successfully ({res.get('latency_ms', 0)}ms latency)", 100.0, res)
+
+            return res
+        except Exception as e:
+            return {"success": False, "status": "failed", "error": str(e)}
+
 
     def check_smtp_health(self) -> Dict[str, Any]:
         """Runs pre-flight email provider diagnostics."""

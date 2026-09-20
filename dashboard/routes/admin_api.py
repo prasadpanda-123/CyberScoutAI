@@ -161,13 +161,51 @@ def get_db_manager():
     return DatabaseManager()
 
 
+@admin_api_bp.route("/actions/active", methods=["GET"])
+@admin_required
+def admin_get_active_action():
+    """GET /admin/api/actions/active — Return currently executing action job if any."""
+    from src.automation.action_job_manager import action_job_manager
+    active = action_job_manager.get_active_action()
+    return jsonify({
+        "success": True,
+        "active": active is not None,
+        "job": active,
+    })
+
+
+@admin_api_bp.route("/actions/<job_id>", methods=["GET"])
+@admin_required
+def admin_get_action_status(job_id: str):
+    """GET /admin/api/actions/<job_id> — Return action job status telemetry."""
+    from src.automation.action_job_manager import action_job_manager
+    job = action_job_manager.get_job(job_id)
+    if not job:
+        # Fallback to scan jobs
+        scan_job = api_service.get_job_status(job_id)
+        if scan_job:
+            return jsonify(action_job_manager._map_scan_job_to_action_dict(scan_job))
+        return jsonify({"success": False, "error": "Job not found", "job_id": job_id}), 404
+    return jsonify(job)
+
+
 @admin_api_bp.route("/run", methods=["POST"])
 @admin_required
 def admin_trigger_run():
-    """POST /admin/api/run — Trigger background scan job."""
+    """POST /admin/api/run — Trigger background scan job with stage tracking."""
     if not _verify_admin_csrf():
         return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     from src.automation.job_manager import ScanInProgressError
+    from src.automation.action_job_manager import action_job_manager
+    if action_job_manager.is_action_active():
+        active = action_job_manager.get_active_action()
+        active_lbl = active.get("action_label", "Another operation") if active else "Another operation"
+        return jsonify({
+            "success": False,
+            "status": "conflict",
+            "error": f"Cannot start scan: {active_lbl} is currently in progress."
+        }), 409
+
     db_mgr = get_db_manager()
     if not db_mgr.ping():
         from src.core.logging import get_logger
@@ -183,7 +221,9 @@ def admin_trigger_run():
             "status": "accepted",
             "success": True,
             "job_id": res.get("job_id"),
-            "message": "Scan started successfully",
+            "action_name": "execute_scan",
+            "action_label": "Execute Scan Now",
+            "message": "Scan job initialized and running in background.",
         }), 202
     except ScanInProgressError as err:
         return jsonify({"success": False, "error": str(err), "status": "running"}), 409
@@ -209,24 +249,88 @@ def admin_get_job_status(job_id: str):
 @admin_api_bp.route("/email/test", methods=["POST"])
 @admin_required
 def admin_email_test():
-    """POST /admin/api/email/test — Dispatch test HTML email."""
+    """POST /admin/api/email/test — Dispatch test HTML email with stage progress tracking."""
     if not _verify_admin_csrf():
         return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
+    from src.automation.action_job_manager import action_job_manager
     try:
-        res = api_service.send_test_email()
-        status_code = 200 if res.get("success", True) else 400
-        try:
-            audit_status = "SUCCESS" if res.get("success", True) else "FAILED"
-            audit_repo.log_event("EMAIL", "TEST_EMAIL", audit_status, source_ip=get_client_ip(request), details=res.get("message") or res.get("error", ""))
-        except Exception:
-            pass
-        return jsonify(res), status_code
+        job = action_job_manager.start_action(
+            action_name="send_test_email",
+            action_label="Send Test Email",
+            task_fn=lambda cb: api_service.send_test_email(progress_cb=cb),
+        )
+        audit_repo.log_event("EMAIL", "TEST_EMAIL", "SUCCESS", source_ip=get_client_ip(request), details=f"Test email job started ({job['job_id']})")
+        return jsonify({
+            "success": True,
+            "status": "accepted",
+            "job_id": job["job_id"],
+            "action_name": "send_test_email",
+            "action_label": "Send Test Email",
+            "message": "Test email task initialized and running in background.",
+        }), 202
+    except RuntimeError as re:
+        return jsonify({"success": False, "status": "conflict", "error": str(re)}), 409
     except Exception as e:
-        try:
-            audit_repo.log_event("EMAIL", "TEST_EMAIL", "FAILED", source_ip=get_client_ip(request), details=str(e))
-        except Exception:
-            pass
-        return jsonify({"status": "failed", "error": str(e)}), 400
+        audit_repo.log_event("EMAIL", "TEST_EMAIL", "FAILED", source_ip=get_client_ip(request), details=str(e))
+        return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
+
+
+@admin_api_bp.route("/report/trigger", methods=["POST"])
+@admin_required
+def admin_trigger_report():
+    """POST /admin/api/report/trigger — Dispatch daily digest report immediately with stage progress tracking."""
+    if not _verify_admin_csrf():
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
+    from src.automation.action_job_manager import action_job_manager
+    try:
+        job = action_job_manager.start_action(
+            action_name="send_report_now",
+            action_label="Send Daily Report",
+            task_fn=lambda cb: api_service.send_daily_report_now(progress_cb=cb),
+        )
+        audit_repo.log_event("REPORTS", "TRIGGER_REPORT", "SUCCESS", source_ip=get_client_ip(request), details=f"Daily report job started ({job['job_id']})")
+        return jsonify({
+            "success": True,
+            "status": "accepted",
+            "job_id": job["job_id"],
+            "action_name": "send_report_now",
+            "action_label": "Send Daily Report",
+            "message": "Daily report generation initialized and running in background.",
+        }), 202
+    except RuntimeError as re:
+        return jsonify({"success": False, "status": "conflict", "error": str(re)}), 409
+    except Exception as e:
+        audit_repo.log_event("REPORTS", "TRIGGER_REPORT", "FAILED", source_ip=get_client_ip(request), details=str(e))
+        return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
+
+
+@admin_api_bp.route("/analytics/refresh", methods=["POST"])
+@admin_required
+def admin_refresh_analytics():
+    """POST /admin/api/analytics/refresh — Recalculate provider statistics with stage progress tracking."""
+    if not _verify_admin_csrf():
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
+    from src.automation.action_job_manager import action_job_manager
+    try:
+        job = action_job_manager.start_action(
+            action_name="refresh_analytics",
+            action_label="Refresh Analytics",
+            task_fn=lambda cb: api_service.refresh_analytics(progress_cb=cb),
+        )
+        audit_repo.log_event("ANALYTICS", "REFRESH_STATS", "SUCCESS", source_ip=get_client_ip(request), details=f"Analytics refresh job started ({job['job_id']})")
+        return jsonify({
+            "success": True,
+            "status": "accepted",
+            "job_id": job["job_id"],
+            "action_name": "refresh_analytics",
+            "action_label": "Refresh Analytics",
+            "message": "Analytics recalculation task initialized and running in background.",
+        }), 202
+    except RuntimeError as re:
+        return jsonify({"success": False, "status": "conflict", "error": str(re)}), 409
+    except Exception as e:
+        audit_repo.log_event("ANALYTICS", "REFRESH_STATS", "FAILED", source_ip=get_client_ip(request), details=str(e))
+        return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
 
 
 @admin_api_bp.route("/scheduler/pause", methods=["POST"])
@@ -235,9 +339,11 @@ def admin_scheduler_pause():
     """POST /admin/api/scheduler/pause — Pause task scheduler."""
     if not _verify_admin_csrf():
         return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
+    from src.automation.action_job_manager import action_job_manager
     try:
         res = api_service.pause_scheduler()
         audit_repo.log_event("SCHEDULER", "PAUSE_SCHEDULER", "SUCCESS", source_ip=get_client_ip(request), details="Scheduler paused")
+        action_job_manager.create_instant_completed_job("pause_scheduler", "Pause Scheduler", res, stage="Scheduler background service paused")
         return jsonify(res)
     except Exception as e:
         audit_repo.log_event("SCHEDULER", "PAUSE_SCHEDULER", "FAILED", source_ip=get_client_ip(request), details=str(e))
@@ -250,9 +356,11 @@ def admin_scheduler_resume():
     """POST /admin/api/scheduler/resume — Resume task scheduler."""
     if not _verify_admin_csrf():
         return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
+    from src.automation.action_job_manager import action_job_manager
     try:
         res = api_service.resume_scheduler()
         audit_repo.log_event("SCHEDULER", "RESUME_SCHEDULER", "SUCCESS", source_ip=get_client_ip(request), details="Scheduler resumed")
+        action_job_manager.create_instant_completed_job("resume_scheduler", "Resume Scheduler", res, stage="Scheduler background service resumed")
         return jsonify(res)
     except Exception as e:
         audit_repo.log_event("SCHEDULER", "RESUME_SCHEDULER", "FAILED", source_ip=get_client_ip(request), details=str(e))
@@ -265,32 +373,124 @@ def admin_scheduler_restart():
     """POST /admin/api/scheduler/restart — Restart task scheduler."""
     if not _verify_admin_csrf():
         return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
+    from src.automation.action_job_manager import action_job_manager
     try:
         res = api_service.restart_scheduler()
         audit_repo.log_event("SCHEDULER", "RESTART_SCHEDULER", "SUCCESS", source_ip=get_client_ip(request), details="Scheduler restarted")
-        return jsonify({"success": True, "status": "restarted", "message": "Scheduler service restarted successfully."})
+        action_job_manager.create_instant_completed_job("restart_scheduler", "Restart Scheduler", res, stage="Scheduler service restarted successfully")
+        return jsonify(res)
     except Exception as e:
         audit_repo.log_event("SCHEDULER", "RESTART_SCHEDULER", "FAILED", source_ip=get_client_ip(request), details=str(e))
+        return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
+
+
+@admin_api_bp.route("/opportunities/clear-old/preview", methods=["GET"])
+@admin_required
+def admin_preview_clear_old():
+    """GET /admin/api/opportunities/clear-old/preview — Preview record count eligible for purge."""
+    try:
+        days = int(request.args.get("days", 30))
+        res = api_service.preview_old_opportunities(days=days)
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@admin_api_bp.route("/opportunities/clear-old", methods=["POST"])
+@admin_required
+def admin_clear_old_opportunities():
+    """POST /admin/api/opportunities/clear-old — Purge records older than specified days with explicit confirmation."""
+    if not _verify_admin_csrf():
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
+
+    body = request.get_json(silent=True) or {}
+    if not body.get("confirm"):
+        return jsonify({
+            "success": False,
+            "status": "confirmation_required",
+            "error": "Explicit confirmation required. Please confirm before purging records."
+        }), 400
+
+    days = int(body.get("days", 30))
+    from src.automation.action_job_manager import action_job_manager
+    try:
+        job = action_job_manager.start_action(
+            action_name="purge_records",
+            action_label="Purge Stale Records",
+            task_fn=lambda cb: api_service.clear_old_opportunities(days=days, progress_cb=cb),
+        )
+        audit_repo.log_event("OPPORTUNITIES", "CLEAR_OLD", "SUCCESS", source_ip=get_client_ip(request), details=f"Purge job initiated for >{days}d records ({job['job_id']})")
+        return jsonify({
+            "success": True,
+            "status": "accepted",
+            "job_id": job["job_id"],
+            "action_name": "purge_records",
+            "action_label": "Purge Stale Records",
+            "message": f"Purge task for records older than {days} days started.",
+        }), 202
+    except RuntimeError as re:
+        return jsonify({"success": False, "status": "conflict", "error": str(re)}), 409
+    except Exception as e:
+        audit_repo.log_event("OPPORTUNITIES", "CLEAR_OLD", "FAILED", source_ip=get_client_ip(request), details=str(e))
         return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
 
 
 @admin_api_bp.route("/db/test", methods=["POST", "GET"])
 @admin_required
 def admin_db_test():
-    """POST /admin/api/db/test — Test database connection."""
+    """POST/GET /admin/api/db/test — Test database connection with precise latency measurement."""
     if request.method == "POST" and not _verify_admin_csrf():
         return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
+
+    import time
     from src.database.connection import DatabaseManager
+    from src.automation.action_job_manager import action_job_manager
+
     db = DatabaseManager()
+    start_t = time.time()
     is_ok = db.ping()
-    audit_repo.log_event("DATABASE", "TEST_CONNECTION", "SUCCESS" if is_ok else "FAILED", source_ip=get_client_ip(request), details=f"Database test status: {'Connected' if is_ok else 'Disconnected'}")
-    return jsonify({
+    latency_ms = round((time.time() - start_t) * 1000, 2) if is_ok else -1
+
+    res = {
         "success": is_ok,
         "status": "success" if is_ok else "failed",
         "connected": is_ok,
         "database_type": "PostgreSQL",
-        "message": "Database connection verified." if is_ok else "Database connection ping failed.",
-    })
+        "latency_ms": latency_ms,
+        "message": f"PostgreSQL connection verified ({latency_ms}ms latency)." if is_ok else "Database connection ping failed.",
+    }
+    audit_repo.log_event("DATABASE", "TEST_CONNECTION", "SUCCESS" if is_ok else "FAILED", source_ip=get_client_ip(request), details=res["message"])
+    action_job_manager.create_instant_completed_job("test_db", "Test DB Ping", res, stage=res["message"])
+    return jsonify(res)
+
+
+@admin_api_bp.route("/db/reconnect", methods=["POST"])
+@admin_required
+def admin_db_reconnect():
+    """POST /admin/api/db/reconnect — Force database connection reset and reconnect with stage tracking."""
+    if not _verify_admin_csrf():
+        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
+    from src.automation.action_job_manager import action_job_manager
+    try:
+        job = action_job_manager.start_action(
+            action_name="db_reconnect",
+            action_label="Reconnect Database",
+            task_fn=lambda cb: api_service.reconnect_database(progress_cb=cb),
+        )
+        audit_repo.log_event("DATABASE", "RECONNECT_DB", "SUCCESS", source_ip=get_client_ip(request), details=f"Database reconnect job initiated ({job['job_id']})")
+        return jsonify({
+            "success": True,
+            "status": "accepted",
+            "job_id": job["job_id"],
+            "action_name": "db_reconnect",
+            "action_label": "Reconnect Database",
+            "message": "Database reconnection task initialized and running in background.",
+        }), 202
+    except RuntimeError as re:
+        return jsonify({"success": False, "status": "conflict", "error": str(re)}), 409
+    except Exception as e:
+        audit_repo.log_event("DATABASE", "RECONNECT_DB", "FAILED", source_ip=get_client_ip(request), details=str(e))
+        return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
 
 
 @admin_api_bp.route("/db/health", methods=["GET", "POST"])
@@ -303,90 +503,17 @@ def admin_db_health():
     return jsonify(metrics)
 
 
-@admin_api_bp.route("/db/reconnect", methods=["POST"])
-@admin_required
-def admin_db_reconnect():
-    """POST /admin/api/db/reconnect — Force database connection reset and reconnect."""
-    if not _verify_admin_csrf():
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
-    from src.database.connection import DatabaseManager
-    from src.database.engine import reset_engine
-    try:
-        reset_engine()
-        db = DatabaseManager()
-        db.close_connection()
-        is_ok = db.check_connection_with_backoff(max_retries=3)
-        audit_repo.log_event("DATABASE", "RECONNECT_DB", "SUCCESS" if is_ok else "FAILED", source_ip=get_client_ip(request), details="Reconnected database engine pool")
-        return jsonify({
-            "success": is_ok,
-            "status": "success" if is_ok else "failed",
-            "connected": is_ok,
-            "message": "PostgreSQL engine pool reconnected successfully." if is_ok else "Failed to reconnect to PostgreSQL database.",
-        })
-    except Exception as e:
-        audit_repo.log_event("DATABASE", "RECONNECT_DB", "FAILED", source_ip=get_client_ip(request), details=str(e))
-        return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
-
-
-@admin_api_bp.route("/report/trigger", methods=["POST"])
-@admin_required
-def admin_trigger_report():
-    """POST /admin/api/report/trigger — Dispatch daily digest report immediately."""
-    if not _verify_admin_csrf():
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
-    try:
-        res = api_service.send_daily_report_now()
-        status_code = 200 if res.get("success", True) else 400
-        audit_status = "SUCCESS" if res.get("success", True) else "FAILED"
-        audit_repo.log_event("REPORTS", "TRIGGER_REPORT", audit_status, source_ip=get_client_ip(request), details="Daily report digest triggered")
-        return jsonify(res), status_code
-    except Exception as e:
-        audit_repo.log_event("REPORTS", "TRIGGER_REPORT", "FAILED", source_ip=get_client_ip(request), details=str(e))
-        return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
-
-
-@admin_api_bp.route("/analytics/refresh", methods=["POST"])
-@admin_required
-def admin_refresh_analytics():
-    """POST /admin/api/analytics/refresh — Recalculate provider statistics."""
-    if not _verify_admin_csrf():
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
-    try:
-        res = api_service.refresh_analytics()
-        status_code = 200 if res.get("success", True) else 400
-        audit_status = "SUCCESS" if res.get("success", True) else "FAILED"
-        audit_repo.log_event("ANALYTICS", "REFRESH_STATS", audit_status, source_ip=get_client_ip(request), details="Analytics metrics refreshed")
-        return jsonify(res), status_code
-    except Exception as e:
-        audit_repo.log_event("ANALYTICS", "REFRESH_STATS", "FAILED", source_ip=get_client_ip(request), details=str(e))
-        return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
-
-
-@admin_api_bp.route("/opportunities/clear-old", methods=["POST"])
-@admin_required
-def admin_clear_old_opportunities():
-    """POST /admin/api/opportunities/clear-old — Purge records older than 30 days."""
-    if not _verify_admin_csrf():
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
-    try:
-        res = api_service.clear_old_opportunities(days=30)
-        status_code = 200 if res.get("success", True) else 400
-        audit_status = "SUCCESS" if res.get("success", True) else "FAILED"
-        audit_repo.log_event("OPPORTUNITIES", "CLEAR_OLD", audit_status, source_ip=get_client_ip(request), details=f"Purged {res.get('deleted_count', 0)} old records")
-        return jsonify(res), status_code
-    except Exception as e:
-        audit_repo.log_event("OPPORTUNITIES", "CLEAR_OLD", "FAILED", source_ip=get_client_ip(request), details=str(e))
-        return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
-
-
 @admin_api_bp.route("/db/info", methods=["GET", "POST"])
 @admin_required
 def admin_db_info():
-    """GET/POST /admin/api/db/info — Show PostgreSQL host (masked), version, and table counts."""
+    """GET/POST /admin/api/db/info — Show PostgreSQL host (masked), version, latency, and table row counts."""
     from src.database.connection import DatabaseManager
+    from src.automation.action_job_manager import action_job_manager
     db = DatabaseManager()
     metrics = db.get_health_metrics()
     metrics["success"] = metrics.get("connected", True)
     metrics["message"] = f"PostgreSQL Active ({metrics.get('tables', 0)} tables, {metrics.get('latency_ms', 0)}ms latency, Host: {metrics.get('host', 'localhost')})"
+    action_job_manager.create_instant_completed_job("db_info", "Show DB Info", metrics, stage=metrics["message"])
     return jsonify(metrics)
+
 

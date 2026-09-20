@@ -70,6 +70,71 @@
     </div>
   </div>
 
+  <!-- Action Execution Console (Reusable Live Progress & Telemetry System) -->
+  <div id="actionConsoleCard" class="hidden bg-surface rounded-xl border border-admin-accent/40 shadow-lg shadow-black/20 p-5 space-y-4 transition-all">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border-subtle">
+      <div class="flex items-center gap-3">
+        <div id="consoleIconContainer" class="w-9 h-9 rounded-lg bg-admin-accent/15 flex items-center justify-center text-admin-accent">
+          <span id="consoleIcon" class="material-symbols-outlined text-xl animate-spin">sync</span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 id="consoleActionTitle" class="text-sm font-bold text-text-primary">Action In Progress</h3>
+            <span id="consoleStatusBadge" class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded tracking-wide bg-primary/15 text-primary border border-primary/30">RUNNING</span>
+          </div>
+          <p id="consoleJobId" class="text-[11px] text-text-muted font-mono">Job ID: --</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="text-right">
+          <div class="text-[11px] text-text-muted uppercase tracking-wider font-semibold">Elapsed Time</div>
+          <div id="consoleTimer" class="font-mono text-sm font-bold text-text-primary">00:00s</div>
+        </div>
+        <button type="button" id="btnDismissConsole" onclick="dismissActionConsole()" class="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-container-high transition-colors">
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Progress Bar -->
+    <div class="space-y-2">
+      <div class="flex justify-between items-center text-xs">
+        <span id="consoleStageText" class="font-medium text-text-secondary flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-admin-accent animate-ping"></span>
+          <span>Initializing operation...</span>
+        </span>
+        <span id="consolePercentText" class="font-mono font-bold text-text-primary">0%</span>
+      </div>
+      <div class="w-full h-2.5 bg-surface-container-highest rounded-full overflow-hidden p-0.5">
+        <div id="consoleProgressBar" class="h-full bg-gradient-to-r from-primary via-admin-accent to-secondary rounded-full transition-all duration-300 ease-out" style="width: 0%;"></div>
+      </div>
+    </div>
+
+    <!-- Result / Details Drawer -->
+    <div id="consoleResultDrawer" class="hidden p-3.5 rounded-lg bg-surface-container-low border border-border-subtle text-xs space-y-2">
+      <div class="font-bold text-text-primary flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-success text-[16px]">task_alt</span>
+        <span>Execution Results</span>
+      </div>
+      <div id="consoleResultContent" class="text-text-secondary leading-relaxed font-mono text-[11px] break-all"></div>
+    </div>
+
+    <!-- Error Drawer with Retry -->
+    <div id="consoleErrorDrawer" class="hidden p-3.5 rounded-lg bg-danger/10 border border-danger/30 text-xs space-y-2">
+      <div class="font-bold text-danger flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-[16px]">error</span>
+        <span>Action Failed</span>
+      </div>
+      <div id="consoleErrorContent" class="text-danger leading-relaxed text-[11px]"></div>
+      <div class="pt-1 flex items-center gap-2">
+        <button type="button" id="btnConsoleRetry" onclick="retryLastAction()" class="px-3 py-1.5 rounded bg-danger hover:bg-danger/90 text-white font-semibold text-xs transition-colors flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[14px]">refresh</span>
+          <span>Retry Action</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Administrative Action Matrix (11 Controls) -->
   <div class="bg-surface rounded-xl border border-border-subtle p-6 space-y-5">
     <div class="flex items-center justify-between pb-3 border-b border-border-subtle">
@@ -82,7 +147,7 @@
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       <!-- 1. Execute Scan -->
-      <button type="button" id="btnRunScan" onclick="executeAdminAction('/admin/api/run', 'btnRunScan', 'Execute Scan', 'Scanning...')" class="p-3.5 rounded-lg border border-primary/30 bg-primary/10 hover:bg-primary text-primary hover:text-surface-container-lowest transition-all text-left space-y-1 group">
+      <button type="button" id="btnRunScan" onclick="handleAdminAction('execute_scan', '/admin/api/run', { label: 'Execute Scan Now', loadText: 'Scanning...' })" class="admin-ctrl-btn p-3.5 rounded-lg border border-primary/30 bg-primary/10 hover:bg-primary text-primary hover:text-surface-container-lowest transition-all text-left space-y-1 group">
         <div class="flex items-center gap-2 font-bold text-xs">
           <span class="material-symbols-outlined text-[16px]">play_arrow</span>
           <span>Execute Scan Now</span>
@@ -91,7 +156,7 @@
       </button>
 
       <!-- 2. Send Test Email -->
-      <button type="button" id="btnTestEmail" onclick="executeAdminAction('/admin/api/email/test', 'btnTestEmail', 'Send Test Email', 'Sending...')" class="p-3.5 rounded-lg border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-1">
+      <button type="button" id="btnTestEmail" onclick="handleAdminAction('send_test_email', '/admin/api/email/test', { label: 'Send Test Email', loadText: 'Sending Email...' })" class="admin-ctrl-btn p-3.5 rounded-lg border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-1">
         <div class="flex items-center gap-2 font-bold text-xs text-info">
           <span class="material-symbols-outlined text-[16px]">mail</span>
           <span>Send Test Email</span>
@@ -100,7 +165,7 @@
       </button>
 
       <!-- 3. Send Daily Report Now -->
-      <button type="button" id="btnReportNow" onclick="executeAdminAction('/admin/api/report/trigger', 'btnReportNow', 'Send Daily Report', 'Dispatching...')" class="p-3.5 rounded-lg border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-1">
+      <button type="button" id="btnReportNow" onclick="handleAdminAction('send_report_now', '/admin/api/report/trigger', { label: 'Send Daily Report', loadText: 'Compiling Report...' })" class="admin-ctrl-btn p-3.5 rounded-lg border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-1">
         <div class="flex items-center gap-2 font-bold text-xs text-warning">
           <span class="material-symbols-outlined text-[16px]">send</span>
           <span>Send Report Now</span>
@@ -109,7 +174,7 @@
       </button>
 
       <!-- 4. Refresh Analytics -->
-      <button type="button" id="btnRefreshAnalytics" onclick="executeAdminAction('/admin/api/analytics/refresh', 'btnRefreshAnalytics', 'Refresh Analytics', 'Calculating...')" class="p-3.5 rounded-lg border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-1">
+      <button type="button" id="btnRefreshAnalytics" onclick="handleAdminAction('refresh_analytics', '/admin/api/analytics/refresh', { label: 'Refresh Analytics', loadText: 'Recalculating...' })" class="admin-ctrl-btn p-3.5 rounded-lg border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-1">
         <div class="flex items-center gap-2 font-bold text-xs text-success">
           <span class="material-symbols-outlined text-[16px]">analytics</span>
           <span>Refresh Analytics</span>
@@ -118,7 +183,7 @@
       </button>
 
       <!-- 5. Pause Scheduler -->
-      <button type="button" id="btnPauseSched" onclick="executeAdminAction('/admin/api/scheduler/pause', 'btnPauseSched', 'Pause Scheduler', 'Pausing...')" class="p-3.5 rounded-lg border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-1">
+      <button type="button" id="btnPauseSched" onclick="handleAdminAction('pause_scheduler', '/admin/api/scheduler/pause', { label: 'Pause Scheduler', loadText: 'Pausing...' })" class="admin-ctrl-btn p-3.5 rounded-lg border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-1">
         <div class="flex items-center gap-2 font-bold text-xs text-text-secondary">
           <span class="material-symbols-outlined text-[16px]">pause</span>
           <span>Pause Scheduler</span>
@@ -127,7 +192,7 @@
       </button>
 
       <!-- 6. Resume Scheduler -->
-      <button type="button" id="btnResumeSched" onclick="executeAdminAction('/admin/api/scheduler/resume', 'btnResumeSched', 'Resume Scheduler', 'Resuming...')" class="p-3.5 rounded-lg border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-1">
+      <button type="button" id="btnResumeSched" onclick="handleAdminAction('resume_scheduler', '/admin/api/scheduler/resume', { label: 'Resume Scheduler', loadText: 'Resuming...' })" class="admin-ctrl-btn p-3.5 rounded-lg border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-1">
         <div class="flex items-center gap-2 font-bold text-xs text-success">
           <span class="material-symbols-outlined text-[16px]">play_circle</span>
           <span>Resume Scheduler</span>
@@ -136,7 +201,7 @@
       </button>
 
       <!-- 7. Restart Scheduler -->
-      <button type="button" id="btnRestartSched" onclick="executeAdminAction('/admin/api/scheduler/restart', 'btnRestartSched', 'Restart Scheduler', 'Restarting...')" class="p-3.5 rounded-lg border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-1">
+      <button type="button" id="btnRestartSched" onclick="handleAdminAction('restart_scheduler', '/admin/api/scheduler/restart', { label: 'Restart Scheduler', loadText: 'Restarting...' })" class="admin-ctrl-btn p-3.5 rounded-lg border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-1">
         <div class="flex items-center gap-2 font-bold text-xs text-warning">
           <span class="material-symbols-outlined text-[16px]">restart_alt</span>
           <span>Restart Scheduler</span>
@@ -144,8 +209,8 @@
         <div class="text-[11px] text-text-muted">Restart background worker</div>
       </button>
 
-      <!-- 8. Clear Old Opportunities -->
-      <button type="button" id="btnClearOld" onclick="executeAdminAction('/admin/api/opportunities/clear-old', 'btnClearOld', 'Clear Old Records', 'Purging...', {days: 30})" class="p-3.5 rounded-lg border border-danger/30 bg-danger/10 hover:bg-danger text-danger hover:text-white transition-all text-left space-y-1">
+      <!-- 8. Clear Old Opportunities (Destructive Safeguarded Action) -->
+      <button type="button" id="btnClearOld" onclick="openPurgeModal()" class="admin-ctrl-btn p-3.5 rounded-lg border border-danger/30 bg-danger/10 hover:bg-danger text-danger hover:text-white transition-all text-left space-y-1">
         <div class="flex items-center gap-2 font-bold text-xs">
           <span class="material-symbols-outlined text-[16px]">delete_sweep</span>
           <span>Purge &gt; 30d Records</span>
@@ -154,7 +219,7 @@
       </button>
 
       <!-- 9. Test DB Connection -->
-      <button type="button" id="btnTestDB" onclick="executeAdminAction('/admin/api/db/test', 'btnTestDB', 'Test Database', 'Testing...')" class="p-3.5 rounded-lg border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-1">
+      <button type="button" id="btnTestDB" onclick="handleAdminAction('test_db', '/admin/api/db/test', { label: 'Test DB Ping', loadText: 'Testing Ping...' })" class="admin-ctrl-btn p-3.5 rounded-lg border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-1">
         <div class="flex items-center gap-2 font-bold text-xs text-info">
           <span class="material-symbols-outlined text-[16px]">cable</span>
           <span>Test DB Ping</span>
@@ -163,7 +228,7 @@
       </button>
 
       <!-- 10. Reconnect Database -->
-      <button type="button" id="btnReconnectDB" onclick="executeAdminAction('/admin/api/db/reconnect', 'btnReconnectDB', 'Reconnect DB', 'Reconnecting...')" class="p-3.5 rounded-lg border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-1">
+      <button type="button" id="btnReconnectDB" onclick="handleAdminAction('db_reconnect', '/admin/api/db/reconnect', { label: 'Reconnect Database', loadText: 'Reconnecting Pool...' })" class="admin-ctrl-btn p-3.5 rounded-lg border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-1">
         <div class="flex items-center gap-2 font-bold text-xs text-warning">
           <span class="material-symbols-outlined text-[16px]">sync</span>
           <span>Reconnect Database</span>
@@ -172,13 +237,113 @@
       </button>
 
       <!-- 11. Database Info -->
-      <button type="button" id="btnDBInfo" onclick="executeAdminAction('/admin/api/db/info', 'btnDBInfo', 'Database Info', 'Querying...')" class="p-3.5 rounded-lg border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-1">
+      <button type="button" id="btnDBInfo" onclick="handleAdminAction('db_info', '/admin/api/db/info', { label: 'Show DB Info', method: 'GET', showModal: true })" class="admin-ctrl-btn p-3.5 rounded-lg border border-border-subtle bg-surface-container-low hover:bg-surface-container-high text-text-primary transition-all text-left space-y-1">
         <div class="flex items-center gap-2 font-bold text-xs text-primary">
           <span class="material-symbols-outlined text-[16px]">info</span>
           <span>Show DB Info</span>
         </div>
         <div class="text-[11px] text-text-muted">Inspect schema table row counts</div>
       </button>
+    </div>
+  </div>
+
+  <!-- Destructive Purge Confirmation Modal -->
+  <div id="purgeModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div class="bg-surface rounded-2xl border border-danger/40 max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex items-center gap-3 text-danger">
+        <div class="w-10 h-10 rounded-xl bg-danger/15 flex items-center justify-center">
+          <span class="material-symbols-outlined text-2xl">warning</span>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-text-primary">Confirm Database Purge</h3>
+          <p class="text-xs text-danger font-medium">Destructive Operation Safeguard</p>
+        </div>
+      </div>
+
+      <div class="p-4 rounded-xl bg-surface-container-low border border-border-subtle space-y-2 text-xs">
+        <p class="text-text-secondary">
+          You are about to purge stale opportunities discovered more than <strong class="text-text-primary">30 days ago</strong>.
+        </p>
+        <div class="p-3 rounded-lg bg-surface border border-border-subtle flex items-center justify-between">
+          <span class="text-text-muted">Eligible Records:</span>
+          <span id="purgeEligibleCount" class="font-mono font-bold text-danger text-sm flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-xs animate-spin">sync</span>
+            <span>Calculating...</span>
+          </span>
+        </div>
+        <div class="p-3 rounded-lg bg-surface border border-border-subtle flex items-center justify-between">
+          <span class="text-text-muted">Retention Cutoff:</span>
+          <span id="purgeCutoffDate" class="font-mono text-text-secondary">--</span>
+        </div>
+        <p class="text-[11px] text-text-muted italic pt-1">
+          Note: This action permanently deletes eligible records from PostgreSQL. This cannot be reversed.
+        </p>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button type="button" onclick="closePurgeModal()" class="px-4 py-2 rounded-lg border border-border-subtle bg-surface-container-high hover:bg-surface-container-highest text-text-secondary text-xs font-semibold transition-colors">
+          Cancel
+        </button>
+        <button type="button" id="btnConfirmPurge" onclick="executeConfirmedPurge()" class="px-4 py-2 rounded-lg bg-danger hover:bg-danger/90 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[16px]">delete_forever</span>
+          <span>Confirm &amp; Purge Records</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Database Information Modal -->
+  <div id="dbInfoModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div class="bg-surface rounded-2xl border border-border-subtle max-w-xl w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-border-subtle">
+        <div class="flex items-center gap-2.5">
+          <span class="material-symbols-outlined text-primary text-2xl">database</span>
+          <div>
+            <h3 class="text-sm font-bold text-text-primary">PostgreSQL Schema &amp; Telemetry</h3>
+            <p id="dbInfoHostSubtitle" class="text-[11px] text-text-muted font-mono">Host: localhost</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeDBInfoModal()" class="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-container-high transition-colors">
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div class="p-3 rounded-lg bg-surface-container-low border border-border-subtle space-y-0.5">
+          <div class="text-[10px] uppercase font-bold text-text-muted">Status</div>
+          <div id="dbInfoStatus" class="font-bold text-xs text-success flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-success"></span>
+            <span>Connected</span>
+          </div>
+        </div>
+        <div class="p-3 rounded-lg bg-surface-container-low border border-border-subtle space-y-0.5">
+          <div class="text-[10px] uppercase font-bold text-text-muted">Latency</div>
+          <div id="dbInfoLatency" class="font-bold font-mono text-xs text-info">-- ms</div>
+        </div>
+        <div class="p-3 rounded-lg bg-surface-container-low border border-border-subtle space-y-0.5">
+          <div class="text-[10px] uppercase font-bold text-text-muted">Engine</div>
+          <div id="dbInfoEngine" class="font-bold text-xs text-text-primary truncate">PostgreSQL</div>
+        </div>
+        <div class="p-3 rounded-lg bg-surface-container-low border border-border-subtle space-y-0.5">
+          <div class="text-[10px] uppercase font-bold text-text-muted">Total Tables</div>
+          <div id="dbInfoTotalTables" class="font-bold font-mono text-xs text-text-primary">--</div>
+        </div>
+      </div>
+
+      <!-- Table Row Counts Breakdown -->
+      <div class="space-y-2 pt-2">
+        <h4 class="text-xs font-bold text-text-secondary uppercase tracking-wider">Schema Table Row Counts</h4>
+        <div id="dbInfoTableGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 font-mono text-xs">
+          <!-- Populated via JS -->
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-3 border-t border-border-subtle">
+        <button type="button" onclick="closeDBInfoModal()" class="px-4 py-2 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-text-primary text-xs font-semibold transition-colors">
+          Close
+        </button>
+      </div>
     </div>
   </div>
 
@@ -224,48 +389,345 @@
 
 {% block extra_scripts %}
 <script nonce="{{ csp_nonce }}">
-  async function executeAdminAction(endpoint, btnId, origText, loadText, payload = {}) {
-    const btn = document.getElementById(btnId);
-    const alertBox = document.getElementById('adminActionAlert');
-    const alertContent = document.getElementById('adminActionAlertContent');
+  let currentJobId = null;
+  let activeActionKey = null;
+  let pollInterval = null;
+  let timerInterval = null;
+  let jobStartTime = null;
+  let lastActionParams = null;
 
-    if (btn) {
-      btn.disabled = true;
-      btn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span><span>${loadText}</span>`;
+  document.addEventListener('DOMContentLoaded', () => {
+    checkActiveAction();
+    // Dismiss modals on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closePurgeModal();
+        closeDBInfoModal();
+      }
+    });
+  });
+
+  async function checkActiveAction() {
+    try {
+      const res = await fetch('/admin/api/actions/active', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      const data = await res.json();
+      if (data.success && data.active && data.job) {
+        showActionConsole(data.job.action_label || 'Action In Progress', data.job.job_id);
+        renderJobTelemetry(data.job);
+        startPolling(data.job.job_id);
+      }
+    } catch (e) {
+      console.debug('No active action detected:', e);
+    }
+  }
+
+  function setActionButtonsDisabled(disabled) {
+    document.querySelectorAll('.admin-ctrl-btn').forEach(btn => {
+      btn.disabled = disabled;
+      if (disabled) {
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+      } else {
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    });
+  }
+
+  function showActionConsole(title, jobId) {
+    const card = document.getElementById('actionConsoleCard');
+    card.classList.remove('hidden');
+    document.getElementById('consoleActionTitle').textContent = title;
+    document.getElementById('consoleJobId').textContent = `Job ID: ${jobId || '--'}`;
+    document.getElementById('consoleResultDrawer').classList.add('hidden');
+    document.getElementById('consoleErrorDrawer').classList.add('hidden');
+    document.getElementById('consoleStatusBadge').className = 'text-[10px] font-extrabold uppercase px-2 py-0.5 rounded tracking-wide bg-primary/15 text-primary border border-primary/30';
+    document.getElementById('consoleStatusBadge').textContent = 'RUNNING';
+    document.getElementById('consoleIcon').textContent = 'sync';
+    document.getElementById('consoleIcon').className = 'material-symbols-outlined text-xl animate-spin';
+    setActionButtonsDisabled(true);
+  }
+
+  function dismissActionConsole() {
+    stopPolling();
+    stopTimer();
+    document.getElementById('actionConsoleCard').classList.add('hidden');
+    setActionButtonsDisabled(false);
+  }
+
+  function startTimer(startTimeStr) {
+    stopTimer();
+    jobStartTime = startTimeStr ? new Date(startTimeStr).getTime() : Date.now();
+    const timerElem = document.getElementById('consoleTimer');
+
+    function update() {
+      const elapsedSec = Math.max(0, Math.floor((Date.now() - jobStartTime) / 1000));
+      const mins = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+      const secs = String(elapsedSec % 60).padStart(2, '0');
+      timerElem.textContent = `${mins}:${secs}s`;
+    }
+    update();
+    timerInterval = setInterval(update, 1000);
+  }
+
+  function stopTimer() {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+  }
+
+  function startPolling(jobId) {
+    stopPolling();
+    currentJobId = jobId;
+    startTimer();
+
+    pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`/admin/api/actions/${jobId}`, {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: Failed to fetch status`);
+        }
+        const job = await res.json();
+        renderJobTelemetry(job);
+
+        if (job.status === 'COMPLETED' || job.status === 'FAILED' || job.status === 'CANCELLED') {
+          stopPolling();
+          stopTimer();
+          setActionButtonsDisabled(false);
+        }
+      } catch (err) {
+        console.warn('Poll error:', err);
+      }
+    }, 1200);
+  }
+
+  function stopPolling() {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+  }
+
+  function renderJobTelemetry(job) {
+    const stageElem = document.getElementById('consoleStageText');
+    const percentElem = document.getElementById('consolePercentText');
+    const barElem = document.getElementById('consoleProgressBar');
+    const badge = document.getElementById('consoleStatusBadge');
+    const icon = document.getElementById('consoleIcon');
+    const iconContainer = document.getElementById('consoleIconContainer');
+
+    // Stage & Progress
+    stageElem.innerHTML = `<span class="w-2 h-2 rounded-full ${job.status === 'COMPLETED' ? 'bg-success' : (job.status === 'FAILED' ? 'bg-danger' : 'bg-admin-accent animate-ping')}"></span><span>${job.current_stage || 'Processing...'}</span>`;
+
+    if (typeof job.progress === 'number' && job.progress >= 0) {
+      const p = Math.min(100, Math.max(0, job.progress));
+      percentElem.textContent = `${p.toFixed(0)}%`;
+      barElem.style.width = `${p}%`;
+      barElem.className = 'h-full bg-gradient-to-r from-primary via-admin-accent to-secondary rounded-full transition-all duration-300 ease-out';
+    } else {
+      percentElem.textContent = 'In progress';
+      barElem.style.width = '100%';
+      barElem.className = 'h-full bg-admin-accent/50 animate-pulse rounded-full';
     }
 
+    // Status state
+    if (job.status === 'COMPLETED') {
+      badge.className = 'text-[10px] font-extrabold uppercase px-2 py-0.5 rounded tracking-wide bg-success/15 text-success border border-success/30';
+      badge.textContent = 'COMPLETED';
+      icon.textContent = 'check_circle';
+      icon.className = 'material-symbols-outlined text-xl text-success';
+      iconContainer.className = 'w-9 h-9 rounded-lg bg-success/15 flex items-center justify-center';
+
+      // Show result drawer
+      const resDrawer = document.getElementById('consoleResultDrawer');
+      const resContent = document.getElementById('consoleResultContent');
+      resDrawer.classList.remove('hidden');
+
+      let detailsText = '';
+      if (job.result) {
+        if (job.result.message) detailsText += `<div><strong>Message:</strong> ${job.result.message}</div>`;
+        if (job.result.opportunities_found !== undefined) detailsText += `<div><strong>Opportunities Found:</strong> ${job.result.opportunities_found}</div>`;
+        if (job.result.deleted_count !== undefined) detailsText += `<div><strong>Records Purged:</strong> ${job.result.deleted_count}</div>`;
+        if (job.result.latency_ms !== undefined) detailsText += `<div><strong>Latency:</strong> ${job.result.latency_ms}ms</div>`;
+        if (job.result.recalculated_providers !== undefined) detailsText += `<div><strong>Providers Recalculated:</strong> ${job.result.recalculated_providers}</div>`;
+        if (!detailsText) {
+          detailsText = `<pre class="whitespace-pre-wrap">${JSON.stringify(job.result, null, 2)}</pre>`;
+        }
+      } else {
+        detailsText = 'Operation completed successfully.';
+      }
+      resContent.innerHTML = detailsText;
+    } else if (job.status === 'FAILED') {
+      badge.className = 'text-[10px] font-extrabold uppercase px-2 py-0.5 rounded tracking-wide bg-danger/15 text-danger border border-danger/30';
+      badge.textContent = 'FAILED';
+      icon.textContent = 'error';
+      icon.className = 'material-symbols-outlined text-xl text-danger';
+      iconContainer.className = 'w-9 h-9 rounded-lg bg-danger/15 flex items-center justify-center';
+
+      const errDrawer = document.getElementById('consoleErrorDrawer');
+      const errContent = document.getElementById('consoleErrorContent');
+      errDrawer.classList.remove('hidden');
+      errContent.textContent = job.error || 'The requested operation encountered an unexpected error.';
+    }
+  }
+
+  async function handleAdminAction(actionKey, endpoint, options = {}) {
+    lastActionParams = { actionKey, endpoint, options };
+    const label = options.label || 'Action';
+    const method = options.method || 'POST';
+    const payload = options.payload || {};
+
+    showActionConsole(label, 'initiating...');
+
     try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
+      const fetchOpts = {
+        method: method,
         credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
           'X-CSRF-Token': '{{ csrf_token }}'
-        },
-        body: JSON.stringify(payload)
-      });
+        }
+      };
+      if (method === 'POST') {
+        fetchOpts.body = JSON.stringify(payload);
+      }
+
+      const res = await fetch(endpoint, fetchOpts);
       const data = await res.json();
 
-      alertBox.classList.remove('hidden');
-      const isSuccess = res.ok && data.status !== 'failed' && data.success !== false;
-      if (isSuccess) {
-        alertBox.className = 'p-4 rounded-xl border text-xs flex items-center justify-between bg-success/10 border-success/30 text-success';
-        alertContent.innerHTML = `<span class="material-symbols-outlined text-base">check_circle</span><span><strong>Success:</strong> ${data.message || data.status || 'Action completed successfully.'}</span>`;
+      if (res.status === 409) {
+        renderJobTelemetry({
+          status: 'FAILED',
+          progress: 100,
+          current_stage: 'Conflict',
+          error: data.error || 'Another operation is already executing. Please wait.'
+        });
+        setActionButtonsDisabled(false);
+        return;
+      }
+
+      if (!res.ok || data.success === false) {
+        renderJobTelemetry({
+          status: 'FAILED',
+          progress: 100,
+          current_stage: 'Execution Failed',
+          error: data.error || data.message || `Server returned HTTP ${res.status}`
+        });
+        setActionButtonsDisabled(false);
+        return;
+      }
+
+      // If action is DB Info and showModal requested
+      if (options.showModal && actionKey === 'db_info') {
+        renderDBInfoModal(data);
+      }
+
+      // Check if job is tracked asynchronously
+      if (data.job_id) {
+        document.getElementById('consoleJobId').textContent = `Job ID: ${data.job_id}`;
+        startPolling(data.job_id);
+      } else if (data.job) {
+        renderJobTelemetry(data.job);
+        setActionButtonsDisabled(false);
       } else {
-        alertBox.className = 'p-4 rounded-xl border text-xs flex items-center justify-between bg-danger/10 border-danger/30 text-danger';
-        alertContent.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Notice:</strong> ${data.error || data.message || 'Action request failed.'}</span>`;
+        renderJobTelemetry({
+          status: 'COMPLETED',
+          progress: 100,
+          current_stage: data.message || 'Completed successfully',
+          result: data
+        });
+        setActionButtonsDisabled(false);
       }
-    } catch(err) {
-      alertBox.classList.remove('hidden');
-      alertBox.className = 'p-4 rounded-xl border text-xs flex items-center justify-between bg-danger/10 border-danger/30 text-danger';
-      alertContent.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Error:</strong> ${err.message}</span>`;
-    } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = `<span>${origText}</span>`;
-      }
+    } catch (err) {
+      renderJobTelemetry({
+        status: 'FAILED',
+        progress: 100,
+        current_stage: 'Network or client error',
+        error: err.message
+      });
+      setActionButtonsDisabled(false);
     }
+  }
+
+  function retryLastAction() {
+    if (lastActionParams) {
+      handleAdminAction(lastActionParams.actionKey, lastActionParams.endpoint, lastActionParams.options);
+    }
+  }
+
+  // --- Purge Records Modal Functions ---
+  async function openPurgeModal() {
+    const modal = document.getElementById('purgeModal');
+    const countElem = document.getElementById('purgeEligibleCount');
+    const cutoffElem = document.getElementById('purgeCutoffDate');
+
+    countElem.innerHTML = '<span class="material-symbols-outlined text-xs animate-spin">sync</span><span>Calculating...</span>';
+    cutoffElem.textContent = '...';
+    modal.classList.remove('hidden');
+
+    try {
+      const res = await fetch('/admin/api/opportunities/clear-old/preview?days=30', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      const data = await res.json();
+      if (data.success) {
+        countElem.textContent = `${data.eligible_count} record(s)`;
+        cutoffElem.textContent = data.cutoff_date || '--';
+      } else {
+        countElem.textContent = 'Error querying';
+      }
+    } catch (e) {
+      countElem.textContent = 'Unavailable';
+    }
+  }
+
+  function closePurgeModal() {
+    document.getElementById('purgeModal').classList.add('hidden');
+  }
+
+  function executeConfirmedPurge() {
+    closePurgeModal();
+    handleAdminAction('purge_records', '/admin/api/opportunities/clear-old', {
+      label: 'Purge > 30d Records',
+      loadText: 'Purging Stale Records...',
+      payload: { confirm: true, days: 30 }
+    });
+  }
+
+  // --- Database Info Modal Functions ---
+  function renderDBInfoModal(metrics) {
+    document.getElementById('dbInfoHostSubtitle').textContent = `Host: ${metrics.host || metrics.database_host || 'localhost'}`;
+    document.getElementById('dbInfoStatus').innerHTML = `<span class="w-2 h-2 rounded-full ${metrics.connected ? 'bg-success' : 'bg-danger'}"></span><span>${metrics.connected ? 'Connected' : 'Disconnected'}</span>`;
+    document.getElementById('dbInfoLatency').textContent = `${metrics.latency_ms !== undefined ? metrics.latency_ms : '--'} ms`;
+    document.getElementById('dbInfoEngine').textContent = metrics.version || 'PostgreSQL';
+    document.getElementById('dbInfoTotalTables').textContent = metrics.tables || (metrics.table_counts ? Object.keys(metrics.table_counts).length : 0);
+
+    const grid = document.getElementById('dbInfoTableGrid');
+    grid.innerHTML = '';
+    const tableCounts = metrics.table_counts || {};
+    const tableNames = Object.keys(tableCounts);
+
+    if (tableNames.length === 0) {
+      grid.innerHTML = '<div class="col-span-full text-text-muted text-xs">No table row counts available.</div>';
+    } else {
+      tableNames.forEach(tName => {
+        const item = document.createElement('div');
+        item.className = 'p-2.5 rounded-lg bg-surface-container-low border border-border-subtle flex justify-between items-center';
+        item.innerHTML = `<span class="text-text-secondary truncate text-[11px]" title="${tName}">${tName}</span><span class="font-bold text-text-primary text-[11px]">${tableCounts[tName].toLocaleString()}</span>`;
+        grid.appendChild(item);
+      });
+    }
+
+    document.getElementById('dbInfoModal').classList.remove('hidden');
+  }
+
+  function closeDBInfoModal() {
+    document.getElementById('dbInfoModal').classList.add('hidden');
   }
 </script>
 {% endblock %}
+

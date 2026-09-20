@@ -666,6 +666,52 @@ class DatabaseManager:
         """Verifies database connection health."""
         return self.ping()
 
+    def reconnect(self) -> Dict[str, Any]:
+        """
+        Safely disposes and recreates the connection pool and engine.
+        Tests the newly established connection and returns health metrics.
+        """
+        start_time = time.time()
+        try:
+            self.close_connection()
+            reset_engine()
+            if self.custom_url and self._engine:
+                try:
+                    self._engine.dispose()
+                except Exception:
+                    pass
+                self._engine = None
+
+            connected = self.ping()
+            latency_ms = round((time.time() - start_time) * 1000, 2)
+            if connected:
+                return {
+                    "success": True,
+                    "connected": True,
+                    "status": "connected",
+                    "latency_ms": latency_ms,
+                    "host": get_masked_db_host(self.custom_url),
+                    "message": f"PostgreSQL engine pool reconnected successfully ({latency_ms}ms latency)."
+                }
+            else:
+                return {
+                    "success": False,
+                    "connected": False,
+                    "status": "failed",
+                    "latency_ms": latency_ms,
+                    "error": self._last_failure_reason or "Failed to ping database after reconnect",
+                    "message": "Database reconnection failed to ping successfully."
+                }
+        except Exception as e:
+            logger.error(f"Database reconnect failed: {e}")
+            return {
+                "success": False,
+                "connected": False,
+                "status": "failed",
+                "error": str(e),
+                "message": f"Database reconnection encountered an exception: {e}"
+            }
+
     def get_health_metrics(self) -> Dict[str, Any]:
         """
         Computes current database connection health, latency, table counts, and masked host.
@@ -678,6 +724,7 @@ class DatabaseManager:
 
         tables_count = 0
         pg_version = "Unknown"
+        table_counts: Dict[str, int] = {}
 
         if is_connected:
             try:
@@ -691,10 +738,26 @@ class DatabaseManager:
                 cursor = conn.cursor()
                 cursor.execute("SELECT version();")
                 v_row = cursor.fetchone()
-                cursor.close()
-                conn.rollback()
                 if v_row:
                     pg_version = str(v_row[0]).split(",")[0]
+
+                # Safe table row counts for non-sensitive schema inspection
+                key_tables = [
+                    "Opportunities", "Users", "Admins", "AuditLogs", "ScanJobs",
+                    "SourceHealth", "Sources", "SearchHistory", "SavedOpportunities",
+                    "UserPreferences", "scheduler_webhook_requests", "Statistics"
+                ]
+                for tbl in key_tables:
+                    try:
+                        cursor.execute(f'SELECT COUNT(*) FROM "{tbl}";')
+                        r = cursor.fetchone()
+                        if r:
+                            table_counts[tbl] = int(r[0] if isinstance(r, (tuple, list)) else r.get("count", 0))
+                    except Exception:
+                        pass
+
+                cursor.close()
+                conn.rollback()
             except Exception:
                 pg_version = "PostgreSQL"
 
@@ -710,6 +773,7 @@ class DatabaseManager:
                 "last_successful_query": self._last_successful_query_iso or datetime.now(timezone.utc).isoformat(),
                 "version": pg_version,
                 "tables": tables_count,
+                "table_counts": table_counts,
             }
         else:
             return {
@@ -723,8 +787,10 @@ class DatabaseManager:
                 "last_attempt": self._last_failure_timestamp_iso or datetime.now(timezone.utc).isoformat(),
                 "retry_attempts": self._retry_attempts or 5,
                 "tables": 0,
+                "table_counts": {},
                 "version": "Disconnected",
             }
+
 
     def get_existing_tables(self) -> List[str]:
         """Returns list of table names present in database."""
