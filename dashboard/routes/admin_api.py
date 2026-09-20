@@ -241,7 +241,7 @@ def admin_scheduler_pause():
         return jsonify(res)
     except Exception as e:
         audit_repo.log_event("SCHEDULER", "PAUSE_SCHEDULER", "FAILED", source_ip=get_client_ip(request), details=str(e))
-        return jsonify({"status": "failed", "error": str(e)})
+        return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
 
 
 @admin_api_bp.route("/scheduler/resume", methods=["POST"])
@@ -256,7 +256,7 @@ def admin_scheduler_resume():
         return jsonify(res)
     except Exception as e:
         audit_repo.log_event("SCHEDULER", "RESUME_SCHEDULER", "FAILED", source_ip=get_client_ip(request), details=str(e))
-        return jsonify({"status": "failed", "error": str(e)})
+        return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
 
 
 @admin_api_bp.route("/scheduler/restart", methods=["POST"])
@@ -268,10 +268,10 @@ def admin_scheduler_restart():
     try:
         res = api_service.restart_scheduler()
         audit_repo.log_event("SCHEDULER", "RESTART_SCHEDULER", "SUCCESS", source_ip=get_client_ip(request), details="Scheduler restarted")
-        return jsonify({"status": "restarted", "message": "Scheduler service restarted successfully."})
+        return jsonify({"success": True, "status": "restarted", "message": "Scheduler service restarted successfully."})
     except Exception as e:
         audit_repo.log_event("SCHEDULER", "RESTART_SCHEDULER", "FAILED", source_ip=get_client_ip(request), details=str(e))
-        return jsonify({"status": "failed", "error": str(e)})
+        return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
 
 
 @admin_api_bp.route("/db/test", methods=["POST", "GET"])
@@ -285,6 +285,7 @@ def admin_db_test():
     is_ok = db.ping()
     audit_repo.log_event("DATABASE", "TEST_CONNECTION", "SUCCESS" if is_ok else "FAILED", source_ip=get_client_ip(request), details=f"Database test status: {'Connected' if is_ok else 'Disconnected'}")
     return jsonify({
+        "success": is_ok,
         "status": "success" if is_ok else "failed",
         "connected": is_ok,
         "database_type": "PostgreSQL",
@@ -317,13 +318,14 @@ def admin_db_reconnect():
         is_ok = db.check_connection_with_backoff(max_retries=3)
         audit_repo.log_event("DATABASE", "RECONNECT_DB", "SUCCESS" if is_ok else "FAILED", source_ip=get_client_ip(request), details="Reconnected database engine pool")
         return jsonify({
+            "success": is_ok,
             "status": "success" if is_ok else "failed",
             "connected": is_ok,
             "message": "PostgreSQL engine pool reconnected successfully." if is_ok else "Failed to reconnect to PostgreSQL database.",
         })
     except Exception as e:
         audit_repo.log_event("DATABASE", "RECONNECT_DB", "FAILED", source_ip=get_client_ip(request), details=str(e))
-        return jsonify({"status": "failed", "error": str(e)})
+        return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
 
 
 @admin_api_bp.route("/report/trigger", methods=["POST"])
@@ -334,11 +336,13 @@ def admin_trigger_report():
         return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.send_daily_report_now()
-        audit_repo.log_event("REPORTS", "TRIGGER_REPORT", "SUCCESS", source_ip=get_client_ip(request), details="Daily report digest triggered")
-        return jsonify(res)
+        status_code = 200 if res.get("success", True) else 400
+        audit_status = "SUCCESS" if res.get("success", True) else "FAILED"
+        audit_repo.log_event("REPORTS", "TRIGGER_REPORT", audit_status, source_ip=get_client_ip(request), details="Daily report digest triggered")
+        return jsonify(res), status_code
     except Exception as e:
         audit_repo.log_event("REPORTS", "TRIGGER_REPORT", "FAILED", source_ip=get_client_ip(request), details=str(e))
-        return jsonify({"status": "failed", "error": str(e)})
+        return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
 
 
 @admin_api_bp.route("/analytics/refresh", methods=["POST"])
@@ -349,11 +353,13 @@ def admin_refresh_analytics():
         return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.refresh_analytics()
-        audit_repo.log_event("ANALYTICS", "REFRESH_STATS", "SUCCESS", source_ip=get_client_ip(request), details="Analytics metrics refreshed")
-        return jsonify(res)
+        status_code = 200 if res.get("success", True) else 400
+        audit_status = "SUCCESS" if res.get("success", True) else "FAILED"
+        audit_repo.log_event("ANALYTICS", "REFRESH_STATS", audit_status, source_ip=get_client_ip(request), details="Analytics metrics refreshed")
+        return jsonify(res), status_code
     except Exception as e:
         audit_repo.log_event("ANALYTICS", "REFRESH_STATS", "FAILED", source_ip=get_client_ip(request), details=str(e))
-        return jsonify({"status": "failed", "error": str(e)})
+        return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
 
 
 @admin_api_bp.route("/opportunities/clear-old", methods=["POST"])
@@ -364,11 +370,13 @@ def admin_clear_old_opportunities():
         return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.clear_old_opportunities(days=30)
-        audit_repo.log_event("OPPORTUNITIES", "CLEAR_OLD", "SUCCESS", source_ip=get_client_ip(request), details=f"Purged {res.get('deleted_count', 0)} old records")
-        return jsonify(res)
+        status_code = 200 if res.get("success", True) else 400
+        audit_status = "SUCCESS" if res.get("success", True) else "FAILED"
+        audit_repo.log_event("OPPORTUNITIES", "CLEAR_OLD", audit_status, source_ip=get_client_ip(request), details=f"Purged {res.get('deleted_count', 0)} old records")
+        return jsonify(res), status_code
     except Exception as e:
         audit_repo.log_event("OPPORTUNITIES", "CLEAR_OLD", "FAILED", source_ip=get_client_ip(request), details=str(e))
-        return jsonify({"status": "failed", "error": str(e)})
+        return jsonify({"success": False, "status": "failed", "error": str(e)}), 400
 
 
 @admin_api_bp.route("/db/info", methods=["GET", "POST"])
@@ -378,5 +386,7 @@ def admin_db_info():
     from src.database.connection import DatabaseManager
     db = DatabaseManager()
     metrics = db.get_health_metrics()
+    metrics["success"] = metrics.get("connected", True)
+    metrics["message"] = f"PostgreSQL Active ({metrics.get('tables', 0)} tables, {metrics.get('latency_ms', 0)}ms latency, Host: {metrics.get('host', 'localhost')})"
     return jsonify(metrics)
 

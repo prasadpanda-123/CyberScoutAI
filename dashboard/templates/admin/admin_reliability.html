@@ -23,6 +23,22 @@
     </div>
   </div>
 
+  <!-- Navigation Sub-Tabs -->
+  <div class="flex items-center gap-2 border-b border-border-subtle pb-2">
+    <a href="{{ url_for('admin_ui.admin_reliability') }}" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 bg-admin-accent/15 text-admin-accent border border-admin-accent/30">
+      <span class="material-symbols-outlined text-[16px]">health_and_safety</span>
+      <span>Reliability &amp; Telemetry</span>
+    </a>
+    <a href="{{ url_for('admin_ui.admin_system') }}" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 text-text-secondary hover:text-text-primary hover:bg-surface-container">
+      <span class="material-symbols-outlined text-[16px]">memory</span>
+      <span>Runtime Specs</span>
+    </a>
+    <a href="{{ url_for('admin_ui.admin_configuration') }}" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 text-text-secondary hover:text-text-primary hover:bg-surface-container">
+      <span class="material-symbols-outlined text-[16px]">tune</span>
+      <span>Configuration Specs</span>
+    </a>
+  </div>
+
   <!-- Telemetry Metrics Grid -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
     <!-- Liveness / Process -->

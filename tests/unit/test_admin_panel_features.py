@@ -164,6 +164,51 @@ class TestAdminPanelFeatures(unittest.TestCase):
         self.assertIn("btnTriggerScan", html)
         self.assertIn("triggerPipelineScan", html)
 
+    def test_11_refresh_analytics_api_returns_success_and_count(self):
+        headers = {
+            "X-CSRF-Token": self.csrf_token,
+            "X-Requested-With": "XMLHttpRequest",
+            "Content-Type": "application/json",
+        }
+        res = self.client.post("/admin/api/analytics/refresh", headers=headers)
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data.get("success"))
+        self.assertEqual(data.get("status"), "completed")
+        self.assertIn("providers updated", data.get("message", ""))
+
+    def test_12_db_info_api_returns_formatted_message(self):
+        headers = {
+            "X-CSRF-Token": self.csrf_token,
+            "X-Requested-With": "XMLHttpRequest",
+            "Content-Type": "application/json",
+        }
+        res = self.client.post("/admin/api/db/info", headers=headers)
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data.get("success"))
+        self.assertTrue(data.get("connected"))
+        self.assertIn("PostgreSQL Active", data.get("message", ""))
+
+    def test_13_streamlined_sidebar_navigation(self):
+        res = self.client.get("/admin/dashboard")
+        self.assertEqual(res.status_code, 200)
+        html = res.get_data(as_text=True)
+
+        # Confirm 8 streamlined core sections are present
+        self.assertIn("Dashboard", html)
+        self.assertIn("User Accounts", html)
+        self.assertIn("Collectors &amp; Sources", html)
+        self.assertIn("Data Quality", html)
+        self.assertIn("Scheduler", html)
+        self.assertIn("Reports Center", html)
+        self.assertIn("Logs &amp; Audit", html)
+        self.assertIn("System &amp; Telemetry", html)
+
+        # Confirm old fragmented sidebar links were removed from sidebar navigation
+        self.assertNotIn('>Diagnostics<', html)
+        self.assertNotIn('>Email Control<', html)
+
 
 if __name__ == "__main__":
     unittest.main()

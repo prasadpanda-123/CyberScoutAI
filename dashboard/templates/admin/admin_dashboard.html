@@ -248,7 +248,8 @@
       const data = await res.json();
 
       alertBox.classList.remove('hidden');
-      if (res.ok) {
+      const isSuccess = res.ok && data.status !== 'failed' && data.success !== false;
+      if (isSuccess) {
         alertBox.className = 'p-4 rounded-xl border text-xs flex items-center justify-between bg-success/10 border-success/30 text-success';
         alertContent.innerHTML = `<span class="material-symbols-outlined text-base">check_circle</span><span><strong>Success:</strong> ${data.message || data.status || 'Action completed successfully.'}</span>`;
       } else {

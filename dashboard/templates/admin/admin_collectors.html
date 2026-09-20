@@ -16,15 +16,23 @@
       <p class="text-xs sm:text-sm text-text-secondary mt-0.5">Manage data sources, harvesters, and scraping trust scores.</p>
     </div>
     <div class="flex items-center gap-3">
-      <a href="{{ url_for('admin_ui.admin_source_health') }}" class="px-3 py-1.5 rounded-lg border border-border-subtle bg-surface-container text-xs font-semibold text-text-secondary hover:text-text-primary transition-colors flex items-center gap-1.5">
-        <span class="material-symbols-outlined text-[16px] text-admin-accent">monitor_heart</span>
-        <span>Source Health</span>
-      </a>
       <button type="button" id="btnTriggerScan" onclick="triggerPipelineScan()" class="bg-primary hover:bg-primary/90 text-on-primary text-xs font-bold px-3.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
         <span class="material-symbols-outlined text-[16px]">play_arrow</span>
         <span>Run Pipeline Scan</span>
       </button>
     </div>
+  </div>
+
+  <!-- Navigation Sub-Tabs -->
+  <div class="flex items-center gap-2 border-b border-border-subtle pb-2">
+    <a href="{{ url_for('admin_ui.admin_collectors') }}" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 bg-admin-accent/15 text-admin-accent border border-admin-accent/30">
+      <span class="material-symbols-outlined text-[16px]">settings_input_component</span>
+      <span>Collectors Registry</span>
+    </a>
+    <a href="{{ url_for('admin_ui.admin_source_health') }}" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 text-text-secondary hover:text-text-primary hover:bg-surface-container">
+      <span class="material-symbols-outlined text-[16px]">monitor_heart</span>
+      <span>Source Health &amp; Freshness</span>
+    </a>
   </div>
 
   <div id="collectorFeedback" class="hidden p-4 rounded-xl border text-xs font-mono"></div>

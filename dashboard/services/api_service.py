@@ -135,11 +135,13 @@ class APIService:
         try:
             from src.database.provider_statistics import ProviderStatisticsManager
             stats_mgr = ProviderStatisticsManager(db_manager=self.db_manager)
-            stats_mgr.recalculate_all()
+            res = stats_mgr.recalculate_all()
+            recalculated = res.get("recalculated_providers", 0)
             return {
                 "success": True,
                 "status": "completed",
-                "message": "Analytics metrics and provider performance stats recalculated successfully."
+                "details": res,
+                "message": f"Analytics metrics and provider performance stats recalculated successfully ({recalculated} providers updated)."
             }
         except Exception as e:
             return {"success": False, "status": "failed", "error": str(e)}

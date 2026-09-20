@@ -31,6 +31,18 @@
     </div>
   </div>
 
+  <!-- Navigation Sub-Tabs -->
+  <div class="flex items-center gap-2 border-b border-border-subtle pb-2">
+    <a href="{{ url_for('admin_ui.admin_collectors') }}" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 text-text-secondary hover:text-text-primary hover:bg-surface-container">
+      <span class="material-symbols-outlined text-[16px]">settings_input_component</span>
+      <span>Collectors Registry</span>
+    </a>
+    <a href="{{ url_for('admin_ui.admin_source_health') }}" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 bg-admin-accent/15 text-admin-accent border border-admin-accent/30">
+      <span class="material-symbols-outlined text-[16px]">monitor_heart</span>
+      <span>Source Health &amp; Freshness</span>
+    </a>
+  </div>
+
   <!-- Source Health Table -->
   <div class="bg-surface rounded-xl border border-border-subtle overflow-hidden">
     <div class="hidden md:grid md:grid-cols-[1.5fr_110px_140px_140px_100px_90px_1fr] gap-4 p-3.5 border-b border-border-subtle bg-surface-container-low text-[11px] font-bold uppercase tracking-wider text-text-muted">
