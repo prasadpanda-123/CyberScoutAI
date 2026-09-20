@@ -15,12 +15,18 @@
       </h2>
       <p class="text-xs sm:text-sm text-text-secondary mt-0.5">Direct administrative access and download center for all system intelligence bulletins.</p>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-3">
       <span class="text-xs font-mono text-text-muted bg-surface-container px-3 py-1.5 rounded-lg border border-border-subtle">
         Total Files: <span class="font-bold text-primary">{{ reports|length }}</span>
       </span>
+      <button type="button" id="btnGenReport" onclick="triggerDailyReport()" class="bg-primary hover:bg-primary/90 text-on-primary text-xs font-bold px-3.5 py-2 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+        <span class="material-symbols-outlined text-[16px]">send</span>
+        <span>Generate &amp; Dispatch Digest</span>
+      </button>
     </div>
   </div>
+
+  <div id="reportFeedback" class="hidden p-4 rounded-xl border text-xs font-mono"></div>
 
   <!-- Reports Table -->
   <div class="bg-surface rounded-xl border border-border-subtle overflow-hidden shadow-sm">
@@ -80,4 +86,45 @@
   </div>
 
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ csp_nonce }}">
+  async function triggerDailyReport() {
+    const btn = document.getElementById('btnGenReport');
+    const feedback = document.getElementById('reportFeedback');
+
+    btn.disabled = true;
+    btn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span><span>Generating...</span>`;
+    feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-surface-container border-border-subtle text-text-primary flex items-center gap-2';
+    feedback.innerHTML = `<span class="material-symbols-outlined text-base animate-spin">sync</span><span>Generating and dispatching intelligence report...</span>`;
+    feedback.classList.remove('hidden');
+
+    try {
+      const res = await fetch('/admin/api/report/trigger', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-Token': '{{ csrf_token }}'
+        }
+      });
+      const data = await res.json();
+      if (res.ok && data.status !== 'failed') {
+        feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-success/10 border-success/30 text-success flex items-center gap-2';
+        feedback.innerHTML = `<span class="material-symbols-outlined text-base">check_circle</span><span><strong>Success:</strong> ${data.message || 'Report generated successfully.'} Refresh page to view in catalog.</span>`;
+      } else {
+        feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
+        feedback.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Error:</strong> ${data.error || 'Failed to dispatch report.'}</span>`;
+      }
+    } catch(err) {
+      feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
+      feedback.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Network Error:</strong> ${err.message}</span>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">send</span><span>Generate &amp; Dispatch Digest</span>`;
+    }
+  }
+</script>
 {% endblock %}

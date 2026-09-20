@@ -13,56 +13,177 @@
         <span class="material-symbols-outlined text-admin-accent">group</span>
         <span>User Administration & RBAC</span>
       </h2>
-      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">Manage accounts, view registration telemetry, and provision high-privilege roles.</p>
+      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">Manage user accounts, isolate administrative roles, and enforce account lockouts.</p>
     </div>
     <div>
-      <button type="button" onclick="document.getElementById('createUserModal').classList.remove('hidden')" class="bg-danger hover:bg-danger/90 text-white text-xs font-bold px-3.5 py-2 rounded-lg admin-glow transition-all flex items-center gap-1.5">
+      <button type="button" onclick="document.getElementById('createUserModal').classList.remove('hidden')" class="bg-danger hover:bg-danger/90 text-white text-xs font-bold px-3.5 py-2 rounded-lg admin-glow transition-all flex items-center gap-1.5 shadow-sm">
         <span class="material-symbols-outlined text-[16px]">person_add</span>
         <span>Create Account</span>
       </button>
     </div>
   </div>
 
-  <!-- Users Table -->
-  <div class="bg-surface rounded-xl border border-border-subtle overflow-hidden">
-    <div class="hidden md:grid md:grid-cols-[60px_1fr_1fr_120px_140px_100px] gap-4 p-3.5 border-b border-border-subtle bg-surface-container-low text-[11px] font-bold uppercase tracking-wider text-text-muted">
+  <!-- Tab Switcher -->
+  <div class="flex border-b border-border-subtle gap-6 text-sm font-semibold">
+    <a href="{{ url_for('admin_ui.admin_users', tab='users') }}" class="pb-3 border-b-2 transition-colors flex items-center gap-2 {% if active_tab != 'admins' %}border-admin-accent text-admin-accent font-bold{% else %}border-transparent text-text-muted hover:text-text-primary{% endif %}">
+      <span class="material-symbols-outlined text-[18px]">badge</span>
+      <span>Standard Users</span>
+      <span class="text-xs px-2 py-0.5 rounded-full {% if active_tab != 'admins' %}bg-admin-accent/20 text-admin-accent{% else %}bg-surface-container text-text-muted{% endif %} font-mono">
+        {{ users|length }}
+      </span>
+    </a>
+
+    <a href="{{ url_for('admin_ui.admin_users', tab='admins') }}" class="pb-3 border-b-2 transition-colors flex items-center gap-2 {% if active_tab == 'admins' %}border-admin-accent text-admin-accent font-bold{% else %}border-transparent text-text-muted hover:text-text-primary{% endif %}">
+      <span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>
+      <span>System Administrators</span>
+      <span class="text-xs px-2 py-0.5 rounded-full {% if active_tab == 'admins' %}bg-admin-accent/20 text-admin-accent{% else %}bg-surface-container text-text-muted{% endif %} font-mono">
+        {{ admins|length }}
+      </span>
+    </a>
+  </div>
+
+  {% if active_tab == 'admins' %}
+  <!-- Administrators Table -->
+  <div class="bg-surface rounded-xl border border-border-subtle overflow-hidden shadow-sm">
+    <div class="hidden md:grid md:grid-cols-[60px_1.5fr_1.5fr_120px_130px_90px_130px] gap-3 p-3.5 border-b border-border-subtle bg-surface-container-low text-[11px] font-bold uppercase tracking-wider text-text-muted font-mono">
       <div>ID</div>
+      <div>Admin Username</div>
+      <div>Email Address</div>
+      <div>Role</div>
+      <div>Created</div>
+      <div class="text-center">Status</div>
+      <div class="text-right">Actions</div>
+    </div>
+
+    <div class="divide-y divide-border-subtle font-mono text-xs">
+      {% for a in admins %}
+        <div class="p-4 hover:bg-bg-card-hover transition-colors flex flex-col md:grid md:grid-cols-[60px_1.5fr_1.5fr_120px_130px_90px_130px] gap-2 md:gap-3 items-start md:items-center">
+          <div class="text-text-muted">#{{ a.id }}</div>
+          <div class="font-sans text-sm font-bold text-text-primary flex items-center gap-1.5 truncate">
+            <span>{{ a.username }}</span>
+            {% if a.id == session.get('admin_user_id') %}
+              <span class="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-admin-accent/15 text-admin-accent border border-admin-accent/30">YOU</span>
+            {% endif %}
+          </div>
+          <div class="text-text-secondary truncate">{{ a.email }}</div>
+          <div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-danger/15 text-danger border border-danger/30">
+              {{ a.role }}
+            </span>
+          </div>
+          <div class="text-text-muted text-[11px]">{{ a.created_at|string|truncate(10, True, '') }}</div>
+          <div class="w-full md:w-auto flex justify-start md:justify-center">
+            {% if a.is_active %}
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-success/15 text-success border border-success/30">ACTIVE</span>
+            {% else %}
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-danger/15 text-danger border border-danger/30">LOCKED</span>
+            {% endif %}
+          </div>
+          <div class="w-full md:w-auto flex justify-end items-center gap-1.5">
+            {% if a.id == session.get('admin_user_id') %}
+              <span class="text-[10px] text-text-muted italic">Protected</span>
+            {% else %}
+              <!-- Status Toggle Form -->
+              <form method="POST" action="{{ url_for('admin_ui.admin_users', tab='admins') }}" class="inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="action" value="toggle_status">
+                <input type="hidden" name="target_type" value="admin">
+                <input type="hidden" name="account_id" value="{{ a.id }}">
+                <button type="submit" class="p-1.5 rounded-lg border border-border-subtle hover:bg-surface-container transition-colors text-text-muted hover:text-text-primary" title="{% if a.is_active %}Lock Account{% else %}Unlock Account{% endif %}">
+                  <span class="material-symbols-outlined text-[16px]">{% if a.is_active %}lock{% else %}lock_open{% endif %}</span>
+                </button>
+              </form>
+
+              <!-- Delete Admin Form -->
+              <form method="POST" action="{{ url_for('admin_ui.admin_users', tab='admins') }}" class="inline" onsubmit="return confirm('Are you sure you want to permanently delete administrator {{ a.username }}?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="action" value="delete_account">
+                <input type="hidden" name="target_type" value="admin">
+                <input type="hidden" name="account_id" value="{{ a.id }}">
+                <button type="submit" class="p-1.5 rounded-lg border border-danger/30 hover:bg-danger/15 text-danger transition-colors" title="Delete Administrator">
+                  <span class="material-symbols-outlined text-[16px]">delete</span>
+                </button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+      {% else %}
+        <div class="p-12 text-center text-text-muted text-xs">No administrators found.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% else %}
+  <!-- Standard Users Table -->
+  <div class="bg-surface rounded-xl border border-border-subtle overflow-hidden shadow-sm">
+    <div class="hidden md:grid md:grid-cols-[100px_1.5fr_1.5fr_110px_130px_90px_130px] gap-3 p-3.5 border-b border-border-subtle bg-surface-container-low text-[11px] font-bold uppercase tracking-wider text-text-muted font-mono">
+      <div>UUID</div>
       <div>Username</div>
       <div>Email Address</div>
       <div>Role</div>
       <div>Created</div>
       <div class="text-center">Status</div>
+      <div class="text-right">Actions</div>
     </div>
 
-    <div class="divide-y divide-border-subtle">
+    <div class="divide-y divide-border-subtle font-mono text-xs">
       {% for u in users %}
-        <div class="p-4 hover:bg-bg-card-hover transition-colors flex flex-col md:grid md:grid-cols-[60px_1fr_1fr_120px_140px_100px] gap-2 md:gap-4 items-start md:items-center">
-          <div class="font-mono text-xs text-text-muted">#{{ u.id }}</div>
-          <div class="text-sm font-bold text-text-primary">{{ u.username }}</div>
-          <div class="text-xs font-mono text-text-secondary">{{ u.email }}</div>
+        <div class="p-4 hover:bg-bg-card-hover transition-colors flex flex-col md:grid md:grid-cols-[100px_1.5fr_1.5fr_110px_130px_90px_130px] gap-2 md:gap-3 items-start md:items-center">
+          <div class="text-text-muted text-[11px] truncate" title="{{ u.id }}">{{ u.id|string|truncate(8, True, '') }}</div>
+          <div class="font-sans text-sm font-bold text-text-primary truncate">{{ u.username }}</div>
+          <div class="text-text-secondary truncate">{{ u.email }}</div>
           <div>
-            <span class="text-[11px] font-bold font-mono px-2 py-0.5 rounded {% if u.role in ['Admin', 'Super Admin', 'Administrator'] %}bg-danger/15 text-danger border border-danger/30{% elif u.role == 'Operator' %}bg-warning/15 text-warning border border-warning/30{% else %}bg-primary/15 text-primary border border-primary/30{% endif %}">
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded {% if u.role in ['Admin', 'Super Admin', 'Administrator'] %}bg-danger/15 text-danger border border-danger/30{% elif u.role == 'Operator' %}bg-warning/15 text-warning border border-warning/30{% else %}bg-primary/15 text-primary border border-primary/30{% endif %}">
               {{ u.role }}
             </span>
           </div>
-          <div class="text-xs text-text-muted font-mono">{{ u.created_at }}</div>
+          <div class="text-text-muted text-[11px]">{{ u.created_at|string|truncate(10, True, '') }}</div>
           <div class="w-full md:w-auto flex justify-start md:justify-center">
             {% if u.is_active %}
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-success/15 text-success border border-success/30 font-mono">ACTIVE</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-success/15 text-success border border-success/30">ACTIVE</span>
             {% else %}
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-danger/15 text-danger border border-danger/30 font-mono">LOCKED</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-danger/15 text-danger border border-danger/30">LOCKED</span>
             {% endif %}
           </div>
+          <div class="w-full md:w-auto flex justify-end items-center gap-1.5">
+            <!-- Status Toggle Form -->
+            <form method="POST" action="{{ url_for('admin_ui.admin_users', tab='users') }}" class="inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="action" value="toggle_status">
+              <input type="hidden" name="target_type" value="user">
+              <input type="hidden" name="account_id" value="{{ u.id }}">
+              <button type="submit" class="p-1.5 rounded-lg border border-border-subtle hover:bg-surface-container transition-colors text-text-muted hover:text-text-primary" title="{% if u.is_active %}Lock User{% else %}Unlock User{% endif %}">
+                <span class="material-symbols-outlined text-[16px]">{% if u.is_active %}lock{% else %}lock_open{% endif %}</span>
+              </button>
+            </form>
+
+            <!-- Delete User Form -->
+            <form method="POST" action="{{ url_for('admin_ui.admin_users', tab='users') }}" class="inline" onsubmit="return confirm('Are you sure you want to permanently delete user {{ u.username }}? This action cascades to saved opportunities and preferences.');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="action" value="delete_account">
+              <input type="hidden" name="target_type" value="user">
+              <input type="hidden" name="account_id" value="{{ u.id }}">
+              <button type="submit" class="p-1.5 rounded-lg border border-danger/30 hover:bg-danger/15 text-danger transition-colors" title="Delete User">
+                <span class="material-symbols-outlined text-[16px]">delete</span>
+              </button>
+            </form>
+          </div>
         </div>
+      {% else %}
+        <div class="p-12 text-center text-text-muted text-xs">No registered standard users found.</div>
       {% endfor %}
     </div>
   </div>
+  {% endif %}
 
-  <!-- Create User Modal -->
+  <!-- Create Account Modal -->
   <div id="createUserModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-surface border border-border-subtle rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
       <div class="flex justify-between items-center pb-3 border-b border-border-subtle">
-        <h3 class="text-sm font-bold text-text-primary">Provision New Account</h3>
+        <h3 class="text-sm font-bold text-text-primary flex items-center gap-2">
+          <span class="material-symbols-outlined text-admin-accent text-[18px]">person_add</span>
+          <span>Provision New Account</span>
+        </h3>
         <button type="button" onclick="document.getElementById('createUserModal').classList.add('hidden')" class="text-text-muted hover:text-text-primary">
           <span class="material-symbols-outlined text-[18px]">close</span>
         </button>
@@ -74,31 +195,32 @@
 
         <div>
           <label class="block text-xs font-semibold text-text-secondary uppercase mb-1">Username</label>
-          <input type="text" name="username" required class="w-full bg-bg-body border border-border-subtle rounded-lg py-2 px-3 text-xs text-text-primary focus:outline-none focus:border-danger">
+          <input type="text" name="username" required class="w-full bg-bg-body border border-border-subtle rounded-lg py-2 px-3 text-xs text-text-primary focus:outline-none focus:border-danger font-mono" placeholder="john_doe">
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-text-secondary uppercase mb-1">Email</label>
-          <input type="email" name="email" required class="w-full bg-bg-body border border-border-subtle rounded-lg py-2 px-3 text-xs text-text-primary focus:outline-none focus:border-danger">
+          <label class="block text-xs font-semibold text-text-secondary uppercase mb-1">Email Address</label>
+          <input type="email" name="email" required class="w-full bg-bg-body border border-border-subtle rounded-lg py-2 px-3 text-xs text-text-primary focus:outline-none focus:border-danger font-mono" placeholder="user@example.com">
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-text-secondary uppercase mb-1">Password</label>
-          <input type="password" name="password" minlength="8" required class="w-full bg-bg-body border border-border-subtle rounded-lg py-2 px-3 text-xs text-text-primary focus:outline-none focus:border-danger">
+          <input type="password" name="password" minlength="8" required class="w-full bg-bg-body border border-border-subtle rounded-lg py-2 px-3 text-xs text-text-primary focus:outline-none focus:border-danger font-mono" placeholder="••••••••••••">
+          <p class="text-[10px] text-text-muted mt-1">Min 8 chars for Users. Min 10 chars with upper, lower, number & special char for Administrators.</p>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-text-secondary uppercase mb-1">Role Permission</label>
-          <select name="role" class="w-full bg-bg-body border border-border-subtle rounded-lg py-2 px-3 text-xs text-text-primary focus:outline-none focus:border-danger">
-            <option value="Viewer">Viewer (Student / Read-Only)</option>
+          <label class="block text-xs font-semibold text-text-secondary uppercase mb-1">Account Role & Table</label>
+          <select name="role" class="w-full bg-bg-body border border-border-subtle rounded-lg py-2 px-3 text-xs text-text-primary focus:outline-none focus:border-danger font-mono">
+            <option value="Viewer">Viewer (Student / Standard User)</option>
             <option value="Operator">Operator (Staff / Report Downloader)</option>
-            <option value="Administrator">Administrator (Control Surface Access)</option>
+            <option value="Administrator">Administrator (High-Privilege Admins Table)</option>
           </select>
         </div>
 
         <div class="pt-3 flex justify-end gap-2">
           <button type="button" onclick="document.getElementById('createUserModal').classList.add('hidden')" class="px-3 py-2 rounded-lg border border-border-subtle text-xs text-text-secondary hover:bg-surface-container">Cancel</button>
-          <button type="submit" class="px-4 py-2 rounded-lg bg-danger hover:bg-danger/90 text-white font-bold text-xs">Create User</button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-danger hover:bg-danger/90 text-white font-bold text-xs shadow-sm">Provision Account</button>
         </div>
       </form>
     </div>

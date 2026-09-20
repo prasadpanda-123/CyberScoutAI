@@ -500,18 +500,21 @@ def admin_logs():
         limit=limit,
     )
     stats = log_repo.get_log_stats()
+    active_pagination = audit_logs_res if tab == "audit_logs" else app_logs_res
 
     return render_template(
         "admin/admin_logs.html",
         active_page="admin_logs",
         logs=app_logs_res.get("logs", []),
         audit_logs=audit_logs_res.get("logs", []),
-        pagination=app_logs_res,
+        pagination=active_pagination,
         stats=stats,
         selected_level=level,
         selected_module=module,
         search_query=search_q,
         active_tab=tab,
+        current_page=page,
+        current_limit=limit,
     )
 
 
@@ -537,7 +540,9 @@ def admin_configuration():
 @admin_bp.route("/users", methods=["GET", "POST"])
 @admin_required
 def admin_users():
-    """Protected User Management & Account Administration."""
+    """Protected User Management & Account Administration with full RBAC CRUD."""
+    tab = request.args.get("tab", "users")
+
     if request.method == "POST":
         csrf_token = request.form.get("csrf_token", "").strip() or request.headers.get("X-CSRF-Token", "").strip()
         expected_csrf = session.get("admin_csrf_token")
@@ -545,18 +550,22 @@ def admin_users():
             flash("CSRF validation failed.", "danger")
             client_ip = get_client_ip(request)
             try:
-                audit_repo.log_event("USER_MGMT", "CREATE_USER", "FAILED", username=session.get("admin_username"), source_ip=client_ip, details="CSRF token validation failed")
+                audit_repo.log_event("USER_MGMT", "CSRF_FAILURE", "FAILED", username=session.get("admin_username"), source_ip=client_ip, details="CSRF token validation failed")
             except Exception:
                 pass
             users_list = user_repo.list_users()
+            admins_list = admin_repo.get_all()
             return render_template(
                 "admin/admin_users.html",
                 active_page="admin_users",
                 users=users_list,
+                admins=admins_list,
+                active_tab=tab,
             ), 403
 
         action = request.form.get("action")
         client_ip = get_client_ip(request)
+        curr_admin_id = session.get("admin_user_id")
 
         if action == "create_user":
             username = request.form.get("username", "").strip()
@@ -570,53 +579,95 @@ def admin_users():
                 valid, msg = AdminSecurityManager.validate_password_strength(password)
                 if not valid:
                     flash(f"Administrator Password Policy Violation: {msg}", "danger")
-                    users_list = user_repo.list_users()
-                    return render_template(
-                        "admin/admin_users.html",
-                        active_page="admin_users",
-                        users=users_list,
-                    ), 400
-                try:
-                    admin_repo.create_admin(username=username, email=email, password=password, role="Administrator")
-                    audit_repo.log_event("USER_MGMT", "CREATE_ADMIN", "SUCCESS", username=session.get("admin_username"), source_ip=client_ip, details=f"Admin '{session.get('admin_username')}' provisioned administrator '{username}' into Admins table")
-                    flash(f"Administrator '{username}' provisioned successfully into Admins.", "success")
-                    users_list = user_repo.list_users()
-                    return render_template(
-                        "admin/admin_users.html",
-                        active_page="admin_users",
-                        users=users_list,
-                    )
-                except ValueError as e:
-                    flash(str(e), "danger")
+                else:
+                    try:
+                        admin_repo.create_admin(username=username, email=email, password=password, role="Administrator")
+                        audit_repo.log_event("USER_MGMT", "CREATE_ADMIN", "SUCCESS", username=session.get("admin_username"), source_ip=client_ip, details=f"Admin '{session.get('admin_username')}' provisioned administrator '{username}' into Admins table")
+                        flash(f"Administrator '{username}' provisioned successfully.", "success")
+                        tab = "admins"
+                    except ValueError as e:
+                        flash(str(e), "danger")
             else:
                 if len(password) < 8:
                     flash("Standard user password must be at least 8 characters long.", "danger")
-                    users_list = user_repo.list_users()
-                    return render_template(
-                        "admin/admin_users.html",
-                        active_page="admin_users",
-                        users=users_list,
-                    ), 400
-                clean_role = role if role in ("Viewer", "Operator", "User") else "Viewer"
+                else:
+                    clean_role = role if role in ("Viewer", "Operator", "User") else "Viewer"
+                    try:
+                        user_repo.create_user(username=username, email=email, password=password, role=clean_role)
+                        audit_repo.log_event("USER_MGMT", "CREATE_USER", "SUCCESS", username=session.get("admin_username"), source_ip=client_ip, details=f"Admin '{session.get('admin_username')}' created user '{username}' with role '{clean_role}' in Users table")
+                        flash(f"User '{username}' created successfully as {clean_role}.", "success")
+                        tab = "users"
+                    except ValueError as e:
+                        flash(str(e), "danger")
+
+        elif action == "toggle_status":
+            target_type = request.form.get("target_type", "user")
+            account_id = request.form.get("account_id")
+
+            if target_type == "admin":
+                tab = "admins"
                 try:
-                    user_repo.create_user(username=username, email=email, password=password, role=clean_role)
-                    audit_repo.log_event("USER_MGMT", "CREATE_USER", "SUCCESS", username=session.get("admin_username"), source_ip=client_ip, details=f"Admin '{session.get('admin_username')}' created user '{username}' with role '{clean_role}' in Users table")
-                    flash(f"User '{username}' created successfully as {clean_role}.", "success")
-                    users_list = user_repo.list_users()
-                    return render_template(
-                        "admin/admin_users.html",
-                        active_page="admin_users",
-                        users=users_list,
-                    )
-                except ValueError as e:
-                    flash(str(e), "danger")
+                    admin_int_id = int(account_id)
+                    if admin_int_id == curr_admin_id:
+                        flash("You cannot lock or deactivate your own administrative account while active.", "warning")
+                    else:
+                        new_state = admin_repo.toggle_admin_status(admin_int_id)
+                        state_label = "activated" if new_state else "locked"
+                        audit_repo.log_event("USER_MGMT", "TOGGLE_ADMIN_STATUS", "SUCCESS", username=session.get("admin_username"), source_ip=client_ip, details=f"Admin {account_id} status changed to {state_label}")
+                        flash(f"Administrator #{account_id} {state_label} successfully.", "success")
+                except Exception as e:
+                    flash(f"Failed to update administrator status: {e}", "danger")
+            else:
+                tab = "users"
+                try:
+                    new_state = user_repo.toggle_user_status(account_id)
+                    state_label = "activated" if new_state else "locked"
+                    audit_repo.log_event("USER_MGMT", "TOGGLE_USER_STATUS", "SUCCESS", username=session.get("admin_username"), source_ip=client_ip, details=f"User {account_id} status changed to {state_label}")
+                    flash(f"User #{account_id[:8]}... {state_label} successfully.", "success")
+                except Exception as e:
+                    flash(f"Failed to update user status: {e}", "danger")
+
+        elif action == "delete_account":
+            target_type = request.form.get("target_type", "user")
+            account_id = request.form.get("account_id")
+
+            if target_type == "admin":
+                tab = "admins"
+                try:
+                    admin_int_id = int(account_id)
+                    if admin_int_id == curr_admin_id:
+                        flash("You cannot delete your own administrative account while active.", "danger")
+                    else:
+                        deleted = admin_repo.delete_admin(admin_int_id)
+                        if deleted:
+                            audit_repo.log_event("USER_MGMT", "DELETE_ADMIN", "SUCCESS", username=session.get("admin_username"), source_ip=client_ip, details=f"Admin {account_id} deleted permanently")
+                            flash(f"Administrator #{account_id} deleted successfully.", "success")
+                        else:
+                            flash("Administrator account not found.", "warning")
+                except Exception as e:
+                    flash(f"Failed to delete administrator: {e}", "danger")
+            else:
+                tab = "users"
+                try:
+                    deleted = user_repo.delete_user(account_id)
+                    if deleted:
+                        audit_repo.log_event("USER_MGMT", "DELETE_USER", "SUCCESS", username=session.get("admin_username"), source_ip=client_ip, details=f"User {account_id} deleted permanently")
+                        flash("User account deleted successfully.", "success")
+                    else:
+                        flash("User account not found.", "warning")
+                except Exception as e:
+                    flash(f"Failed to delete user: {e}", "danger")
 
     users_list = user_repo.list_users()
+    admins_list = admin_repo.get_all()
     return render_template(
         "admin/admin_users.html",
         active_page="admin_users",
         users=users_list,
+        admins=admins_list,
+        active_tab=tab,
     )
+
 
 
 @admin_bp.route("/reports")

@@ -316,18 +316,49 @@ class UserRepository:
             conn.rollback()
             cursor.close()
 
-    def has_admin(self) -> bool:
-        """Returns True if at least one admin or super admin user exists."""
+    def delete_user(self, user_id: Any) -> bool:
+        """
+        Deletes a user by UUID. Cascades to user-owned tables.
+        Returns True if a user was deleted, False otherwise.
+        """
+        uid = self._normalize_uid(user_id)
+        if not uid:
+            return False
+        sql = 'DELETE FROM "Users" WHERE id = %s'
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute('SELECT COUNT(*) FROM "Admins"')
-            res = cursor.fetchone()
-            if res and res[0] > 0:
-                return True
-            cursor.execute('SELECT COUNT(*) FROM "Users" WHERE role IN (\'Admin\', \'Super Admin\')')
-            res_users = cursor.fetchone()
-            return res_users[0] > 0 if res_users else False
-        finally:
+            cursor.execute(sql, (uid,))
+            deleted = cursor.rowcount > 0
+            conn.commit()
+            return deleted
+        except Exception as e:
             conn.rollback()
+            raise ValueError(f"Could not delete user: {e}")
+        finally:
             cursor.close()
+
+    def toggle_user_status(self, user_id: Any, is_active: Optional[bool] = None) -> bool:
+        """
+        Toggles or sets the is_active status of a user.
+        Returns the new boolean status.
+        """
+        uid = self._normalize_uid(user_id)
+        if not uid:
+            raise ValueError("Invalid user_id.")
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            if is_active is None:
+                cursor.execute('UPDATE "Users" SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END WHERE id = %s RETURNING is_active', (uid,))
+            else:
+                cursor.execute('UPDATE "Users" SET is_active = %s WHERE id = %s RETURNING is_active', (1 if is_active else 0, uid))
+            row = cursor.fetchone()
+            conn.commit()
+            return bool(row[0]) if row else False
+        except Exception as e:
+            conn.rollback()
+            raise ValueError(f"Could not update user status: {e}")
+        finally:
+            cursor.close()
+

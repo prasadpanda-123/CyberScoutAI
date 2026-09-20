@@ -15,12 +15,19 @@
       </h2>
       <p class="text-xs sm:text-sm text-text-secondary mt-0.5">Manage data sources, harvesters, and scraping trust scores.</p>
     </div>
-    <div class="flex items-center gap-2">
-      <span class="text-xs font-mono text-text-muted bg-surface-container px-3 py-1.5 rounded-lg border border-border-subtle">
-        Total Sources: <span class="font-bold text-primary">{{ collectors|length }}</span>
-      </span>
+    <div class="flex items-center gap-3">
+      <a href="{{ url_for('admin_ui.admin_source_health') }}" class="px-3 py-1.5 rounded-lg border border-border-subtle bg-surface-container text-xs font-semibold text-text-secondary hover:text-text-primary transition-colors flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-[16px] text-admin-accent">monitor_heart</span>
+        <span>Source Health</span>
+      </a>
+      <button type="button" id="btnTriggerScan" onclick="triggerPipelineScan()" class="bg-primary hover:bg-primary/90 text-on-primary text-xs font-bold px-3.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+        <span class="material-symbols-outlined text-[16px]">play_arrow</span>
+        <span>Run Pipeline Scan</span>
+      </button>
     </div>
   </div>
+
+  <div id="collectorFeedback" class="hidden p-4 rounded-xl border text-xs font-mono"></div>
 
   <!-- Collectors Table -->
   <div class="bg-surface rounded-xl border border-border-subtle overflow-hidden">
@@ -72,4 +79,46 @@
   </div>
 
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ csp_nonce }}">
+  async function triggerPipelineScan() {
+    const btn = document.getElementById('btnTriggerScan');
+    const feedback = document.getElementById('collectorFeedback');
+
+    btn.disabled = true;
+    btn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span><span>Starting...</span>`;
+    feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-surface-container border-border-subtle text-text-primary flex items-center gap-2';
+    feedback.innerHTML = `<span class="material-symbols-outlined text-base animate-spin">sync</span><span>Triggering harvester pipeline...</span>`;
+    feedback.classList.remove('hidden');
+
+    try {
+      const res = await fetch('/admin/api/run', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-Token': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ dry_run: false })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-success/10 border-success/30 text-success flex items-center gap-2';
+        feedback.innerHTML = `<span class="material-symbols-outlined text-base">check_circle</span><span><strong>Success:</strong> Harvester pipeline started (Job ID: ${data.job_id || 'active'}). Telemetry is updating in background.</span>`;
+      } else {
+        feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
+        feedback.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Notice:</strong> ${data.error || 'Failed to start scan.'}</span>`;
+      }
+    } catch(err) {
+      feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
+      feedback.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Network Error:</strong> ${err.message}</span>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">play_arrow</span><span>Run Pipeline Scan</span>`;
+    }
+  }
+</script>
 {% endblock %}

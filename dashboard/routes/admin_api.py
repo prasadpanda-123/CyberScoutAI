@@ -37,8 +37,8 @@ def admin_get_system():
     return jsonify(info)
 
 
-@admin_api_bp.route("/system/smtp-health", methods=["GET"])
-@admin_api_bp.route("/email/health", methods=["GET"])
+@admin_api_bp.route("/system/smtp-health", methods=["GET", "POST"])
+@admin_api_bp.route("/email/health", methods=["GET", "POST"])
 @admin_required
 def admin_get_smtp_health():
     """GET /admin/api/system/smtp-health — SMTP health check."""
@@ -292,7 +292,7 @@ def admin_db_test():
     })
 
 
-@admin_api_bp.route("/db/health", methods=["GET"])
+@admin_api_bp.route("/db/health", methods=["GET", "POST"])
 @admin_required
 def admin_db_health():
     """GET /admin/api/db/health — Show database health & telemetry metrics."""

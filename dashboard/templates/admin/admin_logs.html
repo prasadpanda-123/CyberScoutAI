@@ -117,5 +117,33 @@
     {% endif %}
   </div>
 
+  <!-- Pagination Controls -->
+  {% if pagination and pagination.total_pages is defined and pagination.total_pages > 1 %}
+  <div class="flex flex-col sm:flex-row justify-between items-center gap-3 p-4 bg-surface rounded-xl border border-border-subtle text-xs font-mono">
+    <div class="text-text-muted">
+      Showing page <strong class="text-text-primary">{{ pagination.page }}</strong> of <strong class="text-text-primary">{{ pagination.total_pages }}</strong> ({{ pagination.total }} total entries)
+    </div>
+    <div class="flex items-center gap-2">
+      {% if pagination.page > 1 %}
+        <a href="{{ url_for('admin_ui.admin_logs', tab=active_tab, q=search_query, level=selected_level, page=pagination.page - 1) }}" class="px-3 py-1.5 rounded-lg border border-border-subtle bg-surface-container hover:bg-surface-container-high text-text-primary transition-colors flex items-center gap-1">
+          <span class="material-symbols-outlined text-[14px]">chevron_left</span>
+          <span>Previous</span>
+        </a>
+      {% endif %}
+
+      <span class="px-3 py-1.5 rounded-lg bg-admin-accent/15 text-admin-accent border border-admin-accent/30 font-bold">
+        {{ pagination.page }}
+      </span>
+
+      {% if pagination.page < pagination.total_pages %}
+        <a href="{{ url_for('admin_ui.admin_logs', tab=active_tab, q=search_query, level=selected_level, page=pagination.page + 1) }}" class="px-3 py-1.5 rounded-lg border border-border-subtle bg-surface-container hover:bg-surface-container-high text-text-primary transition-colors flex items-center gap-1">
+          <span>Next</span>
+          <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+        </a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
 </div>
 {% endblock %}

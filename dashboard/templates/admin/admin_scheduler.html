@@ -143,9 +143,24 @@
         <span class="material-symbols-outlined text-[16px] text-success">send</span>
         <span>Dispatch Report Digest Now</span>
       </button>
+
+      <button type="button" onclick="executeSchedulerAction('/admin/api/scheduler/pause', 'Pause Scheduler')" class="bg-surface-container hover:bg-surface-container-high text-text-secondary border border-border-subtle text-xs font-bold px-4 py-2.5 rounded-lg transition-colors flex items-center gap-2">
+        <span class="material-symbols-outlined text-[16px]">pause</span>
+        <span>Pause Scheduler</span>
+      </button>
+
+      <button type="button" onclick="executeSchedulerAction('/admin/api/scheduler/resume', 'Resume Scheduler')" class="bg-surface-container hover:bg-surface-container-high text-success border border-border-subtle text-xs font-bold px-4 py-2.5 rounded-lg transition-colors flex items-center gap-2">
+        <span class="material-symbols-outlined text-[16px]">play_circle</span>
+        <span>Resume Scheduler</span>
+      </button>
+
+      <button type="button" onclick="executeSchedulerAction('/admin/api/scheduler/restart', 'Restart Scheduler')" class="bg-surface-container hover:bg-surface-container-high text-warning border border-border-subtle text-xs font-bold px-4 py-2.5 rounded-lg transition-colors flex items-center gap-2">
+        <span class="material-symbols-outlined text-[16px]">restart_alt</span>
+        <span>Restart Worker</span>
+      </button>
     </div>
 
-    <div id="schedFeedback" class="hidden p-4 rounded-xl border text-xs"></div>
+    <div id="schedFeedback" class="hidden p-4 rounded-xl border text-xs font-mono"></div>
   </div>
 
 </div>
@@ -153,9 +168,39 @@
 
 {% block extra_scripts %}
 <script nonce="{{ csp_nonce }}">
+  async function executeSchedulerAction(endpoint, actionName) {
+    const feedback = document.getElementById('schedFeedback');
+    feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-surface-container border-border-subtle text-text-primary flex items-center gap-2';
+    feedback.innerHTML = `<span class="material-symbols-outlined text-base animate-spin">sync</span><span>Executing ${actionName}...</span>`;
+    feedback.classList.remove('hidden');
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-Token': '{{ csrf_token }}'
+        }
+      });
+      const data = await res.json();
+      if (res.ok && data.status !== 'failed') {
+        feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-success/10 border-success/30 text-success flex items-center gap-2';
+        feedback.innerHTML = `<span class="material-symbols-outlined text-base">check_circle</span><span><strong>Success:</strong> ${data.message || actionName + ' completed successfully.'}</span>`;
+      } else {
+        feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
+        feedback.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Error:</strong> ${data.error || 'Operation failed.'}</span>`;
+      }
+    } catch(err) {
+      feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
+      feedback.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Network Error:</strong> ${err.message}</span>`;
+    }
+  }
+
   async function executeScanNow() {
     const feedback = document.getElementById('schedFeedback');
-    feedback.className = 'p-4 rounded-xl border text-xs bg-surface-container border-border-subtle text-text-primary flex items-center gap-2';
+    feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-surface-container border-border-subtle text-text-primary flex items-center gap-2';
     feedback.innerHTML = `<span class="material-symbols-outlined text-base animate-spin">sync</span><span>Launching pipeline scan in background...</span>`;
     feedback.classList.remove('hidden');
 
@@ -172,21 +217,21 @@
       });
       const data = await res.json();
       if (res.ok) {
-        feedback.className = 'p-4 rounded-xl border text-xs bg-success/10 border-success/30 text-success flex items-center gap-2';
+        feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-success/10 border-success/30 text-success flex items-center gap-2';
         feedback.innerHTML = `<span class="material-symbols-outlined text-base">check_circle</span><span><strong>Success:</strong> Scan launched (Job ID: ${data.job_id || 'active'}). Check Opportunity log for details.</span>`;
       } else {
-        feedback.className = 'p-4 rounded-xl border text-xs bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
+        feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
         feedback.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Error:</strong> ${data.error || 'Failed to start scan.'}</span>`;
       }
     } catch(err) {
-      feedback.className = 'p-4 rounded-xl border text-xs bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
+      feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
       feedback.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Error:</strong> ${err.message}</span>`;
     }
   }
 
   async function executeReportNow() {
     const feedback = document.getElementById('schedFeedback');
-    feedback.className = 'p-4 rounded-xl border text-xs bg-surface-container border-border-subtle text-text-primary flex items-center gap-2';
+    feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-surface-container border-border-subtle text-text-primary flex items-center gap-2';
     feedback.innerHTML = `<span class="material-symbols-outlined text-base animate-spin">sync</span><span>Dispatching daily intelligence report digest...</span>`;
     feedback.classList.remove('hidden');
 
@@ -202,14 +247,14 @@
       });
       const data = await res.json();
       if (res.ok) {
-        feedback.className = 'p-4 rounded-xl border text-xs bg-success/10 border-success/30 text-success flex items-center gap-2';
+        feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-success/10 border-success/30 text-success flex items-center gap-2';
         feedback.innerHTML = `<span class="material-symbols-outlined text-base">check_circle</span><span><strong>Success:</strong> Daily digest report dispatched successfully.</span>`;
       } else {
-        feedback.className = 'p-4 rounded-xl border text-xs bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
+        feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
         feedback.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Error:</strong> ${data.error || 'Failed to dispatch report.'}</span>`;
       }
     } catch(err) {
-      feedback.className = 'p-4 rounded-xl border text-xs bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
+      feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
       feedback.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Error:</strong> ${err.message}</span>`;
     }
   }

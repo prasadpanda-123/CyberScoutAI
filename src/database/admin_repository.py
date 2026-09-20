@@ -291,3 +291,48 @@ class AdminRepository:
             conn.rollback()
             cursor.close()
 
+    def delete_admin(self, admin_id: int) -> bool:
+        """
+        Deletes an administrator by id from the Admins table.
+        Returns True if deleted, False otherwise.
+        """
+        if not admin_id:
+            return False
+        sql = 'DELETE FROM "Admins" WHERE id = %s'
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(sql, (admin_id,))
+            deleted = cursor.rowcount > 0
+            conn.commit()
+            return deleted
+        except Exception as e:
+            conn.rollback()
+            raise ValueError(f"Could not delete administrator: {e}")
+        finally:
+            cursor.close()
+
+    def toggle_admin_status(self, admin_id: int, is_active: Optional[bool] = None) -> bool:
+        """
+        Toggles or sets the is_active status of an administrator in the Admins table.
+        Returns the new boolean status.
+        """
+        if not admin_id:
+            raise ValueError("Invalid admin_id.")
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            if is_active is None:
+                cursor.execute('UPDATE "Admins" SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END WHERE id = %s RETURNING is_active', (admin_id,))
+            else:
+                cursor.execute('UPDATE "Admins" SET is_active = %s WHERE id = %s RETURNING is_active', (1 if is_active else 0, admin_id))
+            row = cursor.fetchone()
+            conn.commit()
+            return bool(row[0]) if row else False
+        except Exception as e:
+            conn.rollback()
+            raise ValueError(f"Could not update administrator status: {e}")
+        finally:
+            cursor.close()
+
+
