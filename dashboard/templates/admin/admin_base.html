@@ -69,19 +69,9 @@
         <span>User Accounts</span>
       </a>
 
-      <a href="{{ url_for('admin_ui.admin_collectors') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page in ['admin_collectors', 'admin_source_health'] %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page in ['admin_collectors', 'admin_source_health'] %}text-admin-accent icon-fill{% endif %}">settings_input_component</span>
-        <span>Collectors &amp; Sources</span>
-      </a>
-
-      <a href="{{ url_for('admin_ui.admin_data_quality') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_data_quality' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_data_quality' %}text-admin-accent icon-fill{% endif %}">verified_user</span>
-        <span>Data Quality</span>
-      </a>
-
-      <a href="{{ url_for('admin_ui.admin_scheduler') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_scheduler' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_scheduler' %}text-admin-accent icon-fill{% endif %}">schedule</span>
-        <span>Scheduler</span>
+      <a href="{{ url_for('admin_ui.admin_scheduler') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page in ['admin_scheduler', 'admin_collectors'] %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page in ['admin_scheduler', 'admin_collectors'] %}text-admin-accent icon-fill{% endif %}">schedule</span>
+        <span>Scheduler &amp; Automation</span>
       </a>
 
       <a href="{{ url_for('admin_ui.admin_reports') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_reports' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
@@ -94,13 +84,8 @@
         <span>Logs &amp; Audit</span>
       </a>
 
-      <a href="{{ url_for('admin_ui.admin_analytics') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_analytics' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_analytics' %}text-admin-accent icon-fill{% endif %}">analytics</span>
-        <span>Analytics</span>
-      </a>
-
-      <a href="{{ url_for('admin_ui.admin_reliability') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page in ['admin_reliability', 'admin_system', 'admin_configuration', 'admin_diagnostics', 'admin_email'] %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page in ['admin_reliability', 'admin_system', 'admin_configuration', 'admin_diagnostics', 'admin_email'] %}text-admin-accent icon-fill{% endif %}">health_and_safety</span>
+      <a href="{{ url_for('admin_ui.admin_reliability') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page in ['admin_reliability', 'admin_system', 'admin_configuration', 'admin_diagnostics', 'admin_email', 'admin_data_quality', 'admin_analytics', 'admin_source_health'] %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
+        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page in ['admin_reliability', 'admin_system', 'admin_configuration', 'admin_diagnostics', 'admin_email', 'admin_data_quality', 'admin_analytics', 'admin_source_health'] %}text-admin-accent icon-fill{% endif %}">health_and_safety</span>
         <span>System &amp; Telemetry</span>
       </a>
     </nav>
