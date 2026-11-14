@@ -220,17 +220,20 @@ class PostgresSessionInterface(SessionInterface):
             self._in_memory_sessions[session_hash] = dict(session)
 
         try:
-            repo.save_session(
+            saved = repo.save_session(
                 session_hash=session_hash,
                 session_data=dict(session),
                 expires_at=expires_at,
                 account_id=account_id,
                 account_type=account_type,
             )
+            if saved is False:
+                raise RuntimeError("Session repository did not confirm persistence.")
         except Exception as e:
             logger.error(f"Failed to persist server session: {e}")
-            if not app.config.get("TESTING"):
+            if app.config.get("TESTING"):
                 return
+            raise
 
         # 8. Set opaque session cookie on HTTP response
         cookie_expires = expires_at if session.permanent else None

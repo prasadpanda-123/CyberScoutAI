@@ -186,15 +186,26 @@ def admin_login():
             otp_hash = AdminSecurityManager.hash_otp_code(otp_code)
             expires_at = int(time.time()) + 300  # 5 minutes validity
 
-            pending_token = AdminSecurityManager.store_pending_mfa(
-                user_id=user["id"],
-                username=user["username"],
-                email=user["email"],
-                role=user.get("role") or "Admin",
-                otp_hash=otp_hash,
-                expires_at=expires_at,
-                next_url=next_url,
-            )
+            try:
+                pending_token = AdminSecurityManager.store_pending_mfa(
+                    user_id=user["id"],
+                    username=user["username"],
+                    email=user["email"],
+                    role=user.get("role") or "Admin",
+                    otp_hash=otp_hash,
+                    expires_at=expires_at,
+                    next_url=next_url,
+                )
+            except Exception as e:
+                from src.core.logging import get_logger
+                get_logger(__name__).error("Unable to start administrator MFA: %s", type(e).__name__)
+                if is_json:
+                    return jsonify({
+                        "status": "failed",
+                        "error": "Authentication is temporarily unavailable. Please try again.",
+                    }), 503
+                flash("Authentication is temporarily unavailable. Please try again.", "danger")
+                return render_template("admin/admin_login.html", next=next_url), 503
             session["admin_pending_token"] = pending_token
 
             # Transmit OTP Code via Production Email Service
@@ -271,7 +282,19 @@ def admin_verify_otp():
         return redirect(url_for("admin_ui.admin_dashboard"))
 
     pending_token = session.get("admin_pending_token")
-    mfa_state = AdminSecurityManager.get_pending_mfa(pending_token)
+    try:
+        mfa_state = AdminSecurityManager.get_pending_mfa(pending_token)
+    except Exception as e:
+        from src.core.logging import get_logger
+        get_logger(__name__).error("Unable to load administrator MFA state: %s", type(e).__name__)
+        if request.is_json:
+            return jsonify({
+                "status": "failed",
+                "error": "Authentication is temporarily unavailable. Please try again.",
+            }), 503
+        if request.args.get("legacy") == "1":
+            return render_template("admin/admin_verify_otp.html", username=""), 503
+        return render_template("react_shell.html"), 503
 
     if not mfa_state:
         # Fallback for legacy session structures

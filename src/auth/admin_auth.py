@@ -190,7 +190,7 @@ class AdminSecurityManager:
 
     # Persistent repository reference for centralized PostgreSQL state
     _mfa_repo = None
-    # Server-managed store for pending MFA OTP sessions fallback: key=pending_token -> dict of MFA state
+    # Cache of persisted pending MFA state: key=pending_token -> state
     _pending_mfa_sessions: Dict[str, dict] = {}
 
     @classmethod
@@ -201,8 +201,7 @@ class AdminSecurityManager:
                 from src.database.mfa_repository import MfaRepository
                 cls._mfa_repo = MfaRepository()
             except Exception as e:
-                from src.core.logging import get_logger
-                get_logger(__name__).debug(f"MfaRepository initialization deferred or fallback: {e}")
+                logger.warning("MfaRepository initialization failed: %s", type(e).__name__)
                 return None
         return cls._mfa_repo
 
@@ -218,14 +217,13 @@ class AdminSecurityManager:
         next_url: str = "",
     ) -> str:
         """
-        Stores pending MFA OTP state in PostgreSQL (with server memory fallback)
-        and returns an opaque random pending token.
+        Persists pending MFA state in PostgreSQL, caches it locally for
+        transient read failures, and returns an opaque random pending token.
         Prevents sensitive OTP hashes from leaking into client-side session cookies.
         """
         pending_token = secrets.token_hex(32)
         import time
-        # Always maintain memory cache as resilient backup
-        cls._pending_mfa_sessions[pending_token] = {
+        state = {
             "user_id": user_id,
             "username": username,
             "email": email,
@@ -238,22 +236,25 @@ class AdminSecurityManager:
         }
 
         repo = cls._get_mfa_repo()
-        if repo:
-            try:
-                repo.store_pending_mfa(
-                    token=pending_token,
-                    user_id=user_id,
-                    username=username,
-                    email=email,
-                    role=role,
-                    otp_hash=otp_hash,
-                    expires_at=expires_at,
-                    next_url=next_url,
-                )
-            except Exception as e:
-                from src.core.logging import get_logger
-                get_logger(__name__).warning(f"Failed to persist pending MFA in DB, falling back to memory: {e}")
+        if repo is None:
+            raise RuntimeError("Shared pending MFA storage is unavailable.")
 
+        try:
+            repo.store_pending_mfa(
+                token=pending_token,
+                user_id=user_id,
+                username=username,
+                email=email,
+                role=role,
+                otp_hash=otp_hash,
+                expires_at=expires_at,
+                next_url=next_url,
+            )
+        except Exception as e:
+            logger.error("Failed to persist pending MFA state: %s", type(e).__name__)
+            raise RuntimeError("Unable to persist administrator verification state.") from e
+
+        cls._pending_mfa_sessions[pending_token] = state
         return pending_token
 
     @classmethod
@@ -289,26 +290,25 @@ class AdminSecurityManager:
         now_ts = int(time.time())
 
         repo = cls._get_mfa_repo()
-        if repo:
-            try:
-                db_state = repo.get_pending_mfa(pending_token)
-                if db_state is not None:
-                    cls._pending_mfa_sessions[pending_token] = db_state
-                    return db_state
-                # If DB returned None (expired or cleared), purge from memory cache
+        if repo is None:
+            raise RuntimeError("Shared pending MFA storage is unavailable.")
+
+        try:
+            db_state = repo.get_pending_mfa(pending_token)
+        except Exception as e:
+            mem_state = cls._pending_mfa_sessions.get(pending_token)
+            if mem_state:
+                if now_ts <= int(mem_state.get("expires_at", 0)):
+                    return mem_state
                 cls._pending_mfa_sessions.pop(pending_token, None)
-                return None
-            except Exception as e:
-                from src.core.logging import get_logger
-                get_logger(__name__).debug(f"Failed to retrieve pending MFA from database: {e}")
+            logger.error("Failed to retrieve pending MFA state: %s", type(e).__name__)
+            raise RuntimeError("Unable to retrieve administrator verification state.") from e
 
-        mem_state = cls._pending_mfa_sessions.get(pending_token)
-        if mem_state:
-            if now_ts > int(mem_state.get("expires_at", 0)):
-                cls.clear_pending_mfa(pending_token)
-                return None
-            return mem_state
+        if db_state is not None:
+            cls._pending_mfa_sessions[pending_token] = db_state
+            return db_state
 
+        cls._pending_mfa_sessions.pop(pending_token, None)
         return None
 
     @classmethod

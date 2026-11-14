@@ -167,8 +167,8 @@ class MfaRepository:
                     "last_resend_at": data.get("last_resend_at", 0),
                 }
         except Exception as e:
-            logger.warning(f"Error querying pending MFA token '{token}': {e}")
-            return None
+            logger.warning("Error querying pending MFA state: %s", type(e).__name__)
+            raise
 
     def update_pending_mfa_otp(self, token: str, otp_hash: str, expires_at: int) -> bool:
         """
