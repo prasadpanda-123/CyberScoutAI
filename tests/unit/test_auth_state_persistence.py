@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import time
 
 from flask import Flask, Response, session
@@ -21,6 +22,26 @@ class UnavailableTransaction:
 class UnavailableDatabaseManager:
     def transaction(self):
         return UnavailableTransaction()
+
+
+class RecordingCursor:
+    def __init__(self, fail_on_cleanup=False):
+        self.fail_on_cleanup = fail_on_cleanup
+        self.executed = []
+
+    def execute(self, sql, parameters=()):
+        self.executed.append((sql, parameters))
+        if self.fail_on_cleanup and sql.lstrip().startswith("DELETE"):
+            raise RuntimeError("cleanup failed")
+
+
+class RecordingDatabaseManager:
+    def __init__(self, cursor):
+        self.cursor = cursor
+
+    @contextmanager
+    def transaction(self):
+        yield self.cursor
 
 
 def test_mfa_repository_surfaces_database_read_failures():
@@ -86,6 +107,64 @@ def test_admin_mfa_store_fails_if_database_persistence_fails(monkeypatch):
         )
 
     assert cache == {}
+
+
+def test_admin_mfa_repository_uses_string_account_ids_for_cleanup_and_insert():
+    cursor = RecordingCursor()
+    repository = MfaRepository.__new__(MfaRepository)
+    repository.db_manager = RecordingDatabaseManager(cursor)
+
+    repository.store_pending_mfa(
+        token="test-pending-token",
+        user_id=123,
+        username="test-admin",
+        email="test@example.com",
+        role="Admin",
+        otp_hash="test-hash",
+        expires_at=int(time.time()) + 300,
+    )
+
+    assert cursor.executed[0][1] == ("123", "admin_login_mfa")
+    assert cursor.executed[1][1][2] == "123"
+
+
+def test_admin_mfa_cleanup_failure_prevents_partial_insert():
+    cursor = RecordingCursor(fail_on_cleanup=True)
+    repository = MfaRepository.__new__(MfaRepository)
+    repository.db_manager = RecordingDatabaseManager(cursor)
+
+    with pytest.raises(RuntimeError, match="cleanup failed"):
+        repository.store_pending_mfa(
+            token="test-pending-token",
+            user_id=123,
+            username="test-admin",
+            email="test@example.com",
+            role="Admin",
+            otp_hash="test-hash",
+            expires_at=int(time.time()) + 300,
+        )
+
+    assert len(cursor.executed) == 1
+
+
+def test_password_change_repository_uses_string_account_ids():
+    cursor = RecordingCursor()
+    repository = MfaRepository.__new__(MfaRepository)
+    repository.db_manager = RecordingDatabaseManager(cursor)
+
+    repository.store_pending_password_change(
+        token="test-password-token",
+        target_type="admin",
+        account_id=606,
+        username="test-admin",
+        email="test@example.com",
+        new_password_hash="test-password-hash",
+        otp_hash="test-otp-hash",
+        expires_at=int(time.time()) + 300,
+    )
+
+    assert cursor.executed[0][1] == ("606", "admin_pw_change")
+    assert cursor.executed[1][1][2] == "606"
 
 
 def test_admin_login_returns_service_unavailable_if_mfa_cannot_be_persisted(monkeypatch):

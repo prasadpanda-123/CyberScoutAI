@@ -17,6 +17,12 @@ from src.database.connection import DatabaseManager
 logger = get_logger(__name__)
 
 
+def _normalize_account_id(value: Any) -> Any:
+    if isinstance(value, str) and value.isdecimal():
+        return int(value)
+    return value
+
+
 class MfaRepository:
     """
     Repository managing the 'PendingMfa' table in PostgreSQL.
@@ -33,7 +39,7 @@ class MfaRepository:
         CREATE TABLE IF NOT EXISTS "PendingMfa" (
             token VARCHAR(64) PRIMARY KEY,
             state_type VARCHAR(32) NOT NULL DEFAULT 'admin_login_mfa',
-            account_id INTEGER NOT NULL,
+            account_id VARCHAR(64) NOT NULL,
             username VARCHAR(128) NOT NULL,
             email VARCHAR(255) NOT NULL,
             role VARCHAR(64) NULL,
@@ -52,25 +58,20 @@ class MfaRepository:
         try:
             with self.db_manager.transaction() as cursor:
                 cursor.execute(sql)
-                try:
-                    try:
-                        cursor.execute('ALTER TABLE "PendingMfa" ALTER COLUMN account_id TYPE VARCHAR(64) USING account_id::text;')
-                    except Exception:
-                        pass
-                    cursor.execute('ALTER TABLE "PendingMfa" ENABLE ROW LEVEL SECURITY;')
-                    rls_policy_sql = """
-                    DO $$
-                    BEGIN
-                        IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'PendingMfa' AND policyname = 'pending_mfa_access_policy') THEN
-                            CREATE POLICY pending_mfa_access_policy ON "PendingMfa" FOR ALL USING (COALESCE(NULLIF(current_setting('app.is_admin', true), '') = 'true', false) OR COALESCE(NULLIF(current_setting('app.service_context', true), '') = 'true', false)) WITH CHECK (COALESCE(NULLIF(current_setting('app.is_admin', true), '') = 'true', false) OR COALESCE(NULLIF(current_setting('app.service_context', true), '') = 'true', false));
-                        END IF;
-                    END $$;
-                    """
-                    cursor.execute(rls_policy_sql)
-                except Exception:
-                    pass
+                cursor.execute('ALTER TABLE "PendingMfa" ALTER COLUMN account_id TYPE VARCHAR(64) USING account_id::text;')
+                cursor.execute('ALTER TABLE "PendingMfa" ENABLE ROW LEVEL SECURITY;')
+                rls_policy_sql = """
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'PendingMfa' AND policyname = 'pending_mfa_access_policy') THEN
+                        CREATE POLICY pending_mfa_access_policy ON "PendingMfa" FOR ALL USING (COALESCE(NULLIF(current_setting('app.is_admin', true), '') = 'true', false) OR COALESCE(NULLIF(current_setting('app.service_context', true), '') = 'true', false)) WITH CHECK (COALESCE(NULLIF(current_setting('app.is_admin', true), '') = 'true', false) OR COALESCE(NULLIF(current_setting('app.service_context', true), '') = 'true', false));
+                    END IF;
+                END $$;
+                """
+                cursor.execute(rls_policy_sql)
         except Exception as e:
-            logger.debug(f"PendingMfa table initialization notice: {e}")
+            logger.warning("PendingMfa schema initialization failed: %s", type(e).__name__)
+            raise
 
     def cleanup_expired(self) -> int:
         """Prunes all expired pending MFA records from the database."""
@@ -104,6 +105,7 @@ class MfaRepository:
         Persists a pending admin MFA verification session in PostgreSQL.
         """
         now = int(time.time())
+        account_id = str(user_id)
         # Clean up existing sessions for this admin to prevent dangling rows
         cleanup_sql = 'DELETE FROM "PendingMfa" WHERE account_id = %s AND state_type = %s;'
         insert_sql = """
@@ -113,16 +115,13 @@ class MfaRepository:
         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
         """
         with self.db_manager.transaction() as cursor:
-            try:
-                cursor.execute(cleanup_sql, (user_id, "admin_login_mfa"))
-            except Exception:
-                pass
+            cursor.execute(cleanup_sql, (account_id, "admin_login_mfa"))
             cursor.execute(
                 insert_sql,
                 (
                     token,
                     "admin_login_mfa",
-                    user_id,
+                    account_id,
                     username,
                     email,
                     role,
@@ -156,7 +155,7 @@ class MfaRepository:
                     cursor.execute('DELETE FROM "PendingMfa" WHERE token = %s;', (token.strip(),))
                     return None
                 return {
-                    "user_id": data.get("account_id"),
+                    "user_id": _normalize_account_id(data.get("account_id")),
                     "username": data.get("username"),
                     "email": data.get("email"),
                     "role": data.get("role", "Admin"),
@@ -236,6 +235,7 @@ class MfaRepository:
     ) -> str:
         """Persists pending password change transaction in PostgreSQL."""
         now = int(time.time())
+        account_id = str(account_id)
         state_type = f"{target_type.strip().lower()}_pw_change"
         cleanup_sql = 'DELETE FROM "PendingMfa" WHERE account_id = %s AND state_type = %s;'
         insert_sql = """
@@ -245,10 +245,7 @@ class MfaRepository:
         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
         """
         with self.db_manager.transaction() as cursor:
-            try:
-                cursor.execute(cleanup_sql, (account_id, state_type))
-            except Exception:
-                pass
+            cursor.execute(cleanup_sql, (account_id, state_type))
             cursor.execute(
                 insert_sql,
                 (
@@ -292,7 +289,7 @@ class MfaRepository:
                 created_epoch = int(created_at_raw.timestamp())
             return {
                 "target_type": target_type,
-                "account_id": data.get("account_id"),
+                "account_id": _normalize_account_id(data.get("account_id")),
                 "username": data.get("username"),
                 "email": data.get("email"),
                 "new_password_hash": data.get("new_password_hash"),

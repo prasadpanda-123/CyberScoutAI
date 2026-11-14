@@ -361,6 +361,15 @@ MIGRATIONS: List[Migration] = [
             ON "PasswordResetTokens"(expires_at);
         """,
     ),
+    Migration(
+        version=18,
+        description="Use string account IDs for shared MFA state",
+        sql="""
+        ALTER TABLE "PendingMfa"
+        ALTER COLUMN account_id TYPE VARCHAR(64)
+        USING account_id::text;
+        """,
+    ),
 ]
 
 

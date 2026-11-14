@@ -17,7 +17,7 @@ class PendingMfaModel(Base):
 
     token = Column(String(64), primary_key=True)
     state_type = Column(String(32), nullable=False, default="admin_login_mfa", index=True)
-    account_id = Column(Integer, nullable=False)
+    account_id = Column(String(64), nullable=False)
     username = Column(String(128), nullable=False)
     email = Column(String(255), nullable=False)
     role = Column(String(64), nullable=True)
