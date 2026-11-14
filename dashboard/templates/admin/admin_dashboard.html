@@ -308,15 +308,11 @@
     term.innerHTML += `<div class="a-terminal-line warn"><span class="a-terminal-ts">[${ts}]</span><span>&gt; ${pendingMsg}</span></div>`;
     term.scrollTop = term.scrollHeight;
 
-    const csrf = "{{ session.get('admin_csrf_token', '') }}";
-
     fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRF-Token': csrf
       },
-      body: JSON.stringify({ csrf_token: csrf })
     })
     .then(res => res.json())
     .then(data => {

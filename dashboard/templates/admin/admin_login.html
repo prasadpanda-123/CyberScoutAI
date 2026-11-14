@@ -39,7 +39,6 @@
 
       <!-- Login Form -->
       <form method="POST" action="{{ url_for('admin_ui.admin_login', next=next) }}" style="display:flex;flex-direction:column;gap:16px;">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
 
         <div class="a-form-group" style="margin-bottom:0;">

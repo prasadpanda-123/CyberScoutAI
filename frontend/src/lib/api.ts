@@ -2,20 +2,11 @@
  * CyberScout AI API Client
  * 
  * Uses same-origin HTTP requests to Flask backend.
- * Reads CSRF token from session cookie meta tag.
- * Never stores tokens in localStorage.
  */
 
 const API_BASE = "";  // Same-origin; no base URL needed.
 
-// ─── CSRF Token ───────────────────────────────────────────────────────────────
-
-export function getCsrfToken(): string {
-  const meta = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]');
-  return meta?.content ?? "";
-}
-
-// ─── Core Fetcher ─────────────────────────────────────────────────────────────
+// Core fetcher
 
 export interface FetchOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>;
@@ -58,19 +49,12 @@ export async function fetchApi<T = unknown>(
     });
   }
 
-  const isWrite = ["POST", "PUT", "PATCH", "DELETE"].includes(
-    (rest.method ?? "GET").toUpperCase()
-  );
-
-  const csrfToken = getCsrfToken();
-
   const response = await fetch(url.toString(), {
     credentials: "include",  // Always send session cookies
     headers: {
       "Content-Type": "application/json",
       "Accept": "application/json",
       "X-Requested-With": "XMLHttpRequest",
-      ...(isWrite && csrfToken ? { "X-CSRFToken": csrfToken } : {}),
       ...headers,
     },
     ...rest,
@@ -141,7 +125,6 @@ export interface MeResponse {
     role: string;
     is_admin?: boolean;
   } | null;
-  csrf_token?: string;
 }
 
 export const authApi = {

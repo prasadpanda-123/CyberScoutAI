@@ -107,7 +107,6 @@
             <span style="font-size:10.5px;color:var(--a-text-4);font-style:italic;">Protected</span>
           {% else %}
             <form method="POST" action="{{ url_for('admin_ui.admin_users', tab='admins') }}" style="display:inline;">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <input type="hidden" name="action" value="toggle_status">
               <input type="hidden" name="target_type" value="admin">
               <input type="hidden" name="account_id" value="{{ a.id }}">
@@ -116,7 +115,6 @@
               </button>
             </form>
             <form method="POST" action="{{ url_for('admin_ui.admin_users', tab='admins') }}" style="display:inline;" onsubmit="return confirm('Delete administrator {{ a.username }}?');">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <input type="hidden" name="action" value="delete_account">
               <input type="hidden" name="target_type" value="admin">
               <input type="hidden" name="account_id" value="{{ a.id }}">
@@ -169,7 +167,6 @@
         </div>
         <div style="display:flex;justify-content:flex-end;align-items:center;gap:6px;">
           <form method="POST" action="{{ url_for('admin_ui.admin_users', tab='users') }}" style="display:inline;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="toggle_status">
             <input type="hidden" name="target_type" value="user">
             <input type="hidden" name="account_id" value="{{ u.id }}">
@@ -178,7 +175,6 @@
             </button>
           </form>
           <form method="POST" action="{{ url_for('admin_ui.admin_users', tab='users') }}" style="display:inline;" onsubmit="return confirm('Delete user {{ u.username }}?');">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="delete_account">
             <input type="hidden" name="target_type" value="user">
             <input type="hidden" name="account_id" value="{{ u.id }}">
@@ -206,7 +202,6 @@
 
     <form method="POST" action="{{ url_for('admin_ui.admin_users') }}">
       <div class="a-modal-body">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="action" value="create_user">
 
         <div class="a-form-group">

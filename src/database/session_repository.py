@@ -2,7 +2,7 @@
 PostgreSQL Persistent Repository for Server-Side Session State.
 
 Provides secure storage, hashing, and lifecycle management for opaque server-side sessions,
-eliminating sensitive identity, CSRF tokens, and application state from browser cookies.
+eliminating sensitive identity and application state from browser cookies.
 """
 
 from datetime import datetime, timezone

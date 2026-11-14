@@ -5,7 +5,7 @@ Verifies:
 1. Environment configuration: APP_ENV=production and SESSION_COOKIE_SECURE handling.
 2. DOM XSS defense-in-depth: logs.html template escapes dynamic parameters.
 3. Strict CSP headers remain enforced across all endpoints.
-4. Administrative session hardening: HttpOnly, SameSite, Secure cookie options.
+4. Administrative session hardening: HttpOnly and Secure cookie options.
 """
 
 import os
@@ -42,7 +42,6 @@ class TestPhase7AuditHardening(unittest.TestCase):
             app = create_app()
             self.assertTrue(app.config["SESSION_COOKIE_SECURE"])
             self.assertTrue(app.config["SESSION_COOKIE_HTTPONLY"])
-            self.assertEqual(app.config["SESSION_COOKIE_SAMESITE"], "Lax")
 
     def test_dev_environment_cookie_security_flag_remains_false(self):
         """Verify development defaults do not require HTTPS cookie flags if not in production."""

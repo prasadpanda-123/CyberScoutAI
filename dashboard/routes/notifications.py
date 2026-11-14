@@ -1,10 +1,9 @@
 """
 User Notifications and Delivery Management Routes for CyberScout AI.
-Implements Phase 7 SSR notification inbox, preference controls, CSRF validation, and user isolation.
+Implements Phase 7 SSR notification inbox, preference controls, and user isolation.
 """
 
 from datetime import datetime, timezone
-import hmac
 import logging
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for, jsonify
 from src.auth.decorators import login_required
@@ -18,21 +17,6 @@ from src.models.recommendation_models import UserPreferencesDTO
 logger = logging.getLogger(__name__)
 
 notifications_bp = Blueprint("notifications_ui", __name__)
-
-
-def _verify_csrf(req) -> bool:
-    """Validates CSRF token from form, JSON body, or X-CSRF-Token header."""
-    body = req.get_json(silent=True) if req.is_json else None
-    submitted = (
-        (body.get("csrf_token") if isinstance(body, dict) else None)
-        or req.form.get("csrf_token")
-        or req.headers.get("X-CSRF-Token")
-        or req.headers.get("X-CSRFToken")
-    )
-    expected = session.get("user_csrf_token") or session.get("csrf_token")
-    if not expected or not submitted:
-        return False
-    return hmac.compare_digest(str(submitted), str(expected))
 
 
 def _get_client_ip(req) -> str:
@@ -91,13 +75,7 @@ def index():
 @notifications_bp.route("/notifications/mark-read", methods=["POST"])
 @login_required
 def mark_read():
-    """Marks a single notification as read for the authenticated user (CSRF-protected)."""
-    if not _verify_csrf(request):
-        if request.is_json:
-            return jsonify({"status": "failed", "error": "CSRF verification failed"}), 403
-        flash("Security validation failed (invalid CSRF token).", "danger")
-        return redirect(url_for("notifications_ui.index"))
-
+    """Marks a single notification as read for the authenticated user."""
     user_id = session.get("user_id")
     if not user_id:
         return redirect(url_for("auth_ui.login"))
@@ -128,13 +106,7 @@ def mark_read():
 @notifications_bp.route("/notifications/mark-all-read", methods=["POST"])
 @login_required
 def mark_all_read():
-    """Marks all notifications as read for the authenticated user (CSRF-protected)."""
-    if not _verify_csrf(request):
-        if request.is_json:
-            return jsonify({"status": "failed", "error": "CSRF verification failed"}), 403
-        flash("Security validation failed (invalid CSRF token).", "danger")
-        return redirect(url_for("notifications_ui.index"))
-
+    """Marks all notifications as read for the authenticated user."""
     user_id = session.get("user_id")
     if not user_id:
         return redirect(url_for("auth_ui.login"))
@@ -153,7 +125,7 @@ def mark_all_read():
 @notifications_bp.route("/notifications/preferences", methods=["GET", "POST"])
 @login_required
 def update_preferences():
-    """Reads or updates user notification preferences with authentication and CSRF protection."""
+    """Reads or updates user notification preferences for the authenticated user."""
     user_id = session.get("user_id")
     if not user_id:
         if request.is_json or request.method == "GET":
@@ -164,12 +136,6 @@ def update_preferences():
         pref_repo = UserPreferencesRepository(db_manager=DatabaseManager())
         preferences = pref_repo.get_preferences(user_id=user_id) or UserPreferencesDTO()
         return jsonify({"status": "success", "preferences": preferences.to_dict()})
-
-    if not _verify_csrf(request):
-        if request.is_json:
-            return jsonify({"status": "failed", "error": "CSRF verification failed"}), 403
-        flash("Security validation failed (invalid CSRF token).", "danger")
-        return redirect(url_for("notifications_ui.index"))
 
     if request.is_json:
         preference_data = request.get_json(silent=True)

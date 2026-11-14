@@ -10,7 +10,6 @@ from dashboard.services.analytics_service import AnalyticsService
 from dashboard.services.api_service import APIService
 from dashboard.services.dashboard_service import DashboardService
 from dashboard.services.statistics_service import StatisticsService
-from src.auth.admin_auth import AdminSecurityManager
 from src.auth.decorators import admin_required, login_required, roles_required
 from src.core.constants import REPORTS_DIR
 from src.core.logging import get_logger
@@ -251,43 +250,12 @@ def get_config():
     return resp
 
 
-def _verify_legacy_api_csrf(admin_only: bool = True) -> bool:
-    """
-    Validates CSRF token for administrative state-changing operations under /api/*.
-    Checks X-CSRF-Token / X-CSRFToken headers, JSON body 'csrf_token', or form 'csrf_token'.
-    Requires valid matching session CSRF token. Rejects missing or invalid tokens with HTTP 403.
-    """
-    if admin_only:
-        session_token = session.get("admin_csrf_token")
-    else:
-        session_token = session.get("admin_csrf_token") or session.get("user_csrf_token")
-
-    if not session_token:
-        return False
-
-    submitted_token = None
-    if request.headers.get("X-CSRF-Token"):
-        submitted_token = request.headers.get("X-CSRF-Token").strip()
-    elif request.headers.get("X-CSRFToken"):
-        submitted_token = request.headers.get("X-CSRFToken").strip()
-    elif request.is_json and request.json and isinstance(request.json, dict) and "csrf_token" in request.json:
-        submitted_token = str(request.json.get("csrf_token", "")).strip()
-    elif request.form and "csrf_token" in request.form:
-        submitted_token = str(request.form.get("csrf_token", "")).strip()
-
-    if not submitted_token:
-        return False
-
-    return AdminSecurityManager.verify_csrf_token(session_token, submitted_token)
-
 
 # POST Action Commands with JSON error safety and Admin authentication
 @api_bp.route("/run", methods=["POST"])
 @admin_required
 def trigger_run():
     """POST /api/run — Trigger asynchronous background scan job (Sensitive)."""
-    if not _verify_legacy_api_csrf():
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     from src.automation.job_manager import ScanInProgressError
     db_mgr = get_db_manager()
     if not db_mgr.ping():
@@ -342,8 +310,6 @@ def get_job_status(job_id: str):
 @admin_required
 def email_test():
     """POST /api/email/test — Dispatch test HTML email (Sensitive)."""
-    if not _verify_legacy_api_csrf(admin_only=True):
-        return jsonify({"status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.send_test_email()
         status_code = 200 if res.get("success", True) else 400
@@ -362,8 +328,6 @@ def email_test():
 @admin_required
 def scheduler_pause():
     """POST /api/scheduler/pause — Pause scheduler (Sensitive)."""
-    if not _verify_legacy_api_csrf(admin_only=True):
-        return jsonify({"status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.pause_scheduler()
         audit_repo.log_event("SCHEDULER", "PAUSE_SCHEDULER", "SUCCESS", username=session.get("admin_username"), source_ip=get_client_ip(request), details="Scheduler paused via /api/scheduler/pause")
@@ -381,8 +345,6 @@ def scheduler_pause():
 @admin_required
 def scheduler_resume():
     """POST /api/scheduler/resume — Resume scheduler (Sensitive)."""
-    if not _verify_legacy_api_csrf(admin_only=True):
-        return jsonify({"status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.resume_scheduler()
         audit_repo.log_event("SCHEDULER", "RESUME_SCHEDULER", "SUCCESS", username=session.get("admin_username"), source_ip=get_client_ip(request), details="Scheduler resumed via /api/scheduler/resume")
@@ -400,8 +362,6 @@ def scheduler_resume():
 @admin_required
 def scheduler_restart():
     """POST /api/scheduler/restart — Restart scheduler (Sensitive)."""
-    if not _verify_legacy_api_csrf(admin_only=True):
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.restart_scheduler()
         audit_repo.log_event("SCHEDULER", "RESTART_SCHEDULER", "SUCCESS", username=session.get("admin_username"), source_ip=get_client_ip(request), details="Scheduler restarted via /api/scheduler/restart")
@@ -419,8 +379,6 @@ def scheduler_restart():
 @admin_required
 def trigger_daily_report():
     """POST /api/report/trigger — Send Daily Report Now (Sensitive)."""
-    if not _verify_legacy_api_csrf(admin_only=True):
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.send_daily_report_now()
         audit_repo.log_event("REPORTS", "TRIGGER_REPORT", "SUCCESS", username=session.get("admin_username"), source_ip=get_client_ip(request), details="Daily report triggered via /api/report/trigger")
@@ -438,8 +396,6 @@ def trigger_daily_report():
 @admin_required
 def clear_old_opportunities():
     """POST /api/opportunities/clear-old — Clear Old Opportunities (Sensitive)."""
-    if not _verify_legacy_api_csrf(admin_only=True):
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         days = 30
         if request.is_json and request.json:
@@ -466,8 +422,6 @@ def clear_old_opportunities():
 @admin_required
 def refresh_analytics():
     """POST /api/analytics/refresh — Refresh Analytics (Sensitive)."""
-    if not _verify_legacy_api_csrf(admin_only=True):
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     try:
         res = api_service.refresh_analytics()
         audit_repo.log_event("ANALYTICS", "REFRESH", "SUCCESS", username=session.get("admin_username"), source_ip=get_client_ip(request), details="Analytics refreshed via /api/analytics/refresh")
@@ -484,7 +438,7 @@ def refresh_analytics():
 @api_bp.route("/me", methods=["GET"])
 def get_current_user_profile():
     """
-    GET /api/me — Returns current session state, display identity, and CSRF token.
+    GET /api/me ? Returns current session state and display identity.
     Internal account identifiers are not exposed to the client.
     Returns HTTP 200 with authenticated=False if unauthenticated so SPA can bootstrap smoothly.
     """
@@ -492,23 +446,10 @@ def get_current_user_profile():
     is_admin = bool(session.get("admin_authenticated"))
     is_auth = bool(user_id or is_admin)
 
-    csrf_token = (
-        session.get("admin_csrf_token")
-        if is_admin
-        else (session.get("user_csrf_token") or session.get("admin_csrf_token"))
-    )
-    if not csrf_token:
-        csrf_token = AdminSecurityManager.generate_csrf_token()
-        if is_admin:
-            session["admin_csrf_token"] = csrf_token
-        else:
-            session["user_csrf_token"] = csrf_token
-
     if not is_auth:
         return jsonify({
             "authenticated": False,
             "user": None,
-            "csrf_token": csrf_token,
         }), 200
 
     username = session.get("username") or session.get("admin_username")
@@ -523,7 +464,6 @@ def get_current_user_profile():
             "role": role,
             **({"is_admin": True} if is_admin else {}),
         },
-        "csrf_token": csrf_token,
     }), 200
 
 

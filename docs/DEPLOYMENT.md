@@ -34,7 +34,7 @@ CyberScout AI operates as a decoupled presentation-engine-data architecture desi
 ```
 
 ### Multi-Worker Concurrency & Session Guarantees
-- **Server-Side Session State & Opaque Cookies**: Session state is persisted in the PostgreSQL `"ServerSessions"` table. Client browser cookies (`cyberscout_session`) contain **ONLY** an opaque, cryptographically random token (`secrets.token_urlsafe(32)`). Zero user identity, email, user ID, role, MFA state, or CSRF tokens are exposed client-side.
+- **Server-Side Session State & Opaque Cookies**: Session state is persisted in the PostgreSQL `"ServerSessions"` table. Client browser cookies (`cyberscout_session`) contain **ONLY** an opaque, cryptographically random token (`secrets.token_urlsafe(32)`). User identity, email, user ID, role, and MFA state are kept server-side.
 - **Hashed-at-Rest Session Tokens**: The database stores only `SHA-256(sid)`, ensuring that database dumps cannot be leveraged to forge valid session cookies.
 - **Session Rotation & Fixation Resistance**: Sessions automatically rotate on authentication boundaries (login, MFA completion) and old session IDs are revoked server-side immediately.
 - **Immediate Server-Side Revocation**: Logout actively deletes/revokes the session record in PostgreSQL; replaying previously issued cookies fails across all workers.
@@ -160,7 +160,7 @@ CyberScout AI routes are segmented into four distinct operational tiers:
 - `/admin/login`, `/admin/verify-otp`, `/admin/logout` — Admin authentication & MFA.
 - `/admin/dashboard`, `/admin/scheduler`, `/admin/email`, `/admin/logs` — Operations UI.
 - `/admin/api/*` — Authoritative operational endpoints (scan trigger, digest dispatch, logs).
-- Enforces `@admin_required` + constant-time CSRF verification on all state-changing verbs (`POST`, `PUT`, `PATCH`, `DELETE`).
+- Enforces `@admin_required` on administrative API routes.
 
 ### Tier 3: External Machine Webhook (`external_trigger_bp`)
 - `POST /api/scheduler/trigger` & `POST /api/external/scheduler/trigger` — External cron scheduler triggers.

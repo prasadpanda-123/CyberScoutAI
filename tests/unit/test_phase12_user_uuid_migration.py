@@ -51,7 +51,6 @@ class TestPhase12CanonicalUserUuidMigration(unittest.TestCase):
 
         cls.app = create_app()
         cls.app.config["TESTING"] = True
-        cls.app.config["WTF_CSRF_ENABLED"] = False
         cls.client = cls.app.test_client()
 
         # Ensure prerequisite source exists for tests inserting test opportunities

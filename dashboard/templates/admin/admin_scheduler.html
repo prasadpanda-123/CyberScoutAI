@@ -190,12 +190,9 @@
     statusEl.className = 'a-badge a-badge-primary';
     statusEl.textContent = 'WORKING...';
 
-    const csrf = "{{ session.get('admin_csrf_token', '') }}";
-
     fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-      body: JSON.stringify({ csrf_token: csrf })
+      headers: { 'Content-Type': 'application/json' },
     })
     .then(r => r.json())
     .then(data => {

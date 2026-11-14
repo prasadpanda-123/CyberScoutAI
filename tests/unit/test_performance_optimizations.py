@@ -305,8 +305,8 @@ class TestPerformanceOptimizations(unittest.TestCase):
         interface = PostgresSessionInterface(repo)
         sid = "opaque-session-id-that-is-long-enough"
         session_hash = hash_session_id(sid)
-        interface._in_memory_sessions[session_hash] = {"csrf_token": "token"}
-        session = ServerSideSession({"csrf_token": "token"}, sid=sid)
+        interface._in_memory_sessions[session_hash] = {}
+        session = ServerSideSession({}, sid=sid)
         session.clear()
         app = Flask(__name__)
         app.config["TESTING"] = True
@@ -328,8 +328,8 @@ class TestPerformanceOptimizations(unittest.TestCase):
         interface = PostgresSessionInterface(SessionRepository())
         sid = "opaque-session-id-for-failed-revocation"
         session_hash = hash_session_id(sid)
-        interface._in_memory_sessions[session_hash] = {"csrf_token": "token"}
-        session = ServerSideSession({"csrf_token": "token"}, sid=sid)
+        interface._in_memory_sessions[session_hash] = {}
+        session = ServerSideSession({}, sid=sid)
         session.clear()
         app = Flask(__name__)
         app.config["SESSION_COOKIE_NAME"] = "cyberscout_session"

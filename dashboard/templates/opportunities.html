@@ -391,7 +391,6 @@
           <!-- Column 5: Bookmark Save Form (Non-JS fallback + Progressive Enhancement) -->
           <div class="w-full md:w-auto flex justify-end md:justify-center">
             <form method="POST" action="/opportunities/{{ opp.id }}/toggle-save" class="bookmark-form inline-block" data-opp-id="{{ opp.id }}">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
               <button 
                 type="submit" 
@@ -476,7 +475,6 @@
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const oppId = form.getAttribute('data-opp-id');
-        const csrfToken = form.querySelector('input[name="csrf_token"]').value;
         const btn = form.querySelector('.bookmark-btn');
         const star = btn.querySelector('.material-symbols-outlined');
 
@@ -485,9 +483,7 @@
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'X-CSRF-Token': csrfToken
             },
-            body: JSON.stringify({ csrf_token: csrfToken })
           });
 
           if (res.ok) {

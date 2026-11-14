@@ -32,7 +32,6 @@ class TestDashboardAPI(unittest.TestCase):
             sess["admin_user_id"] = 1
             sess["admin_username"] = "admin"
             sess["admin_role"] = "Super Admin"
-            sess["admin_csrf_token"] = "test_admin_csrf_token"
 
     def test_api_unauthenticated_returns_401(self):
         """Verify unauthenticated API request returns 401 JSON error."""

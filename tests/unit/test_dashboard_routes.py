@@ -30,7 +30,6 @@ class TestDashboardRoutes(unittest.TestCase):
             sess["admin_user_id"] = 1
             sess["admin_username"] = "admin"
             sess["admin_role"] = "Super Admin"
-            sess["admin_csrf_token"] = "test_admin_csrf_token"
 
     def test_unauthenticated_redirect(self):
         """Verify unauthenticated user is redirected to /login for protected user pages."""

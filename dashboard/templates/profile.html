@@ -58,7 +58,6 @@
     </div>
 
     <form action="/profile" method="POST" class="space-y-4">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="action" value="save_preferences">
 
       <!-- Skills -->
@@ -225,7 +224,6 @@
       </div>
 
       <form action="/profile" method="POST" class="space-y-4">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="action" value="verify_pw_otp">
 
         <div>
@@ -247,7 +245,6 @@
       <!-- Auxiliary Resend & Cancel Controls -->
       <div class="pt-3 border-t border-border-subtle flex flex-wrap items-center justify-between gap-3">
         <form action="/profile" method="POST" class="inline">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <input type="hidden" name="action" value="resend_pw_otp">
           <button type="submit" class="text-xs font-semibold text-primary hover:underline flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer">
             <span class="material-symbols-outlined text-[15px]">refresh</span>
@@ -256,7 +253,6 @@
         </form>
 
         <form action="/profile" method="POST" class="inline">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <input type="hidden" name="action" value="cancel_pw_otp">
           <button type="submit" class="text-xs text-text-muted hover:text-text-primary bg-transparent border-0 p-0 cursor-pointer">
             Cancel & Return
@@ -267,7 +263,6 @@
     {% else %}
     <!-- Password Entry Step -->
     <form action="/profile" method="POST" class="space-y-4">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="action" value="request_pw_change">
       <input type="text" id="username" name="username" value="{{ user_info.username }}" autocomplete="username" class="hidden" aria-hidden="true" tabindex="-1">
 
@@ -304,7 +299,6 @@
       <p class="text-xs text-text-secondary">Terminates your active authentication session on this device.</p>
     </div>
     <form action="/logout" method="post">
-      <input type="hidden" name="csrf_token" value="{{ session.get('user_csrf_token', '') }}">
       <button type="submit" class="bg-danger/10 hover:bg-danger text-danger hover:text-white border border-danger/30 text-xs font-bold px-4 py-2 rounded-lg transition-all flex items-center gap-1.5">
         <span class="material-symbols-outlined text-[16px]">logout</span>
         <span>Logout Now</span>

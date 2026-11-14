@@ -34,7 +34,6 @@ class DashboardConfig:
     # Session cookie security defaults
     SESSION_COOKIE_NAME = "cyberscout_session"
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = "Lax"
 
     @classmethod
     def get_secret_key(cls) -> str:

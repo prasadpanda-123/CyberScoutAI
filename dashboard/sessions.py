@@ -3,7 +3,7 @@ PostgreSQL Server-Side Session Interface for Flask.
 
 Replaces Flask's client-side signed cookie mechanism with an opaque,
 cryptographically random session identifier. All identity, role, MFA,
-CSRF, and application state are strictly stored server-side in PostgreSQL.
+and application state are strictly stored server-side in PostgreSQL.
 """
 
 from datetime import datetime, timedelta, timezone

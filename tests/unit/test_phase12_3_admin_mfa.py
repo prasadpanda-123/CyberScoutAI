@@ -31,7 +31,6 @@ from unittest.mock import patch, MagicMock
 
 os.environ["FLASK_ENV"] = "testing"
 os.environ["SECRET_KEY"] = "testing-secret-key-1234567890abcdef"
-os.environ["WTF_CSRF_ENABLED"] = "false"
 
 from dashboard.app import create_app
 from src.auth.admin_auth import AdminSecurityManager
@@ -44,7 +43,6 @@ class TestPhase123AdminMfa(unittest.TestCase):
     def setUp(self):
         self.app = create_app()
         self.app.config["TESTING"] = True
-        self.app.config["WTF_CSRF_ENABLED"] = False
         self.client = self.app.test_client()
 
     def test_leading_zero_otp_lifecycle(self):
@@ -219,18 +217,15 @@ class TestPhase123AdminMfa(unittest.TestCase):
             otp_hash=otp_hash,
             expires_at=expires_at,
         )
-        csrf_token = AdminSecurityManager.generate_csrf_token()
 
         with self.client.session_transaction() as sess:
             sess["admin_pending_token"] = pending_token
-            sess["admin_csrf_token"] = csrf_token
 
         # Submit valid OTP with whitespace padding
         resp = self.client.post(
             "/admin/verify-otp",
             data={
                 "otp_code": f"  {otp}  ",
-                "csrf_token": csrf_token,
             },
             follow_redirects=False,
         )
@@ -254,7 +249,6 @@ class TestPhase123AdminMfa(unittest.TestCase):
             "/admin/verify-otp",
             data={
                 "otp_code": otp,
-                "csrf_token": csrf_token,
             },
             follow_redirects=False,
         )
@@ -277,11 +271,9 @@ class TestPhase123AdminMfa(unittest.TestCase):
             otp_hash=otp_hash,
             expires_at=expires_at,
         )
-        csrf_token = AdminSecurityManager.generate_csrf_token()
 
         with self.client.session_transaction() as sess:
             sess["admin_pending_token"] = pending_token
-            sess["admin_csrf_token"] = csrf_token
 
         # Submit 4 incorrect attempts
         for attempt in range(1, 5):
@@ -289,7 +281,6 @@ class TestPhase123AdminMfa(unittest.TestCase):
                 "/admin/verify-otp",
                 data={
                     "otp_code": "000000",
-                    "csrf_token": csrf_token,
                 },
                 follow_redirects=False,
             )
@@ -301,7 +292,6 @@ class TestPhase123AdminMfa(unittest.TestCase):
             "/admin/verify-otp",
             data={
                 "otp_code": "000000",
-                "csrf_token": csrf_token,
             },
             follow_redirects=False,
         )
@@ -313,12 +303,10 @@ class TestPhase123AdminMfa(unittest.TestCase):
 
     def test_admin_and_user_isolation(self):
         """Standard user cannot access admin verify endpoint or use admin session."""
-        csrf_token = AdminSecurityManager.generate_csrf_token()
         with self.client.session_transaction() as sess:
             sess["user_id"] = 12345
             sess["user_authenticated"] = True
             sess["role"] = "User"
-            sess["user_csrf_token"] = csrf_token
             # No admin_pending_token
 
         # Visiting /admin/verify-otp without pending admin session redirects to /admin/login

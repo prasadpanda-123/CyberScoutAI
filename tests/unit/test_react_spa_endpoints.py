@@ -26,7 +26,6 @@ from dashboard.config import DashboardConfig
 class SPAEndpointsTestConfig(DashboardConfig):
     TESTING = True
     SECRET_KEY = "test_spa_endpoints_secret_key_12345"
-    WTF_CSRF_ENABLED = False
 
 
 @pytest.fixture
@@ -45,7 +44,6 @@ def test_react_app_shell(client):
     res = client.get("/app")
     assert res.status_code == 200
     assert b'<div id="root"></div>' in res.data
-    assert b'meta name="csrf-token"' in res.data
     assert b'name="user-id"' not in res.data
     assert b'/static/react/assets/index.js' in res.data
 
@@ -55,14 +53,11 @@ def test_react_app_shell(client):
 
 
 def test_api_me_unauthenticated(client):
-    """GET /api/me returns 200 with authenticated=False and a CSRF token for unauthenticated visitors."""
     res = client.get("/api/me")
     assert res.status_code == 200
     data = res.get_json()
     assert data["authenticated"] is False
     assert data["user"] is None
-    assert "csrf_token" in data
-    assert len(data["csrf_token"]) > 0
 
 
 def test_api_me_authenticated_user(client):
@@ -73,7 +68,6 @@ def test_api_me_authenticated_user(client):
         sess["username"] = "alice"
         sess["email"] = "alice@cyberscout.ai"
         sess["role"] = "Operator"
-        sess["user_csrf_token"] = "alice_token_123"
 
     res = client.get("/api/me")
     assert res.status_code == 200
@@ -84,7 +78,6 @@ def test_api_me_authenticated_user(client):
     assert data["user"]["email"] == "alice@cyberscout.ai"
     assert data["user"]["role"] == "Operator"
     assert "is_admin" not in data["user"]
-    assert data["csrf_token"] == "alice_token_123"
 
 
 def test_api_me_authenticated_admin(client):
@@ -95,7 +88,6 @@ def test_api_me_authenticated_admin(client):
         sess["admin_username"] = "superadmin"
         sess["email"] = "admin@cyberscout.ai"
         sess["admin_role"] = "Administrator"
-        sess["admin_csrf_token"] = "admin_token_999"
 
     res = client.get("/api/me")
     assert res.status_code == 200
@@ -104,7 +96,6 @@ def test_api_me_authenticated_admin(client):
     assert data["user"]["username"] == "superadmin"
     assert "id" not in data["user"]
     assert data["user"]["is_admin"] is True
-    assert data["csrf_token"] == "admin_token_999"
 
 
 def test_api_quality_stats(client):
@@ -179,7 +170,6 @@ def test_admin_api_endpoints_for_admin(client):
         sess["admin_user_id"] = 1
         sess["admin_username"] = "admin"
         sess["admin_role"] = "Administrator"
-        sess["admin_csrf_token"] = "test_admin_csrf"
 
     # GET /admin/api/users
     res = client.get("/admin/api/users")
@@ -224,7 +214,6 @@ def test_admin_api_user_crud(client):
         sess["admin_user_id"] = 1
         sess["admin_username"] = "admin"
         sess["admin_role"] = "Administrator"
-        sess["admin_csrf_token"] = "admin_csrf_crud_test"
 
     # 1. Create User
     res = client.post(
@@ -234,7 +223,6 @@ def test_admin_api_user_crud(client):
             "email": test_email,
             "password": "SecurePassword123!",
             "role": "Operator",
-            "csrf_token": "admin_csrf_crud_test",
         },
     )
     assert res.status_code == 201, f"Create user failed: {res.data}"
@@ -253,7 +241,7 @@ def test_admin_api_user_crud(client):
     # 2. Toggle Status
     res_toggle = client.patch(
         f"/admin/api/users/{user_id}",
-        json={"csrf_token": "admin_csrf_crud_test"},
+        json={},
     )
     assert res_toggle.status_code == 200
     toggle_data = res_toggle.get_json()
@@ -263,7 +251,7 @@ def test_admin_api_user_crud(client):
     # 3. Delete User
     res_delete = client.delete(
         f"/admin/api/users/{user_id}",
-        json={"csrf_token": "admin_csrf_crud_test"},
+        json={},
     )
     assert res_delete.status_code == 200
     delete_data = res_delete.get_json()

@@ -197,11 +197,9 @@ def test_admin_login_returns_service_unavailable_if_mfa_cannot_be_persisted(monk
         json={
             "username": "test-admin",
             "password": "valid-password",
-            "csrf_token": "csrf-token",
             "next": "/admin/dashboard",
         },
     ):
-        session["admin_csrf_token"] = "csrf-token"
         response, status = admin_routes.admin_login()
 
     assert status == 503

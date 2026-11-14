@@ -120,7 +120,6 @@
             <div style="display:flex;justify-content:flex-end;align-items:center;gap:6px;">
               <!-- Approve Button -->
               <form method="POST" action="{{ url_for('admin_ui.admin_data_quality') }}" style="display:inline;">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="action" value="approve">
                 <input type="hidden" name="opportunity_id" value="{{ item.id }}">
                 <button type="submit" class="a-btn a-btn-success a-btn-sm" title="Approve as genuinely free">
@@ -131,7 +130,6 @@
 
               <!-- Reject Button -->
               <form method="POST" action="{{ url_for('admin_ui.admin_data_quality') }}" style="display:inline;" onsubmit="return confirm('Reject and discard this item?');">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="action" value="reject">
                 <input type="hidden" name="opportunity_id" value="{{ item.id }}">
                 <button type="submit" class="a-btn a-btn-danger a-btn-sm a-btn-icon" title="Reject record">

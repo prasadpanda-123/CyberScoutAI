@@ -19,19 +19,6 @@ opportunities_bp = Blueprint("opportunities_ui", __name__)
 opp_service = OpportunityService()
 
 
-def _verify_csrf(req) -> bool:
-    """Validates CSRF token from Form, JSON body, or X-CSRF-Token header."""
-    submitted = None
-    if req.is_json and req.json:
-        submitted = req.json.get("csrf_token")
-    if not submitted:
-        submitted = req.form.get("csrf_token") or req.headers.get("X-CSRF-Token")
-    expected = session.get("user_csrf_token") or session.get("admin_csrf_token") or session.get("csrf_token")
-    if not submitted or not expected or submitted != expected:
-        return False
-    return True
-
-
 @opportunities_bp.route("/opportunities", methods=["GET"])
 @login_required
 def index():
@@ -168,10 +155,6 @@ def toggle_save_form(opportunity_id: str):
     Non-JavaScript HTML form fallback for saving/unsaving an opportunity.
     Redirects back to previous page preserving filter and pagination state.
     """
-    if not _verify_csrf(request):
-        flash("Security validation failed (invalid CSRF token).", "error")
-        return redirect(url_for("opportunities_ui.index"))
-
     user_id = session.get("user_id") or session.get("admin_user_id")
     if not user_id:
         flash("You must be logged in to save opportunities.", "error")
@@ -203,9 +186,6 @@ def toggle_save_api(opportunity_id: str):
     Progressive enhancement asynchronous AJAX endpoint for saving/unsaving.
     Returns JSON response for client-side state update.
     """
-    if not _verify_csrf(request):
-        return jsonify({"status": "failed", "error": "CSRF verification failed"}), 403
-
     user_id = session.get("user_id") or session.get("admin_user_id")
     if not user_id:
         return jsonify({"status": "failed", "error": "Authentication required"}), 401

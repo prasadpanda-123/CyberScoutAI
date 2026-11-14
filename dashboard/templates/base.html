@@ -359,9 +359,8 @@
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRF-Token': '{{ csrf_token }}'
         },
-        body: JSON.stringify({ dry_run: false, csrf_token: '{{ csrf_token }}' })
+        body: JSON.stringify({ dry_run: false })
       })
       .then(async r => {
         const data = await r.json();

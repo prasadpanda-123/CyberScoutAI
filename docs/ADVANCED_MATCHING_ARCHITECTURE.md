@@ -150,8 +150,8 @@ CyberScout AI Phase 9 maintains strict functional boundaries:
 2. **No Sensitive Inferences**:
    - The engine strictly restricts signals to explicitly provided skills and opportunity interaction data.
    - Never infers demographic, political, socioeconomic, or personal characteristics.
-3. **CSRF & Input Validation**:
-   - All profile skill updates require valid CSRF tokens (`_user_csrf_token`).
+3. **Input Validation**:
+   - All profile skill updates validate submitted values before saving.
    - Normalization sanitizes HTML tags and strips control characters.
 4. **Authentication Integrity**:
    - `AdminSecurityManager` remains at module scope.

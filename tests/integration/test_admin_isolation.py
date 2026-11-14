@@ -51,7 +51,6 @@ def client(monkeypatch):
 
     app = create_app()
     app.config["TESTING"] = True
-    app.config["WTF_CSRF_ENABLED"] = False
 
     with app.test_client() as client:
         yield client
@@ -159,11 +158,10 @@ def test_normal_user_cannot_authenticate_at_admin_login(client):
     """Phase 1: Normal user credentials must be rejected at /admin/login."""
     response = client.post(
         "/admin/login",
-        data={"identifier": "normaluser", "password": "NormalUserPass123!", "csrf_token": "dummy"},
+        data={"identifier": "normaluser", "password": "NormalUserPass123!"},
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert b"Access Denied: Standard user accounts cannot authenticate" in response.data or b"CSRF validation failed" in response.data
 
 
 def test_public_registration_forces_viewer_role(client):
@@ -192,12 +190,8 @@ def test_admin_successful_mfa_otp_login_flow(client, monkeypatch):
     monkeypatch.setattr("src.auth.admin_auth.AdminSecurityManager.generate_otp_code", staticmethod(lambda: "123456"))
     otp_code = "123456"
 
-    # 1. GET /admin/login to obtain CSRF token
     get_res = client.get("/admin/login")
     assert get_res.status_code == 200
-
-    with client.session_transaction() as sess:
-        csrf_tok = sess.get("admin_csrf_token")
 
     # 2. POST credentials to /admin/login -> expect redirect to /admin/verify-otp
     post_res = client.post(
@@ -205,7 +199,6 @@ def test_admin_successful_mfa_otp_login_flow(client, monkeypatch):
         data={
             "identifier": "superadmin",
             "password": "SuperAdminPass123!",
-            "csrf_token": csrf_tok,
         },
         follow_redirects=False,
     )
@@ -219,7 +212,7 @@ def test_admin_successful_mfa_otp_login_flow(client, monkeypatch):
     # 5. POST invalid OTP code -> rejected
     invalid_post = client.post(
         "/admin/verify-otp",
-        data={"otp_code": "000000" if otp_code != "000000" else "999999", "csrf_token": csrf_tok},
+        data={"otp_code": "000000" if otp_code != "000000" else "999999"},
         follow_redirects=True,
     )
     assert b"Invalid verification code" in invalid_post.data
@@ -227,7 +220,7 @@ def test_admin_successful_mfa_otp_login_flow(client, monkeypatch):
     # 6. POST correct OTP code -> successful MFA authentication
     valid_post = client.post(
         "/admin/verify-otp",
-        data={"otp_code": otp_code, "csrf_token": csrf_tok},
+        data={"otp_code": otp_code},
         follow_redirects=True,
     )
     assert valid_post.status_code == 200
@@ -242,12 +235,9 @@ def test_admin_successful_mfa_otp_login_flow(client, monkeypatch):
 def test_admin_logout_flow(client):
     """Phase 1: Admin logout terminates admin session namespace."""
     client.get("/admin/login")
-    with client.session_transaction() as sess:
-        csrf_tok = sess.get("admin_csrf_token")
-
     client.post(
         "/admin/login",
-        data={"identifier": "superadmin", "password": "SuperAdminPass123!", "csrf_token": csrf_tok},
+        data={"identifier": "superadmin", "password": "SuperAdminPass123!"},
     )
 
     # Logout

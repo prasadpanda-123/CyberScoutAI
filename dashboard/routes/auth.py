@@ -85,16 +85,6 @@ def _send_password_reset_email(email: str, username: str, raw_token: str) -> boo
         return False
 
 
-@auth_bp.before_request
-def ensure_csrf_token():
-    """Ensures a CSRF token is present in the session for public authentication routes."""
-    try:
-        if "user_csrf_token" not in session and "admin_csrf_token" not in session:
-            session["user_csrf_token"] = AdminSecurityManager.generate_csrf_token()
-    except Exception as e:
-        logger.warning(f"Error ensuring user_csrf_token: {e}")
-
-
 @auth_bp.route("/setup", methods=["GET", "POST"])
 def setup():
     """One-Time First-Run Setup flow when no administrator accounts exist."""
@@ -123,13 +113,6 @@ def setup():
         if (production and not setup_secret) or (setup_secret and not secrets.compare_digest(setup_secret, submitted_setup_secret)):
             audit_repo.log_event("AUTH", "SETUP_FAILED", "TOKEN_INVALID", source_ip=client_ip, details="Initial administrator setup authorization failed")
             return render_template("setup.html", setup_token_required=bool(setup_secret)), 403
-
-        csrf_token = request.form.get("csrf_token", "").strip()
-        expected_csrf = session.get("admin_csrf_token") or session.get("user_csrf_token")
-        if not expected_csrf or not csrf_token or not AdminSecurityManager.verify_csrf_token(expected_csrf, csrf_token):
-            audit_repo.log_event("AUTH", "SETUP_FAILED", "CSRF_FAILED", source_ip=client_ip, details="CSRF token validation failed on first-run setup")
-            flash("CSRF validation failed. Please try again.", "danger")
-            return render_template("setup.html", setup_token_required=bool(setup_secret)), 400
 
         username = request.form.get("username", "").strip()
         email = request.form.get("email", "").strip()
@@ -184,28 +167,15 @@ def login():
         if is_json and json_data:
             identifier = (json_data.get("identifier") or json_data.get("username") or "").strip()
             password = (json_data.get("password") or "").strip()
-            csrf_token = (json_data.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or "").strip()
             raw_next = json_data.get("next") or request.args.get("next")
         else:
             identifier = (request.form.get("identifier") or request.form.get("username") or "").strip()
             password = request.form.get("password", "").strip()
-            csrf_token = (request.form.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or "").strip()
             raw_next = request.form.get("next") or request.args.get("next")
 
         next_url = raw_next if (raw_next and _is_safe_url(raw_next)) else url_for("dashboard_ui.index")
 
-        # 0. CSRF Token Validation
-        session_csrf = session.get("user_csrf_token") or session.get("admin_csrf_token")
-        if not session_csrf or not csrf_token or not secrets.compare_digest(session_csrf, csrf_token):
-            audit_repo.log_event("AUTH", "USER_LOGIN", "CSRF_FAILED", username=identifier or "Anonymous", source_ip=client_ip, details="CSRF token validation failed on user login")
-            if is_json:
-                return jsonify({"status": "failed", "error": "CSRF validation failed. Please try again."}), 400
-            flash("CSRF validation failed. Please try again.", "danger")
-            raw_next_arg = request.args.get("next", "")
-            safe_next_arg = raw_next_arg if _is_safe_url(raw_next_arg) else ""
-            return render_template("login.html", next=safe_next_arg), 400
-
-        # 1. Distributed Rate Limiting & Abuse Protection
+        # Distributed rate limiting and abuse protection.
         try:
             login_attempt_allowed = AdminSecurityManager.consume_login_attempt(
                 client_ip, identifier, attempt_type="user_login"
@@ -270,7 +240,6 @@ def login():
             session["username"] = user["username"]
             session["email"] = user["email"]
             session["role"] = user["role"]
-            session["user_csrf_token"] = AdminSecurityManager.generate_csrf_token()
 
             audit_repo.log_event("AUTH", "USER_LOGIN", "SUCCESS", user_id=user["id"], username=user["username"], source_ip=client_ip, details="User login successful")
             if is_json:
@@ -284,7 +253,6 @@ def login():
                         "role": user["role"],
                         "is_admin": False,
                     },
-                    "csrf_token": session["user_csrf_token"],
                     "redirect": next_url,
                 }), 200
             flash(f"Welcome back, {user['username']}!", "success")
@@ -318,21 +286,11 @@ def register():
             email = (json_data.get("email") or "").strip()
             password = (json_data.get("password") or "").strip()
             confirm_password = (json_data.get("confirm_password") or password).strip()
-            csrf_token = (json_data.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or "").strip()
         else:
             username = request.form.get("username", "").strip()
             email = request.form.get("email", "").strip()
             password = request.form.get("password", "").strip()
             confirm_password = request.form.get("confirm_password", "").strip()
-            csrf_token = (request.form.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or "").strip()
-
-        expected_csrf = session.get("user_csrf_token") or session.get("admin_csrf_token")
-        if not expected_csrf or not csrf_token or not secrets.compare_digest(expected_csrf, csrf_token):
-            audit_repo.log_event("AUTH", "USER_REGISTER", "CSRF_FAILED", source_ip=client_ip, details="CSRF validation failed on registration")
-            if is_json:
-                return jsonify({"status": "failed", "error": "CSRF validation failed. Please try again."}), 400
-            flash("CSRF validation failed. Please try again.", "danger")
-            return render_template("register.html"), 400
 
         # Security Hardening (Phase 1): Always enforce default Viewer role server-side.
         role = "Viewer"
@@ -373,20 +331,8 @@ def register():
 
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
-    """Revokes the active session using a CSRF-protected POST."""
+    """Revokes the active user session."""
     client_ip = get_client_ip(request)
-    json_payload = request.get_json(silent=True)
-    raw_csrf_token = (
-        request.headers.get("X-CSRFToken")
-        or request.headers.get("X-CSRF-Token")
-        or (json_payload.get("csrf_token") if isinstance(json_payload, dict) else "")
-        or request.form.get("csrf_token", "")
-    )
-    csrf_token = raw_csrf_token.strip() if isinstance(raw_csrf_token, str) else ""
-    expected_csrf = session.get("user_csrf_token") or session.get("admin_csrf_token")
-    if not expected_csrf or not csrf_token or not secrets.compare_digest(expected_csrf, csrf_token):
-        return jsonify({"status": "failed", "error": "CSRF validation failed."}), 400
-
     uid = session.get("user_id")
     uname = session.get("username")
     if uid:
@@ -397,7 +343,7 @@ def logout():
 
 @auth_bp.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
-    """Handles password reset request flow with CSRF protection and token generation."""
+    """Handles password reset requests and token generation."""
     client_ip = get_client_ip(request)
     if request.method == "POST":
         is_json = request.is_json or (request.headers.get("Accept") == "application/json" and request.get_json(silent=True) is not None)
@@ -405,20 +351,9 @@ def forgot_password():
 
         if is_json and isinstance(json_data, dict):
             raw_email = json_data.get("email")
-            raw_csrf = json_data.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or ""
             email = raw_email.strip().lower() if isinstance(raw_email, str) else ""
-            csrf_token = raw_csrf.strip() if isinstance(raw_csrf, str) else ""
         else:
             email = request.form.get("email", "").strip().lower()
-            csrf_token = (request.form.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or "").strip()
-
-        expected_csrf = session.get("user_csrf_token") or session.get("admin_csrf_token")
-        if not expected_csrf or not csrf_token or not secrets.compare_digest(expected_csrf, csrf_token):
-            audit_repo.log_event("AUTH", "FORGOT_PASSWORD", "CSRF_FAILED", source_ip=client_ip, details="CSRF validation failed on forgot-password")
-            if is_json:
-                return jsonify({"status": "failed", "error": "CSRF validation failed. Please try again."}), 400
-            flash("CSRF validation failed. Please try again.", "danger")
-            return render_template("forgot_password.html"), 400
 
         try:
             rate_repo = _rate_limit_repository()
@@ -481,12 +416,6 @@ def reset_password(token: str):
         return render_template("reset_password.html", token=token)
 
     if request.method == "POST":
-        csrf_token = request.form.get("csrf_token", "").strip()
-        expected_csrf = session.get("user_csrf_token") or session.get("admin_csrf_token")
-        if not expected_csrf or not csrf_token or not secrets.compare_digest(expected_csrf, csrf_token):
-            flash("CSRF validation failed. Please try again.", "danger")
-            return render_template("reset_password.html", token=token), 400
-
         new_password = request.form.get("new_password", "").strip()
         confirm_password = request.form.get("confirm_password", "").strip()
 
@@ -530,10 +459,6 @@ def profile():
         flash("Invalid session identifier. Please log in again.", "warning")
         return redirect(url_for("auth_ui.login"))
 
-    # Ensure user CSRF token is present in session
-    if "user_csrf_token" not in session:
-        session["user_csrf_token"] = secrets.token_hex(32)
-
     username = session.get("username", "User")
 
     user_record = user_repo.get_by_id(user_id) if user_id else None
@@ -555,13 +480,6 @@ def profile():
         pending_state = None
 
     if request.method == "POST":
-        submitted_csrf = request.form.get("csrf_token", "").strip()
-        session_csrf = session.get("user_csrf_token", "")
-        if not submitted_csrf or not session_csrf or not secrets.compare_digest(submitted_csrf, session_csrf):
-            audit_repo.log_event("AUTH", "PASSWORD_CHANGE", "CSRF_FAILED", user_id=user_id, username=username, source_ip=client_ip, details="CSRF token validation failed on password change")
-            flash("CSRF validation failed. Please try again.", "danger")
-            return redirect(url_for("auth_ui.profile"))
-
         action = request.form.get("action", "request_pw_change")
 
         # Action: Save Personalization / Career Preferences
@@ -875,7 +793,6 @@ def profile():
     return render_template(
         "profile.html",
         active_page="profile",
-        csrf_token=session.get("user_csrf_token", ""),
         user_info={
             "username": username,
             "email": email_val,

@@ -50,7 +50,6 @@ class TestAdminTemplatesRendering(unittest.TestCase):
             sess["admin_username"] = "admin_tester"
             sess["admin_role"] = "Administrator"
             sess["admin_user_id"] = 1
-            sess["admin_csrf_token"] = "test_csrf_token_abc123"
 
         admin_routes = [
             ("/admin/dashboard", b"Operational Command Center"),
@@ -77,7 +76,6 @@ class TestAdminTemplatesRendering(unittest.TestCase):
                     sess["admin_username"] = "admin_tester"
                     sess["admin_role"] = "Administrator"
                     sess["admin_user_id"] = 1
-                    sess["admin_csrf_token"] = "test_csrf_token_abc123"
 
                 res = self.client.get(route + "?legacy=1")
                 self.assertEqual(

@@ -74,28 +74,6 @@ class TestPasswordResetSecurity(unittest.TestCase):
         self.assertIn("&lt;script&gt;", payload["html_content"])
         self.assertNotIn("<script>", payload["html_content"])
 
-    def test_post_logout_requires_csrf_and_only_clears_after_server_success(self):
-        with self.client.session_transaction() as sess:
-            sess["user_id"] = "user-123"
-            sess["user_csrf_token"] = "csrf-token"
-
-        rejected = self.client.post("/logout", headers={"X-CSRFToken": "invalid"})
-        self.assertEqual(rejected.status_code, 400)
-        with self.client.session_transaction() as sess:
-            self.assertEqual(sess["user_id"], "user-123")
-
-        malformed = self.client.post("/logout", json={"csrf_token": 123})
-        self.assertEqual(malformed.status_code, 400)
-
-        with patch.object(auth_routes.audit_repo, "log_event"):
-            accepted = self.client.post("/logout", headers={"X-CSRFToken": "csrf-token"})
-        self.assertEqual(accepted.status_code, 200)
-        self.assertEqual(accepted.json, {"status": "success"})
-        with self.client.session_transaction() as sess:
-            self.assertNotIn("user_id", sess)
-
-        legacy = self.client.get("/logout")
-        self.assertEqual(legacy.status_code, 302)
 
     def test_reset_completion_consumes_hashed_token_and_revokes_sessions_atomically(self):
         db_manager = FakeDatabaseManager()
@@ -126,16 +104,12 @@ class TestPasswordResetSecurity(unittest.TestCase):
         self.assertEqual(db_manager.commits, 3)
 
     def test_reset_post_updates_password_and_uses_atomic_repository_operation(self):
-        with self.client.session_transaction() as sess:
-            sess["user_csrf_token"] = "csrf-token"
-
         password = "new-secure-password"
         with patch.object(auth_routes.password_reset_repo, "complete_password_reset", return_value="user-123") as complete, \
              patch.object(auth_routes.audit_repo, "log_event"):
             response = self.client.post(
                 "/reset-password/single-use-token",
                 data={
-                    "csrf_token": "csrf-token",
                     "new_password": password,
                     "confirm_password": password,
                 },

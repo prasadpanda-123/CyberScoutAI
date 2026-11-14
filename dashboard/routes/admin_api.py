@@ -11,7 +11,6 @@ from flask import Blueprint, jsonify, request, Response, session
 from dashboard.services.analytics_service import AnalyticsService
 from dashboard.services.api_service import APIService
 from dashboard.services.dashboard_service import DashboardService
-from src.auth.admin_auth import AdminSecurityManager
 from src.auth.decorators import admin_required
 from src.core.config import config, sanitize_config_dict
 from src.core.rss_diagnostics import RSSDiagnosticsManager
@@ -105,34 +104,6 @@ def admin_export_logs():
 # Backward compatibility alias
 _sanitize_config_data = sanitize_config_dict
 
-
-def _verify_admin_csrf() -> bool:
-    """
-    Validates CSRF token for administrative state-changing operations.
-    Validates against session['admin_csrf_token'] (or fallback session['user_csrf_token']).
-    Token can be provided in:
-    - Header: 'X-CSRF-Token' or 'X-CSRFToken'
-    - JSON payload: 'csrf_token'
-    - Form data: 'csrf_token'
-    """
-    session_token = session.get("admin_csrf_token") or session.get("user_csrf_token")
-    if not session_token:
-        return False
-
-    submitted_token = None
-    if request.headers.get("X-CSRF-Token"):
-        submitted_token = request.headers.get("X-CSRF-Token").strip()
-    elif request.headers.get("X-CSRFToken"):
-        submitted_token = request.headers.get("X-CSRFToken").strip()
-    elif request.is_json and request.json and isinstance(request.json, dict) and "csrf_token" in request.json:
-        submitted_token = str(request.json.get("csrf_token", "")).strip()
-    elif request.form and "csrf_token" in request.form:
-        submitted_token = str(request.form.get("csrf_token", "")).strip()
-
-    if submitted_token:
-        return AdminSecurityManager.verify_csrf_token(session_token, submitted_token)
-
-    return False
 
 
 @admin_api_bp.route("/config", methods=["GET"])
@@ -256,8 +227,6 @@ def admin_get_action_status(job_id: str):
 @admin_required
 def admin_trigger_run():
     """POST /admin/api/run — Trigger background scan job with stage tracking."""
-    if not _verify_admin_csrf():
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     from src.automation.job_manager import ScanInProgressError
     from src.automation.action_job_manager import action_job_manager
     if action_job_manager.is_action_active():
@@ -313,8 +282,6 @@ def admin_get_job_status(job_id: str):
 @admin_required
 def admin_email_test():
     """POST /admin/api/email/test — Dispatch test HTML email with stage progress tracking."""
-    if not _verify_admin_csrf():
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     from src.automation.action_job_manager import action_job_manager
     try:
         job = action_job_manager.start_action(
@@ -342,8 +309,6 @@ def admin_email_test():
 @admin_required
 def admin_trigger_report():
     """POST /admin/api/report/trigger — Dispatch daily digest report immediately with stage progress tracking."""
-    if not _verify_admin_csrf():
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     from src.automation.action_job_manager import action_job_manager
     try:
         job = action_job_manager.start_action(
@@ -371,8 +336,6 @@ def admin_trigger_report():
 @admin_required
 def admin_refresh_analytics():
     """POST /admin/api/analytics/refresh — Recalculate provider statistics with stage progress tracking."""
-    if not _verify_admin_csrf():
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     from src.automation.action_job_manager import action_job_manager
     try:
         job = action_job_manager.start_action(
@@ -400,8 +363,6 @@ def admin_refresh_analytics():
 @admin_required
 def admin_scheduler_pause():
     """POST /admin/api/scheduler/pause — Pause task scheduler."""
-    if not _verify_admin_csrf():
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     from src.automation.action_job_manager import action_job_manager
     try:
         res = api_service.pause_scheduler()
@@ -438,8 +399,6 @@ def admin_scheduler_status():
 @admin_required
 def admin_scheduler_resume():
     """POST /admin/api/scheduler/resume — Resume task scheduler."""
-    if not _verify_admin_csrf():
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     from src.automation.action_job_manager import action_job_manager
     try:
         res = api_service.resume_scheduler()
@@ -455,8 +414,6 @@ def admin_scheduler_resume():
 @admin_required
 def admin_scheduler_restart():
     """POST /admin/api/scheduler/restart — Restart task scheduler."""
-    if not _verify_admin_csrf():
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     from src.automation.action_job_manager import action_job_manager
     try:
         res = api_service.restart_scheduler()
@@ -484,8 +441,6 @@ def admin_preview_clear_old():
 @admin_required
 def admin_clear_old_opportunities():
     """POST /admin/api/opportunities/clear-old — Purge records older than specified days with explicit confirmation."""
-    if not _verify_admin_csrf():
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
 
     body = request.get_json(silent=True) or {}
     if not body.get("confirm"):
@@ -523,8 +478,6 @@ def admin_clear_old_opportunities():
 @admin_required
 def admin_db_test():
     """POST/GET /admin/api/db/test — Test database connection with precise latency measurement."""
-    if request.method == "POST" and not _verify_admin_csrf():
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
 
     import time
     from src.database.connection import DatabaseManager
@@ -552,8 +505,6 @@ def admin_db_test():
 @admin_required
 def admin_db_reconnect():
     """POST /admin/api/db/reconnect — Force database connection reset and reconnect with stage tracking."""
-    if not _verify_admin_csrf():
-        return jsonify({"success": False, "status": "failed", "error": "CSRF token validation failed"}), 403
     from src.automation.action_job_manager import action_job_manager
     try:
         job = action_job_manager.start_action(
@@ -628,8 +579,6 @@ def admin_api_list_users():
 @admin_required
 def admin_api_create_user():
     """POST /admin/api/users — Create a new user account."""
-    if not _verify_admin_csrf():
-        return jsonify({"status": "error", "error": "CSRF token validation failed"}), 403
 
     body = request.get_json(silent=True) or request.form or {}
     username = str(body.get("username", "")).strip()
@@ -661,8 +610,6 @@ def admin_api_create_user():
 @admin_required
 def admin_api_toggle_user_status(user_id: str):
     """PATCH /admin/api/users/<user_id> — Toggle user status (active/locked)."""
-    if not _verify_admin_csrf():
-        return jsonify({"status": "error", "error": "CSRF token validation failed"}), 403
 
     client_ip = get_client_ip(request)
     try:
@@ -680,8 +627,6 @@ def admin_api_toggle_user_status(user_id: str):
 @admin_required
 def admin_api_delete_user(user_id: str):
     """DELETE /admin/api/users/<user_id> — Delete user account."""
-    if not _verify_admin_csrf():
-        return jsonify({"status": "error", "error": "CSRF token validation failed"}), 403
 
     client_ip = get_client_ip(request)
     try:

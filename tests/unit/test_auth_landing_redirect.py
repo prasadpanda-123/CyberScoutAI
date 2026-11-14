@@ -9,7 +9,6 @@ Verifies that:
 6. Admin-protected route redirects to admin login (/admin/login).
 7. Invalid or external next URLs are rejected safely.
 8. Existing admin MFA flow remains functional.
-9. Existing CSRF and session protections remain functional.
 10. Standard and admin identities remain strictly separated.
 """
 
@@ -121,13 +120,6 @@ class TestAuthLandingRedirect(unittest.TestCase):
         hashed = AdminSecurityManager.hash_otp_code(otp_code)
         self.assertTrue(AdminSecurityManager.verify_otp_code(otp_code, hashed))
 
-    def test_9_csrf_and_session_protections_functional(self):
-        """CSRF token generation and validation operate correctly."""
-        token = AdminSecurityManager.generate_csrf_token()
-        self.assertTrue(isinstance(token, str))
-        self.assertGreater(len(token), 32)
-        self.assertTrue(AdminSecurityManager.verify_csrf_token(token, token))
-        self.assertFalse(AdminSecurityManager.verify_csrf_token(token, "tampered_token"))
 
     def test_10_identities_remain_strictly_separated(self):
         """Admin and user roles remain separated; standard user cannot access /admin/dashboard."""

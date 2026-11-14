@@ -32,7 +32,6 @@ class TestDashboardExports(unittest.TestCase):
             sess["admin_user_id"] = 1
             sess["admin_username"] = "adminuser"
             sess["admin_role"] = "Super Admin"
-            sess["admin_csrf_token"] = "test_admin_csrf_token"
             sess["user_id"] = 1
             sess["username"] = "adminuser"
             sess["role"] = "Super Admin"

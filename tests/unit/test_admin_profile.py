@@ -9,7 +9,6 @@ Verifies:
 5. IDOR prevention (admin cannot query other admin profiles by query/form params).
 6. Sensitive fields (password hashes, OTP secrets, tokens) are NOT exposed in HTML.
 7. Admin password change flow (strength verification, current password check).
-8. CSRF protection on password update.
 9. Audit logging records ADMIN_PROFILE_VIEW and ADMIN_PASSWORD_CHANGE with user_id=None.
 """
 
@@ -86,7 +85,6 @@ class TestAdminProfile(unittest.TestCase):
                 sess["admin_email"] = email
                 sess["admin_role"] = "Admin"
                 sess["role"] = "Admin"
-                sess["admin_csrf_token"] = "csrf_token_test_admin_profile_12345"
 
             res = c.get("/admin/profile")
             self.assertEqual(res.status_code, 200)
@@ -123,7 +121,6 @@ class TestAdminProfile(unittest.TestCase):
                 sess["admin_username"] = shared_name
                 sess["admin_role"] = "Admin"
                 sess["role"] = "Admin"
-                sess["admin_csrf_token"] = "test_csrf_token_admin_profile_isol"
 
             res = c.get("/admin/profile")
             self.assertEqual(res.status_code, 200)
@@ -152,7 +149,6 @@ class TestAdminProfile(unittest.TestCase):
                 sess["admin_username"] = admin2["username"]
                 sess["admin_role"] = "Admin"
                 sess["role"] = "Admin"
-                sess["admin_csrf_token"] = "test_csrf_idor_prevention"
 
             # Attacker attempts to view admin1 profile by manipulating query parameters
             res = c.get(f"/admin/profile?admin_id={admin1['id']}&username={admin1['username']}&id={admin1['id']}")
@@ -178,7 +174,6 @@ class TestAdminProfile(unittest.TestCase):
                 sess["admin_username"] = admin["username"]
                 sess["admin_role"] = "Admin"
                 sess["role"] = "Admin"
-                sess["admin_csrf_token"] = "test_csrf_sensitive_check"
 
             res = c.get("/admin/profile")
             self.assertEqual(res.status_code, 200)
@@ -205,8 +200,6 @@ class TestAdminProfile(unittest.TestCase):
             password=initial_pw,
         )
 
-        csrf_tok = "test_csrf_admin_pw_change"
-
         with self.client as c:
             with c.session_transaction() as sess:
                 sess["admin_authenticated"] = True
@@ -215,11 +208,9 @@ class TestAdminProfile(unittest.TestCase):
                 sess["admin_email"] = email
                 sess["admin_role"] = "Admin"
                 sess["role"] = "Admin"
-                sess["admin_csrf_token"] = csrf_tok
 
             # 1. Attempt password change with incorrect current password
             res_bad_curr = c.post("/admin/profile", data={
-                "csrf_token": csrf_tok,
                 "action": "request_pw_change",
                 "current_password": "WrongPassword123!",
                 "new_password": new_pw,
@@ -230,7 +221,6 @@ class TestAdminProfile(unittest.TestCase):
 
             # 2. Attempt password change with weak new password (< 10 chars / no special chars)
             res_weak = c.post("/admin/profile", data={
-                "csrf_token": csrf_tok,
                 "action": "request_pw_change",
                 "current_password": initial_pw,
                 "new_password": "weak",
@@ -241,7 +231,6 @@ class TestAdminProfile(unittest.TestCase):
 
             # 3. Valid password form submission -> Generates OTP and does NOT change DB password yet
             res_init = c.post("/admin/profile", data={
-                "csrf_token": csrf_tok,
                 "action": "request_pw_change",
                 "current_password": initial_pw,
                 "new_password": new_pw,
@@ -264,7 +253,6 @@ class TestAdminProfile(unittest.TestCase):
 
             # 4. Attempt verification with incorrect OTP code
             res_bad_otp = c.post("/admin/profile", data={
-                "csrf_token": csrf_tok,
                 "action": "verify_pw_otp",
                 "otp_code": "000000",
             }, follow_redirects=True)
@@ -280,7 +268,6 @@ class TestAdminProfile(unittest.TestCase):
             AdminSecurityManager.update_pending_password_change_otp(pending_token, test_otp_hash, int(time.time()) + 300)
 
             res_good_otp = c.post("/admin/profile", data={
-                "csrf_token": csrf_tok,
                 "action": "verify_pw_otp",
                 "otp_code": test_otp,
             }, follow_redirects=True)
@@ -294,32 +281,6 @@ class TestAdminProfile(unittest.TestCase):
             with c.session_transaction() as sess:
                 self.assertNotIn("admin_pending_pw_token", sess)
 
-    def test_admin_password_change_csrf_protection(self):
-        """Verify password update fails if CSRF token is invalid or missing."""
-        ts = int(time.time() * 1000)
-        admin = self.admin_repo.create_admin(
-            username=f"admin_csrf_{ts}",
-            email=f"admin_csrf_{ts}@cyberscout.ai",
-            password="AdminPassword2026!",
-        )
-
-        with self.client as c:
-            with c.session_transaction() as sess:
-                sess["admin_authenticated"] = True
-                sess["admin_user_id"] = admin["id"]
-                sess["admin_username"] = admin["username"]
-                sess["admin_role"] = "Admin"
-                sess["role"] = "Admin"
-                sess["admin_csrf_token"] = "valid_csrf_token_value_here"
-
-            res = c.post("/admin/profile", data={
-                "csrf_token": "wrong_invalid_token",
-                "action": "request_pw_change",
-                "current_password": "AdminPassword2026!",
-                "new_password": "NewAdminPassword2026!",
-                "confirm_password": "NewAdminPassword2026!",
-            }, follow_redirects=True)
-            self.assertIn(b"CSRF validation failed", res.data)
 
     def test_admin_audit_logging_preserves_null_user_id(self):
         """Verify ADMIN_PROFILE_VIEW and ADMIN_PASSWORD_CHANGE create audit records with user_id=None."""
@@ -338,7 +299,6 @@ class TestAdminProfile(unittest.TestCase):
                 sess["admin_username"] = username
                 sess["admin_role"] = "Admin"
                 sess["role"] = "Admin"
-                sess["admin_csrf_token"] = "test_csrf_audit_log"
 
             # Profile GET triggers ADMIN_PROFILE_VIEW
             res = c.get("/admin/profile")

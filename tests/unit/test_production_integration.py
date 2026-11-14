@@ -112,16 +112,13 @@ class TestProductionIntegration(unittest.TestCase):
 
         app = create_app(config_class=TestConfig)
         client = app.test_client()
-
-        csrf_tok = "test_csrf_token_run_123"
         with client.session_transaction() as sess:
             sess["admin_authenticated"] = True
             sess["admin_user_id"] = 1
             sess["admin_username"] = "admin"
             sess["admin_role"] = "Admin"
-            sess["admin_csrf_token"] = csrf_tok
 
-        res = client.post("/api/run", json={"dry_run": True, "csrf_token": csrf_tok})
+        res = client.post("/api/run", json={"dry_run": True})
         self.assertIn(res.status_code, (202, 409, 503))
         if res.status_code == 202:
             data = res.get_json()

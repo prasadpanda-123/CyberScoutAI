@@ -93,10 +93,9 @@ async function runFullQA() {
 
   console.log('Authenticating user session...');
   await userAuthPage.evaluate(async () => {
-    const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
     await fetch('/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRFToken': csrf },
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({ username: 'test_e2e_user', password: 'E2ETestPassword2026!' })
     });
   });

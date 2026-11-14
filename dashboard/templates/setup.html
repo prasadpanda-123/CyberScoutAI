@@ -51,7 +51,6 @@
       </p>
 
       <form action="/setup" method="POST" class="space-y-4">
-        <input type="hidden" name="csrf_token" value="{{ session.get('user_csrf_token', '') }}">
         {% if setup_token_required %}
         <div>
           <label for="setup_token" class="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">Initial Setup Authorization Token</label>

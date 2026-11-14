@@ -21,14 +21,11 @@ class TestAdminPanelFeatures(unittest.TestCase):
 
     def setUp(self):
         self.client = self.app.test_client()
-        self.csrf_token = "admin-test-csrf-token"
         with self.client.session_transaction() as sess:
             sess["admin_authenticated"] = True
             sess["admin_user_id"] = 1
             sess["admin_username"] = "admin"
             sess["admin_role"] = "Admin"
-            sess["admin_csrf_token"] = self.csrf_token
-            sess["user_csrf_token"] = self.csrf_token
 
     def test_01_admin_users_get_default_users_tab(self):
         res = self.client.get("/admin/users")
@@ -50,7 +47,6 @@ class TestAdminPanelFeatures(unittest.TestCase):
         res = self.client.post(
             "/admin/users?tab=admins",
             data={
-                "csrf_token": self.csrf_token,
                 "action": "toggle_status",
                 "target_type": "admin",
                 "account_id": 1,
@@ -65,7 +61,6 @@ class TestAdminPanelFeatures(unittest.TestCase):
         res = self.client.post(
             "/admin/users?tab=admins",
             data={
-                "csrf_token": self.csrf_token,
                 "action": "delete_account",
                 "target_type": "admin",
                 "account_id": 1,
@@ -85,7 +80,6 @@ class TestAdminPanelFeatures(unittest.TestCase):
             res = self.client.post(
                 "/admin/users?tab=users",
                 data={
-                    "csrf_token": self.csrf_token,
                     "action": "toggle_status",
                     "target_type": "user",
                     "account_id": user_id,
@@ -103,7 +97,6 @@ class TestAdminPanelFeatures(unittest.TestCase):
             del_res = self.client.post(
                 "/admin/users?tab=users",
                 data={
-                    "csrf_token": self.csrf_token,
                     "action": "delete_account",
                     "target_type": "user",
                     "account_id": user_id,
@@ -119,7 +112,6 @@ class TestAdminPanelFeatures(unittest.TestCase):
 
     def test_06_admin_scheduler_api_actions(self):
         headers = {
-            "X-CSRF-Token": self.csrf_token,
             "X-Requested-With": "XMLHttpRequest",
             "Content-Type": "application/json",
         }
@@ -166,7 +158,6 @@ class TestAdminPanelFeatures(unittest.TestCase):
 
     def test_11_refresh_analytics_api_returns_success_and_count(self):
         headers = {
-            "X-CSRF-Token": self.csrf_token,
             "X-Requested-With": "XMLHttpRequest",
             "Content-Type": "application/json",
         }
@@ -179,7 +170,6 @@ class TestAdminPanelFeatures(unittest.TestCase):
 
     def test_12_db_info_api_returns_formatted_message(self):
         headers = {
-            "X-CSRF-Token": self.csrf_token,
             "X-Requested-With": "XMLHttpRequest",
             "Content-Type": "application/json",
         }

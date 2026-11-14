@@ -30,7 +30,6 @@ from src.database.scan_job_repository import ScanJobRepository
 class Phase2TestConfig(DashboardConfig):
     TESTING = True
     DEBUG = False
-    WTF_CSRF_ENABLED = False
 
 
 class TestPhase2JobPersistence(unittest.TestCase):

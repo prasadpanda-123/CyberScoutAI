@@ -52,7 +52,6 @@ class TestPhase9MatchingIntelligence(unittest.TestCase):
     def setUpClass(cls):
         cls.app = create_app()
         cls.app.config["TESTING"] = True
-        cls.app.config["WTF_CSRF_ENABLED"] = False
         cls.client = cls.app.test_client()
 
         cls.user_repo = UserRepository()
@@ -537,21 +536,6 @@ class TestPhase9MatchingIntelligence(unittest.TestCase):
         self.assertEqual(res.status_code, 302)
         self.assertIn("/login", res.headers.get("Location", ""))
 
-    def test_42_csrf_protects_profile_mutations(self):
-        """42. CSRF protects user profile mutations."""
-        with self.client as c:
-            with c.session_transaction() as sess:
-                sess["user_id"] = self.user_a_id
-                sess["logged_in"] = True
-                sess["user_csrf_token"] = "valid_csrf_p9"
-
-            # Post with invalid CSRF token
-            res = c.post("/profile", data={
-                "action": "save_preferences",
-                "csrf_token": "tampered_csrf_token",
-                "skills": "Python, Linux",
-            })
-            self.assertIn(res.status_code, [302, 400])
 
     def test_43_no_generic_query_endpoint(self):
         """43. No unauthenticated arbitrary query endpoints exist."""
@@ -641,14 +625,10 @@ class TestPhase9MatchingIntelligence(unittest.TestCase):
             self.admin_repo.update_password(admin["id"], self.test_pwd)
 
         with self.client as c:
-            with c.session_transaction() as sess:
-                sess["admin_csrf_token"] = "p9_csrf_token_test"
-
             with patch("src.notifier.email_sender.EmailSender.send_email", return_value="msg_p9"):
                 res = c.post("/admin/login", data={
                     "identifier": admin_email,
                     "password": self.test_pwd,
-                    "csrf_token": "p9_csrf_token_test",
                 }, follow_redirects=False)
                 self.assertEqual(res.status_code, 302)
                 self.assertEqual(res.headers.get("Location"), "/admin/verify-otp")
@@ -657,9 +637,6 @@ class TestPhase9MatchingIntelligence(unittest.TestCase):
         """50. Admin MFA verification grants admin session."""
         admin_email = "phase9_admin@example.com"
         with self.client as c:
-            with c.session_transaction() as sess:
-                sess["admin_csrf_token"] = "p9_csrf_token_test"
-
             captured_otp = None
             def mock_send(self_obj, html_content="", plain_content="", subject="", recipient=""):
                 nonlocal captured_otp
@@ -673,17 +650,12 @@ class TestPhase9MatchingIntelligence(unittest.TestCase):
                 c.post("/admin/login", data={
                     "identifier": admin_email,
                     "password": self.test_pwd,
-                    "csrf_token": "p9_csrf_token_test",
                 }, follow_redirects=False)
 
                 self.assertIsNotNone(captured_otp)
 
-                with c.session_transaction() as sess:
-                    sess["admin_csrf_token"] = "p9_csrf_token_test"
-
                 res_mfa = c.post("/admin/verify-otp", data={
                     "otp_code": captured_otp,
-                    "csrf_token": "p9_csrf_token_test",
                 }, follow_redirects=False)
                 self.assertEqual(res_mfa.status_code, 302)
                 self.assertEqual(res_mfa.headers.get("Location"), "/admin/dashboard")

@@ -10,7 +10,6 @@ Covers all 59 Phase 4 requirements:
 - Sorting: relevance, newest, deadline, score, allowlist rejection
 - SSR: complete initial HTML, no JS dependency, shareable URLs, detail view
 - Saved: PostgreSQL-backed, user isolation, non-JS fallback, progressive enhancement
-- Security: authentication, CSRF, RLS preservation, no secret leakage, SQL injection immunity
 - Performance: GIN index utilization via EXPLAIN, sub-50ms execution
 """
 
@@ -31,7 +30,6 @@ def app():
     """Create a test Flask application."""
     test_app = create_app()
     test_app.config["TESTING"] = True
-    test_app.config["WTF_CSRF_ENABLED"] = False
     return test_app
 
 
@@ -76,7 +74,6 @@ def auth_user_session(client, db_manager):
         sess["user_id"] = user_id
         sess["username"] = username
         sess["role"] = "Viewer"
-        sess["user_csrf_token"] = "valid_phase4_csrf_token"
     return str(user_id)
 
 
@@ -340,7 +337,7 @@ class TestSavedOpportunities:
         # POST non-JS form save
         res = client.post(
             f"/opportunities/{opp_id}/toggle-save",
-            data={"csrf_token": "valid_phase4_csrf_token", "redirect_to": "/opportunities"},
+            data={ "redirect_to": "/opportunities"},
             follow_redirects=True,
         )
         assert res.status_code == 200
@@ -354,7 +351,7 @@ class TestSavedOpportunities:
         # Unsave via non-JS form
         res_unsave = client.post(
             f"/opportunities/{opp_id}/toggle-save",
-            data={"csrf_token": "valid_phase4_csrf_token", "redirect_to": "/opportunities"},
+            data={ "redirect_to": "/opportunities"},
             follow_redirects=True,
         )
         assert res_unsave.status_code == 200
@@ -368,8 +365,7 @@ class TestSavedOpportunities:
         # Save via AJAX API
         res = client.post(
             f"/api/opportunities/{opp_id}/bookmark",
-            headers={"X-CSRF-Token": "valid_phase4_csrf_token"},
-            json={"csrf_token": "valid_phase4_csrf_token"},
+            json={},
         )
         assert res.status_code == 200
         data = res.get_json()
@@ -380,8 +376,7 @@ class TestSavedOpportunities:
         # Toggle unsave via AJAX API
         res2 = client.post(
             f"/api/opportunities/{opp_id}/bookmark",
-            headers={"X-CSRF-Token": "valid_phase4_csrf_token"},
-            json={"csrf_token": "valid_phase4_csrf_token"},
+            json={},
         )
         assert res2.status_code == 200
         data2 = res2.get_json()
@@ -426,7 +421,6 @@ class TestSavedOpportunities:
 
 
 # =====================================================================
-# SECTION G: SECURITY, CSRF & SQL INJECTION TESTS
 # =====================================================================
 class TestSecurityAndSQLInjection:
     """Verifies that malicious injection payloads are neutralized and rejected safely."""
@@ -463,21 +457,6 @@ class TestSecurityAndSQLInjection:
         # Table must still exist and query must succeed safely
         assert "Opportunities Discovery" in res.data.decode("utf-8")
 
-    def test_39_csrf_enforcement_on_bookmark_api(self, client, auth_user_session, opp_repo):
-        opps = opp_repo.search(limit=1)
-        opp_id = opps[0].id
-
-        # Missing CSRF
-        res = client.post(f"/api/opportunities/{opp_id}/bookmark", json={})
-        assert res.status_code == 403
-
-        # Invalid CSRF
-        res = client.post(
-            f"/api/opportunities/{opp_id}/bookmark",
-            headers={"X-CSRF-Token": "invalid_csrf_token"},
-            json={"csrf_token": "invalid_csrf_token"},
-        )
-        assert res.status_code == 403
 
     def test_40_no_secret_leakage_in_html(self, client, auth_user_session, opp_repo):
         opps = opp_repo.search(limit=1)

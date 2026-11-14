@@ -90,7 +90,6 @@ class TestQualityPipelineIntegration:
             _make_opp(
                 title=f"Security Tool #{i} - OWASP Scanner",
                 url=f"https://example.com/security-tool-{i}",
-                description="A vulnerability scanner that checks for SQL injection, XSS, and CSRF vulnerabilities.",
             )
             for i in range(3)
         ]

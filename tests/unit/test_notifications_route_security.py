@@ -2,50 +2,14 @@ import pytest
 from flask import Flask, request, session
 from unittest.mock import MagicMock, patch
 
-from dashboard.routes.notifications import _verify_csrf, notifications_bp
+from dashboard.routes.notifications import notifications_bp
 from src.models.recommendation_models import UserPreferencesDTO
 
 
-@pytest.mark.parametrize("header_name", ["X-CSRF-Token", "X-CSRFToken"])
-def test_json_requests_accept_csrf_header_variants(header_name):
-    app = Flask(__name__)
-    app.secret_key = "unit-test-secret"
-
-    with app.test_request_context(
-        "/notifications/mark-read",
-        method="POST",
-        json={"notification_id": "notification-id"},
-        headers={header_name: "valid-token"},
-    ):
-        session["csrf_token"] = "valid-token"
-        assert _verify_csrf(request)
 
 
-def test_json_request_accepts_csrf_body_token():
-    app = Flask(__name__)
-    app.secret_key = "unit-test-secret"
-
-    with app.test_request_context(
-        "/notifications/preferences",
-        method="POST",
-        json={"csrf_token": "valid-token"},
-    ):
-        session["csrf_token"] = "valid-token"
-        assert _verify_csrf(request)
 
 
-def test_json_request_rejects_missing_or_mismatched_csrf_token():
-    app = Flask(__name__)
-    app.secret_key = "unit-test-secret"
-
-    with app.test_request_context(
-        "/notifications/preferences",
-        method="POST",
-        json={"email_notifications_enabled": True},
-        headers={"X-CSRFToken": "wrong-token"},
-    ):
-        session["csrf_token"] = "valid-token"
-        assert not _verify_csrf(request)
 
 
 def _client_with_user():
@@ -55,7 +19,6 @@ def _client_with_user():
     client = app.test_client()
     with client.session_transaction() as user_session:
         user_session["user_id"] = "a22d7d79-52f7-49b0-9003-1769f7d93155"
-        user_session["csrf_token"] = "valid-token"
     return client
 
 
@@ -86,7 +49,6 @@ def test_preferences_json_update_preserves_unsubmitted_preferences():
         response = _client_with_user().post(
             "/notifications/preferences",
             json={"email_notifications_enabled": False, "delivery_mode": "digest", "digest_frequency": "weekly"},
-            headers={"X-CSRFToken": "valid-token"},
         )
 
     saved_preferences = repo.save_preferences.call_args.kwargs["preferences"]
@@ -95,17 +57,3 @@ def test_preferences_json_update_preserves_unsubmitted_preferences():
     assert saved_preferences.skills == ["python"]
     assert saved_preferences.delivery_mode == "digest"
     assert saved_preferences.digest_frequency == "weekly"
-
-
-def test_preferences_json_update_requires_csrf():
-    with patch("dashboard.routes.notifications.DatabaseManager"), patch(
-        "dashboard.routes.notifications.UserPreferencesRepository"
-    ) as repository:
-        response = _client_with_user().post(
-            "/notifications/preferences",
-            json={"email_notifications_enabled": False},
-            headers={"X-CSRFToken": "incorrect-token"},
-        )
-
-    assert response.status_code == 403
-    repository.assert_not_called()

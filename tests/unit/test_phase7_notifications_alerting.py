@@ -10,7 +10,6 @@ Comprehensive verification of:
 6. DIGEST DELIVERY (Scenarios 29-33)
 7. RETRY & FAILURE HANDLING (Scenarios 34-38)
 8. NOTIFICATION PREFERENCES (Scenarios 39-42)
-9. SECURITY & CSRF (Scenarios 43-46)
 """
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -1072,7 +1071,6 @@ class TestPhase7NotificationsAlerting(unittest.TestCase):
         self.assertFalse(is_in_quiet_hours("22:00", "08:00", "UTC", now_utc=now_noon))
 
     # =========================================================================
-    # 9. SECURITY & CSRF (Scenarios 43 - 46)
     # =========================================================================
 
     def test_43_unauthorized_notification_access_redirects(self):
@@ -1081,19 +1079,6 @@ class TestPhase7NotificationsAlerting(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn("/login", response.headers.get("Location", ""))
 
-    def test_44_csrf_protection_on_mark_read_and_preferences(self):
-        """Scenario 44: Forged POST to /notifications/mark-read or /preferences fails without CSRF."""
-        with self.client.session_transaction() as sess:
-            sess["user_id"] = self.user_a_id
-            sess["user_csrf_token"] = "valid-token-123456"
-
-        # POST without CSRF token
-        res_read = self.client.post("/notifications/mark-read", json={"notification_id": "fake"})
-        self.assertEqual(res_read.status_code, 403)
-
-        res_pref = self.client.post("/notifications/preferences", data={"delivery_mode": "DIGEST"})
-        # Should redirect with danger flash because of CSRF mismatch
-        self.assertEqual(res_pref.status_code, 302)
 
     def test_45_admin_observability_requires_admin(self):
         """Scenario 45: Operational /admin/email requires admin RBAC."""

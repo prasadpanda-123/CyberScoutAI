@@ -183,7 +183,6 @@
 
         <!-- Logout Action -->
         <form action="{{ url_for('admin_ui.admin_logout') }}" method="post" class="inline-flex">
-          <input type="hidden" name="csrf_token" value="{{ session.get('admin_csrf_token', '') }}">
           <button type="submit" class="a-topbar-logout" title="End administrative session">
             <span class="material-symbols-outlined" style="font-size:15px;">logout</span>
             <span>Exit</span>

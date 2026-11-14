@@ -1,8 +1,8 @@
 """
 Admin Security Manager for CyberScout AI v2.2.
 
-Provides password validation, rate limiting, account lockout, CSRF token management,
-session regeneration, and audit logging hooks for the Administrative Portal.
+Provides password validation, rate limiting, account lockout, session regeneration,
+and audit logging hooks for the Administrative Portal.
 """
 
 import datetime
@@ -138,18 +138,6 @@ class AdminSecurityManager:
             except Exception as e:
                 logger.warning(f"Error resetting failed attempts in distributed repository: {e}")
 
-
-    @staticmethod
-    def generate_csrf_token() -> str:
-        """Generates a secure cryptographically random CSRF token."""
-        return secrets.token_hex(32)
-
-    @staticmethod
-    def verify_csrf_token(session_token: Optional[str], form_token: Optional[str]) -> bool:
-        """Validates submitted CSRF token against session token."""
-        if not session_token or not form_token:
-            return False
-        return secrets.compare_digest(session_token, form_token)
 
     @staticmethod
     def generate_otp_code() -> str:

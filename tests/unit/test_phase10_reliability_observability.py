@@ -42,7 +42,6 @@ class TestPhase10ReliabilityObservability(unittest.TestCase):
     def setUpClass(cls):
         cls.app = create_app()
         cls.app.config["TESTING"] = True
-        cls.app.config["WTF_CSRF_ENABLED"] = False
         cls.client = cls.app.test_client()
 
         cls.db_manager = DatabaseManager()
@@ -585,14 +584,10 @@ class TestPhase10ReliabilityObservability(unittest.TestCase):
     def test_37_admin_login_reaches_mfa(self):
         """37. Admin login reaches MFA challenge."""
         with self.client as c:
-            with c.session_transaction() as sess:
-                sess["admin_csrf_token"] = "p10_csrf_token_test"
-
             with patch("src.notifier.email_sender.EmailSender.send_email", return_value="msg_p10"):
                 res = c.post("/admin/login", data={
                     "identifier": self.test_admin_email,
                     "password": self.test_pwd,
-                    "csrf_token": "p10_csrf_token_test",
                 }, follow_redirects=False)
                 self.assertEqual(res.status_code, 302)
                 self.assertEqual(res.headers.get("Location"), "/admin/verify-otp")
@@ -600,9 +595,6 @@ class TestPhase10ReliabilityObservability(unittest.TestCase):
     def test_38_mfa_verification_works(self):
         """38. Admin MFA challenge verifies and establishes admin session."""
         with self.client as c:
-            with c.session_transaction() as sess:
-                sess["admin_csrf_token"] = "p10_csrf_token_test"
-
             captured_otp = None
             def mock_send(self_obj, html_content="", plain_content="", subject="", recipient=""):
                 nonlocal captured_otp
@@ -615,17 +607,12 @@ class TestPhase10ReliabilityObservability(unittest.TestCase):
                 c.post("/admin/login", data={
                     "identifier": self.test_admin_email,
                     "password": self.test_pwd,
-                    "csrf_token": "p10_csrf_token_test",
                 }, follow_redirects=False)
 
                 self.assertIsNotNone(captured_otp)
 
-                with c.session_transaction() as sess:
-                    sess["admin_csrf_token"] = "p10_csrf_token_test"
-
                 res_mfa = c.post("/admin/verify-otp", data={
                     "otp_code": captured_otp,
-                    "csrf_token": "p10_csrf_token_test",
                 }, follow_redirects=False)
                 self.assertEqual(res_mfa.status_code, 302)
                 self.assertEqual(res_mfa.headers.get("Location"), "/admin/dashboard")
@@ -682,21 +669,6 @@ class TestPhase10ReliabilityObservability(unittest.TestCase):
         rls_status = self.db_manager.verify_rls_policies()
         self.assertTrue(rls_status.get("is_configured"))
 
-    def test_44_csrf_remains_enforced_on_quarantine_actions(self):
-        """44. CSRF protection prevents unauthenticated/tampered mutations."""
-        with self.client as c:
-            with c.session_transaction() as sess:
-                sess["admin_authenticated"] = True
-                sess["admin_username"] = "admin"
-                sess["admin_role"] = "Administrator"
-                sess["admin_csrf_token"] = "valid-csrf-token"
-
-            res = c.post(
-                "/admin/quarantine/action",
-                data={"action": "approve", "opportunity_id": "test-1", "csrf_token": "wrong-token"},
-                follow_redirects=True,
-            )
-            self.assertIn(b"CSRF validation failed", res.data)
 
     def test_45_no_dangerous_diagnostic_endpoints(self):
         """45. Arbitrary query execution endpoint does not exist."""

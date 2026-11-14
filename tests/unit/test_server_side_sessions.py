@@ -3,7 +3,6 @@ Dedicated Regression and Security Unit Tests for Server-Side Session State & Opa
 
 Verifies:
 1. Client-side session cookie contains ONLY an opaque, cryptographically random identifier.
-2. Cookie contains ZERO JSON, zero identity, zero roles, zero user IDs, zero email, and zero CSRF tokens.
 3. Session rotation occurs at login, admin login, and MFA completion (session fixation prevention).
 4. Server-side session store correctly enforces revocation and expiration.
 5. Old session cookies cannot authenticate after logout (replay rejection).
@@ -93,7 +92,6 @@ class TestServerSideSessions(unittest.TestCase):
         self.assertNotIn("user_id", raw_cookie)
         self.assertNotIn("role", raw_cookie)
         self.assertNotIn("email", raw_cookie)
-        self.assertNotIn("user_csrf_token", raw_cookie)
         self.assertNotIn("{", raw_cookie)
         self.assertNotIn("}", raw_cookie)
 
@@ -124,15 +122,10 @@ class TestServerSideSessions(unittest.TestCase):
         )
         self.assertIsNotNone(admin)
 
-        # Seed CSRF in session
         with self.client as c:
-            with c.session_transaction() as sess:
-                sess["admin_csrf_token"] = "csrf_token_admin_test_1234567890123456"
-
             res = c.post("/admin/login", data={
                 "identifier": admin_email,
                 "password": password,
-                "csrf_token": "csrf_token_admin_test_1234567890123456",
             })
 
             cookie_val = self._extract_session_cookie(res)
@@ -145,7 +138,6 @@ class TestServerSideSessions(unittest.TestCase):
             self.assertNotIn("admin_authenticated", cookie_val)
             self.assertNotIn("admin_user_id", cookie_val)
             self.assertNotIn("admin_role", cookie_val)
-            self.assertNotIn("admin_csrf_token", cookie_val)
             self.assertNotIn("{", cookie_val)
 
     def test_session_rotation_on_login_prevents_session_fixation(self):

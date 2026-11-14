@@ -2,7 +2,6 @@
 Unit Tests for Dashboard System Control Actions (All 11 Endpoints).
 
 Validates:
-- Authentication & CSRF protections
 - Asynchronous action launching & tracking via ActionJobManager
 - Measurable stage progress reporting & job telemetry
 - Destructive operation confirmation safeguards & preview endpoint
@@ -26,13 +25,11 @@ def client():
     from dashboard.app import create_app
     app = create_app()
     app.config["TESTING"] = True
-    app.config["WTF_CSRF_ENABLED"] = False
 
     with app.test_client() as test_client:
         with test_client.session_transaction() as sess:
             sess["admin_authenticated"] = True
             sess["admin_username"] = "admin"
-            sess["admin_csrf_token"] = "test_csrf_token_12345"
             sess["user_id"] = "admin-uuid-1234"
         yield test_client
 
@@ -81,7 +78,7 @@ def test_unauthenticated_requests_blocked(client):
 
     for method, ep in endpoints:
         if method == "POST":
-            res = client.post(ep, headers={"X-CSRF-Token": "invalid", "X-Requested-With": "XMLHttpRequest"})
+            res = client.post(ep, headers={ "X-Requested-With": "XMLHttpRequest"})
         else:
             res = client.get(ep, headers={"X-Requested-With": "XMLHttpRequest"})
         # Should redirect to login (302) or return 401/403
@@ -116,25 +113,6 @@ def test_admin_scheduler_status_reports_runtime_state(client):
     assert data["report_schedule"]["next_run"] == status["next_run"]
 
 
-def test_csrf_token_missing_rejected(client):
-    """Verifies that mutating action endpoints reject requests missing CSRF token."""
-    post_endpoints = [
-        "/admin/api/run",
-        "/admin/api/email/test",
-        "/admin/api/report/trigger",
-        "/admin/api/analytics/refresh",
-        "/admin/api/scheduler/pause",
-        "/admin/api/scheduler/resume",
-        "/admin/api/scheduler/restart",
-        "/admin/api/opportunities/clear-old",
-        "/admin/api/db/reconnect",
-    ]
-
-    for ep in post_endpoints:
-        res = client.post(ep, headers={"X-Requested-With": "XMLHttpRequest"})
-        assert res.status_code == 403, f"Endpoint {ep} did not enforce CSRF protection"
-        data = res.get_json()
-        assert data.get("success") is False
 
 
 def test_get_active_action_endpoint(client):
@@ -172,7 +150,7 @@ def test_execute_scan_now_endpoint(client):
     """Verifies POST /admin/api/run triggers scan and returns accepted 202."""
     with patch("dashboard.services.api_service.APIService.trigger_scan") as mock_scan:
         mock_scan.return_value = {"success": True, "job_id": "job-abc12345", "status": "started"}
-        res = client.post("/admin/api/run", headers={"X-CSRF-Token": "test_csrf_token_12345"})
+        res = client.post("/admin/api/run", )
         assert res.status_code == 202
         data = res.get_json()
         assert data.get("success") is True
@@ -184,7 +162,7 @@ def test_send_test_email_endpoint(client):
     """Verifies POST /admin/api/email/test launches asynchronous job with stages."""
     with patch("dashboard.services.api_service.APIService.send_test_email") as mock_email:
         mock_email.return_value = {"success": True, "status": "completed", "message": "Email sent"}
-        res = client.post("/admin/api/email/test", headers={"X-CSRF-Token": "test_csrf_token_12345"})
+        res = client.post("/admin/api/email/test", )
         assert res.status_code == 202
         data = res.get_json()
         assert data.get("success") is True
@@ -202,7 +180,7 @@ def test_send_daily_report_now_endpoint(client):
     """Verifies POST /admin/api/report/trigger launches asynchronous report job."""
     with patch("dashboard.services.api_service.APIService.send_daily_report_now") as mock_report:
         mock_report.return_value = {"success": True, "status": "completed", "message": "Daily report sent"}
-        res = client.post("/admin/api/report/trigger", headers={"X-CSRF-Token": "test_csrf_token_12345"})
+        res = client.post("/admin/api/report/trigger", )
         assert res.status_code == 202
         data = res.get_json()
         assert data.get("success") is True
@@ -214,7 +192,7 @@ def test_refresh_analytics_endpoint(client):
     """Verifies POST /admin/api/analytics/refresh recalculates provider statistics."""
     with patch("dashboard.services.api_service.APIService.refresh_analytics") as mock_analytics:
         mock_analytics.return_value = {"success": True, "status": "completed", "recalculated_providers": 8}
-        res = client.post("/admin/api/analytics/refresh", headers={"X-CSRF-Token": "test_csrf_token_12345"})
+        res = client.post("/admin/api/analytics/refresh", )
         assert res.status_code == 202
         data = res.get_json()
         assert data.get("success") is True
@@ -224,7 +202,7 @@ def test_refresh_analytics_endpoint(client):
 
 def test_scheduler_lifecycle_actions(client):
     """Verifies Pause, Resume, and Restart scheduler control actions."""
-    headers = {"X-CSRF-Token": "test_csrf_token_12345"}
+    headers = {}
 
     with patch("dashboard.services.api_service.APIService.pause_scheduler") as mock_p:
         mock_p.return_value = {"success": True, "status": "paused", "message": "Scheduler paused"}
@@ -247,7 +225,7 @@ def test_scheduler_lifecycle_actions(client):
 
 def test_purge_records_requires_confirmation(client):
     """Verifies POST /admin/api/opportunities/clear-old rejects execution without explicit confirmation."""
-    headers = {"X-CSRF-Token": "test_csrf_token_12345", "Content-Type": "application/json"}
+    headers = { "Content-Type": "application/json"}
 
     # Attempt 1: Empty body
     res1 = client.post("/admin/api/opportunities/clear-old", headers=headers, data=json.dumps({}))
@@ -262,7 +240,7 @@ def test_purge_records_requires_confirmation(client):
 
 def test_purge_records_preview_and_confirmed_execution(client):
     """Verifies GET preview and POST confirmed execution for purge records."""
-    headers = {"X-CSRF-Token": "test_csrf_token_12345", "Content-Type": "application/json"}
+    headers = { "Content-Type": "application/json"}
 
     # Test preview
     res_prev = client.get("/admin/api/opportunities/clear-old/preview?days=30")
@@ -288,7 +266,7 @@ def test_purge_records_preview_and_confirmed_execution(client):
 
 def test_db_ping_endpoint(client):
     """Verifies POST /admin/api/db/test returns connectivity and latency metrics."""
-    res = client.post("/admin/api/db/test", headers={"X-CSRF-Token": "test_csrf_token_12345"})
+    res = client.post("/admin/api/db/test", )
     assert res.status_code == 200
     data = res.get_json()
     assert "success" in data
@@ -301,7 +279,7 @@ def test_db_reconnect_endpoint(client):
     """Verifies POST /admin/api/db/reconnect disposes pool and launches reconnect job."""
     with patch("dashboard.services.api_service.APIService.reconnect_database") as mock_recon:
         mock_recon.return_value = {"success": True, "status": "connected", "latency_ms": 1.5}
-        res = client.post("/admin/api/db/reconnect", headers={"X-CSRF-Token": "test_csrf_token_12345"})
+        res = client.post("/admin/api/db/reconnect", )
         assert res.status_code == 202
         data = res.get_json()
         assert data.get("success") is True

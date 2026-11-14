@@ -15,7 +15,6 @@
 
     {% if opportunity %}
       <form method="POST" action="/opportunities/{{ opportunity.id }}/toggle-save" class="bookmark-form inline-block" data-opp-id="{{ opportunity.id }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
         <button type="submit" class="bookmark-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-subtle bg-surface hover:bg-surface-container text-xs font-semibold {% if opportunity.is_saved %}text-warning border-warning/30{% else %}text-text-secondary hover:text-text-primary{% endif %} transition-colors">
           <span class="material-symbols-outlined text-[18px] {% if opportunity.is_saved %}text-warning icon-fill{% endif %}">
@@ -416,7 +415,6 @@
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const oppId = form.getAttribute('data-opp-id');
-        const csrfToken = form.querySelector('input[name="csrf_token"]').value;
         const btn = form.querySelector('.bookmark-btn');
         const star = btn.querySelector('.material-symbols-outlined');
         const label = btn.querySelector('.save-label');
@@ -426,9 +424,7 @@
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'X-CSRF-Token': csrfToken
             },
-            body: JSON.stringify({ csrf_token: csrfToken })
           });
 
           if (res.ok) {

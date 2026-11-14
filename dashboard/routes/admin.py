@@ -37,17 +37,6 @@ stats_service = StatisticsService()
 api_service = APIService()
 
 
-@admin_bp.before_request
-def ensure_csrf_token():
-    """Ensures a CSRF token is present in the admin session."""
-    try:
-        if "admin_csrf_token" not in session:
-            session["admin_csrf_token"] = AdminSecurityManager.generate_csrf_token()
-    except Exception as e:
-        from src.core.logging import get_logger
-        get_logger(__name__).warning(f"Error generating admin_csrf_token: {e}")
-
-
 @admin_bp.route("", methods=["GET"])
 @admin_bp.route("/", methods=["GET"])
 def admin_root():
@@ -86,7 +75,6 @@ def admin_login():
                     json_data.get("admin_password", "").strip()
                     or json_data.get("password", "").strip()
                 )
-                csrf_token = (json_data.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or "").strip()
                 raw_next = json_data.get("next") or request.args.get("next")
             else:
                 identifier = (
@@ -98,23 +86,11 @@ def admin_login():
                     request.form.get("admin_password", "").strip()
                     or request.form.get("password", "").strip()
                 )
-                csrf_token = (request.form.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or "").strip()
                 raw_next = request.form.get("next") or request.args.get("next")
 
             next_url: str = raw_next if (raw_next and is_safe_internal_url(raw_next)) else url_for("admin_ui.admin_dashboard")
 
-            # 1. Validate CSRF Token
-            if not AdminSecurityManager.verify_csrf_token(session.get("admin_csrf_token"), csrf_token):
-                if is_json:
-                    return jsonify({"status": "failed", "error": "CSRF validation failed. Please try again."}), 400
-                flash("CSRF validation failed. Please try again.", "danger")
-                try:
-                    audit_repo.log_event("AUTH", "ADMIN_LOGIN", "FAILED", username=identifier, source_ip=client_ip, details="CSRF token mismatch")
-                except Exception:
-                    pass
-                return render_template("admin/admin_login.html", next=next_url)
-
-            # 2. Atomically reserve a shared login attempt before password verification.
+            # Atomically reserve a shared login attempt before password verification.
             try:
                 login_attempt_allowed = AdminSecurityManager.consume_login_attempt(client_ip, identifier)
             except Exception as e:
@@ -340,18 +316,10 @@ def admin_verify_otp():
 
         if is_json and json_data:
             action = (json_data.get("action") or "").strip()
-            csrf_token = (json_data.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or "").strip()
             raw_code = (json_data.get("otp") or json_data.get("otp_code") or "").strip()
         else:
             action = request.form.get("action", "").strip()
-            csrf_token = (request.form.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or "").strip()
             raw_code = request.form.get("otp_code", "")
-
-        if not AdminSecurityManager.verify_csrf_token(session.get("admin_csrf_token"), csrf_token):
-            if is_json:
-                return jsonify({"status": "failed", "error": "CSRF validation failed."}), 400
-            flash("CSRF validation failed.", "danger")
-            return render_template("admin/admin_verify_otp.html", username=username)
 
         # Handle Resend OTP Action
         if action == "resend":
@@ -427,7 +395,6 @@ def admin_verify_otp():
             session["admin_username"] = username
             session["admin_role"] = role
             session["role"] = role
-            session["admin_csrf_token"] = AdminSecurityManager.generate_csrf_token()
             session["admin_login_at"] = int(time.time())
             session.modified = True
 
@@ -469,16 +436,8 @@ def admin_verify_otp():
 
 @admin_bp.route("/logout", methods=["POST"])
 def admin_logout():
-    """Clears administrative session namespace using a CSRF-protected POST."""
+    """Clears the administrative session namespace."""
     client_ip = get_client_ip(request)
-    submitted_csrf = (
-        request.headers.get("X-CSRF-Token")
-        or request.headers.get("X-CSRFToken")
-        or request.form.get("csrf_token", "")
-    )
-    expected_csrf = session.get("admin_csrf_token")
-    if not AdminSecurityManager.verify_csrf_token(expected_csrf, submitted_csrf.strip() if isinstance(submitted_csrf, str) else ""):
-        return jsonify({"status": "failed", "error": "CSRF validation failed."}), 400
     admin_user = session.get("admin_username")
 
     if admin_user:
@@ -691,25 +650,6 @@ def admin_users():
     tab = request.args.get("tab", "users")
 
     if request.method == "POST":
-        csrf_token = request.form.get("csrf_token", "").strip() or request.headers.get("X-CSRF-Token", "").strip()
-        expected_csrf = session.get("admin_csrf_token")
-        if not expected_csrf or not AdminSecurityManager.verify_csrf_token(expected_csrf, csrf_token):
-            flash("CSRF validation failed.", "danger")
-            client_ip = get_client_ip(request)
-            try:
-                audit_repo.log_event("USER_MGMT", "CSRF_FAILURE", "FAILED", username=session.get("admin_username"), source_ip=client_ip, details="CSRF token validation failed")
-            except Exception:
-                pass
-            users_list = user_repo.list_users()
-            admins_list = admin_repo.get_all()
-            return render_template(
-                "admin/admin_users.html",
-                active_page="admin_users",
-                users=users_list,
-                admins=admins_list,
-                active_tab=tab,
-            ), 403
-
         action = request.form.get("action")
         client_ip = get_client_ip(request)
         curr_admin_id = session.get("admin_user_id")
@@ -963,20 +903,6 @@ def admin_profile():
         pending_state = None
 
     if request.method == "POST":
-        csrf_token = request.form.get("csrf_token", "").strip()
-        if not AdminSecurityManager.verify_csrf_token(session.get("admin_csrf_token"), csrf_token):
-            audit_repo.log_event(
-                "AUTH",
-                "ADMIN_PASSWORD_CHANGE",
-                "CSRF_FAILED",
-                user_id=None,
-                username=resolved_username,
-                source_ip=client_ip,
-                details="CSRF token validation failed on admin password change",
-            )
-            flash("CSRF validation failed. Please try again.", "danger")
-            return redirect(url_for("admin_ui.admin_profile"))
-
         action = request.form.get("action", "request_pw_change")
 
         # Action 1: Cancel Pending OTP
@@ -1272,7 +1198,6 @@ def admin_profile():
     return render_template(
         "admin/admin_profile.html",
         active_page="admin_profile",
-        csrf_token=session.get("admin_csrf_token", ""),
         admin_info=admin_info,
         pending_otp=bool(pending_state),
         masked_email=AdminSecurityManager.mask_email(pending_state.get("email") or resolved_email) if pending_state else "",
@@ -1303,7 +1228,6 @@ def admin_source_health():
         healthy_count=healthy_count,
         degraded_count=degraded_count,
         failed_count=failed_count,
-        csrf_token=session.get("admin_csrf_token", ""),
     )
 
 
@@ -1417,14 +1341,13 @@ def admin_data_quality():
         active_page="admin_data_quality",
         metrics=metrics,
         quarantined_records=quarantined_samples,
-        csrf_token=session.get("admin_csrf_token", ""),
     )
 
 
 @admin_bp.route("/quarantine/action", methods=["POST"])
 @admin_required
 def admin_quarantine_action():
-    """Admin-only action to approve or reject/archive quarantined records with CSRF and audit logging."""
+    """Admin-only action to approve or reject/archive quarantined records with audit logging."""
     client_ip = get_client_ip(request)
     resolved_username = session.get("admin_username") or "admin"
     json_payload = request.get_json(silent=True)
@@ -1434,20 +1357,6 @@ def admin_quarantine_action():
         or request.headers.get("X-Requested-With") == "XMLHttpRequest"
     )
     payload = json_payload if isinstance(json_payload, dict) else {}
-    raw_csrf_token = (
-        request.headers.get("X-CSRFToken")
-        or request.headers.get("X-CSRF-Token")
-        or payload.get("csrf_token")
-        or request.form.get("csrf_token", "")
-    )
-    csrf_token = raw_csrf_token.strip() if isinstance(raw_csrf_token, str) else ""
-
-    if not AdminSecurityManager.verify_csrf_token(session.get("admin_csrf_token"), csrf_token):
-        if is_json:
-            return jsonify({"status": "failed", "error": "CSRF validation failed."}), 403
-        flash("CSRF validation failed.", "danger")
-        return redirect(url_for("admin_ui.admin_data_quality"))
-
     action_value = payload.get("action", request.form.get("action", ""))
     id_value = payload.get("opportunity_id") or payload.get("item_id") or request.form.get("opportunity_id") or request.form.get("item_id", "")
     record_type_value = payload.get("record_type") or payload.get("type") or request.form.get("record_type", "")

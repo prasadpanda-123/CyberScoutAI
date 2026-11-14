@@ -49,23 +49,7 @@ class TestAdminQuarantineApi(unittest.TestCase):
             sess["admin_authenticated"] = True
             sess["admin_username"] = "reviewer"
             sess["admin_role"] = "Administrator"
-            sess["admin_csrf_token"] = "valid-csrf-token"
 
-    def test_json_quarantine_action_requires_valid_csrf(self):
-        self._authenticate_admin()
-        with patch("src.database.connection.DatabaseManager") as database_manager:
-            response = self.client.post(
-                "/admin/quarantine/action",
-                json={
-                    "action": "approve",
-                    "item_id": "candidate-1",
-                    "record_type": "Production Opportunity",
-                },
-                headers={"X-CSRFToken": "invalid"},
-            )
-        self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.json["status"], "failed")
-        database_manager.assert_not_called()
 
     def test_json_quarantine_action_updates_and_reports_success(self):
         self._authenticate_admin()
@@ -79,7 +63,6 @@ class TestAdminQuarantineApi(unittest.TestCase):
                     "item_id": "candidate-1",
                     "record_type": "Production Opportunity",
                 },
-                headers={"X-CSRFToken": "valid-csrf-token"},
             )
 
         self.assertEqual(response.status_code, 200)
@@ -101,7 +84,6 @@ class TestAdminQuarantineApi(unittest.TestCase):
                     "item_id": "candidate-2",
                     "record_type": "Staged Candidate",
                 },
-                headers={"X-CSRFToken": "valid-csrf-token"},
             )
 
         self.assertEqual(response.status_code, 200)

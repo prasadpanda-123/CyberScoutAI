@@ -97,14 +97,9 @@ class TestPhase1SecurityBoundary(unittest.TestCase):
 
         # Step 1: Submit admin credentials at /admin/login
         with self.client as c:
-            # Set CSRF token in session
-            with c.session_transaction() as sess:
-                sess["admin_csrf_token"] = "test_csrf_token_12345678901234567890123456789012"
-
             res = c.post("/admin/login", data={
                 "identifier": admin_email,
                 "password": "AdminPassword2026!",
-                "csrf_token": "test_csrf_token_12345678901234567890123456789012",
             })
             # Should proceed to OTP page or set pending MFA
             self.assertIn(res.status_code, (200, 302))

@@ -78,10 +78,7 @@ class TestSecurityAuth(unittest.TestCase):
             role="Viewer",
         )
         # Log in as Viewer
-        csrf = "csrf_test_viewer_token_val"
-        with self.client.session_transaction() as sess:
-            sess["user_csrf_token"] = csrf
-        self.client.post("/login", data={"identifier": email, "password": "ViewerPassword2026!", "csrf_token": csrf})
+        self.client.post("/login", data={"identifier": email, "password": "ViewerPassword2026!"})
 
         # Viewer trying to access Super Admin / Admin config route
         res = self.client.get("/configuration")
@@ -161,10 +158,7 @@ class TestSecurityAuth(unittest.TestCase):
         self.user_repo.create_user(username=username, email=email, password="UserPass2026!", role="Viewer")
 
         user_client = self.app.test_client()
-        csrf = "csrf_test_user_flow_val"
-        with user_client.session_transaction() as sess:
-            sess["user_csrf_token"] = csrf
-        login_res = user_client.post("/login", data={"identifier": email, "password": "UserPass2026!", "csrf_token": csrf})
+        login_res = user_client.post("/login", data={"identifier": email, "password": "UserPass2026!"})
         self.assertEqual(login_res.status_code, 302)
 
         # Access protected pages & verify sidebar links
@@ -188,18 +182,12 @@ class TestSecurityAuth(unittest.TestCase):
         ts_id = int(time.time() * 1000)
         email = f"hacker_{ts_id}@cyberscout.ai"
         username = f"hacker_{ts_id}"
-
-        csrf = "csrf_test_register_val"
-        with self.client.session_transaction() as sess:
-            sess["user_csrf_token"] = csrf
-
         res = self.client.post("/register", data={
             "username": username,
             "email": email,
             "password": "HackerPass123!",
             "confirm_password": "HackerPass123!",
             "role": "Super Admin",
-            "csrf_token": csrf,
         })
         self.assertEqual(res.status_code, 302)
 

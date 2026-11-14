@@ -161,7 +161,7 @@ def classify_failure(
             suggested_action="Verify user identity and RLS policy rules.",
         )
 
-    if any(term in exc_msg for term in ("invalid credentials", "invalid password", "bad otp", "csrf token")):
+    if any(term in exc_msg for term in ("invalid credentials", "invalid password", "bad otp")):
         return FailureCategoryInfo(
             category=FailureCategory.AUTHENTICATION,
             is_retryable=False,

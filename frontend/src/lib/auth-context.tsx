@@ -36,13 +36,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkAuth = async () => {
     try {
       const res = await getCurrentSession()
-      if (res?.csrf_token) {
-        const meta = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
-        if (meta) {
-          meta.content = res.csrf_token
-        }
-      }
-
       if (res && res.authenticated && res.user) {
         setUser(res.user)
         setIsAuthenticated(true)
@@ -74,10 +67,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setUser(null)
     setIsAuthenticated(false)
-    const csrfMeta = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
-    if (csrfMeta) {
-      csrfMeta.content = ""
-    }
     window.location.href = "/app/login"
     return true
   }

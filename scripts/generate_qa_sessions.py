@@ -1,5 +1,4 @@
 import json
-import secrets
 from datetime import datetime, timedelta, timezone
 from dashboard.sessions import hash_session_id
 from src.database.session_repository import SessionRepository
@@ -17,7 +16,6 @@ admin_data = {
     "admin_user_id": 1,
     "admin_username": "admin",
     "admin_role": "Administrator",
-    "admin_csrf_token": secrets.token_hex(32),
     "role": "Administrator",
     "is_admin": True,
 }
@@ -40,7 +38,6 @@ user_data = {
     "user_id": 1,
     "username": "user",
     "role": "User",
-    "user_csrf_token": secrets.token_hex(32),
 }
 repo.save_session(
     session_hash=user_hash,

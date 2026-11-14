@@ -66,17 +66,6 @@ def test_rate_limiting_and_account_lockout():
     assert not AdminSecurityManager.is_locked_out(ip, user)
 
 
-def test_csrf_token_generation_and_verification():
-    """Test CSRF token generation and validation."""
-    token1 = AdminSecurityManager.generate_csrf_token()
-    token2 = AdminSecurityManager.generate_csrf_token()
-
-    assert len(token1) == 64
-    assert token1 != token2
-
-    assert AdminSecurityManager.verify_csrf_token(token1, token1)
-    assert not AdminSecurityManager.verify_csrf_token(token1, token2)
-    assert not AdminSecurityManager.verify_csrf_token(token1, None)
 
 
 def test_otp_generation_and_verification():

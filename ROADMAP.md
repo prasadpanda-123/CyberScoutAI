@@ -17,7 +17,7 @@ This document outlines completed engineering milestones and future architectural
 - [x] **Phase 8 — Observability, Analytics & Source Health**: Diagnostic dashboards, health telemetry, source anomaly detection.
 - [x] **Phase 9 — Explainable Matching Intelligence**: Deterministic similarity engine, skill normalizer, audit-ready reasoning.
 - [x] **Phase 10 — Production Reliability & Disaster Recovery**: Context-managed pooling, transactional SQL backups, restore drills, liveness/readiness probes.
-- [x] **Phase 11 — Final Security Audit & Production Release**: 50-point security matrix (CSRF, IDOR, XSS, HMAC webhooks, RLS enforcement, session rotation).
+- [x] **Phase 11 — Final Security Audit & Production Release**: 50-point security matrix (IDOR, XSS, HMAC webhooks, RLS enforcement, session rotation).
 
 ---
 

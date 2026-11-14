@@ -145,7 +145,6 @@ Render supports an automated HTTP health check path to determine service readine
 ### 2. Cookie & Session Security
 - `SESSION_COOKIE_NAME = "cyberscout_session"`
 - `SESSION_COOKIE_HTTPONLY = True` (JavaScript cannot read cookie).
-- `SESSION_COOKIE_SAMESITE = "Lax"` (Protects against CSRF in cross-origin navigations).
 - `SESSION_COOKIE_SECURE = True` (Browser sends cookie strictly over HTTPS).
 - **Server-Side Session Store**: All session dictionaries reside in PostgreSQL `"ServerSessions"`. The client cookie contains only an opaque, cryptographically random token (`secrets.token_urlsafe(32)`). Tokens are stored hashed-at-rest (`SHA-256(token)`).
 
@@ -224,7 +223,7 @@ Render Free-Tier web services spin down to sleep after 15 minutes of inactivity.
    - 13 comprehensive end-to-end test cases under simulated production environment (`CYBERSCOUT_ENV=production`, `SECRET_KEY`, `CYBERSCOUT_SCHEDULER_SECRET`).
    - **Result**: **13/13 PASSED (OK)** in 18.385s.
 2. **Phase 11 Production Security Matrix** (`tests/unit/test_phase11_security_release.py`):
-   - 50 security criteria (RBAC, CSRF, IDOR, SQL injection, XSS escaping, HMAC, RLS).
+  - 50 security criteria (RBAC, IDOR, SQL injection, XSS escaping, HMAC, RLS).
    - **Result**: **50/50 PASSED (OK)** in 105.316s.
 3. **Phase 9 Matching Intelligence Regression** (`tests/unit/test_phase9_matching_intelligence.py`):
    - 51 criteria (Explainable match analysis, skill normalizer, similarity engine).

@@ -6,7 +6,6 @@ Tests:
 1. Configuration secret redaction on /api/config and /admin/api/config.
 2. Direct sanitize_config_dict() behavior with complex nested payloads and connection URIs.
 3. RBAC and unauthenticated access control enforcement.
-4. CSRF protection on state-changing administrative operations.
 5. Explicit operational service boundary calls via APIService without CLI/subprocess invocation.
 """
 
@@ -181,91 +180,10 @@ class TestPhase1Security(unittest.TestCase):
         self.assertEqual(res_api.get_json(), res_admin.get_json())
 
     # -------------------------------------------------------------------------
-    # 3. CSRF Protection on Operational State-Changing Endpoints
     # -------------------------------------------------------------------------
 
-    def test_admin_api_email_test_csrf_rejection(self):
-        """Verify state-changing POST /admin/api/email/test rejects mismatched CSRF token with 403."""
-        admin_client = self.app.test_client()
-        with admin_client.session_transaction() as sess:
-            sess["admin_authenticated"] = True
-            sess["admin_user_id"] = 1
-            sess["admin_username"] = "admin"
-            sess["admin_role"] = "Super Admin"
-            sess["admin_csrf_token"] = "valid_admin_csrf_token_secret_1234"
 
-        # Missing CSRF token on browser AJAX request
-        res_missing = admin_client.post(
-            "/admin/api/email/test",
-            headers={"X-Requested-With": "XMLHttpRequest"},
-        )
-        self.assertEqual(res_missing.status_code, 403)
-        self.assertIn("CSRF token validation failed", res_missing.get_json().get("error", ""))
 
-        # Invalid CSRF token in header
-        res_invalid = admin_client.post(
-            "/admin/api/email/test",
-            headers={"X-CSRF-Token": "invalid_token_attempt"},
-        )
-        self.assertEqual(res_invalid.status_code, 403)
-
-    @patch("dashboard.services.api_service.APIService.send_test_email")
-    def test_admin_api_email_test_csrf_acceptance(self, mock_send):
-        """Verify state-changing POST /admin/api/email/test accepts valid CSRF token in header or body."""
-        mock_send.return_value = {"success": True, "status": "completed", "message": "Email sent."}
-
-        admin_client = self.app.test_client()
-        csrf_tok = "valid_admin_csrf_token_secret_1234"
-        with admin_client.session_transaction() as sess:
-            sess["admin_authenticated"] = True
-            sess["admin_user_id"] = 1
-            sess["admin_username"] = "admin"
-            sess["admin_role"] = "Super Admin"
-            sess["admin_csrf_token"] = csrf_tok
-
-        # Accept via X-CSRF-Token header
-        res_hdr = admin_client.post(
-            "/admin/api/email/test",
-            headers={"X-CSRF-Token": csrf_tok},
-        )
-        self.assertEqual(res_hdr.status_code, 200)
-
-        # Accept via JSON body
-        res_json = admin_client.post(
-            "/admin/api/email/test",
-            json={"csrf_token": csrf_tok},
-        )
-        self.assertEqual(res_json.status_code, 200)
-
-    @patch("dashboard.services.api_service.APIService.trigger_scan")
-    def test_admin_api_run_csrf_protection(self, mock_scan):
-        """Verify POST /admin/api/run requires valid CSRF when admin_csrf_token is in session."""
-        mock_scan.return_value = {"job_id": "test-job-uuid-123", "status": "started", "success": True}
-
-        admin_client = self.app.test_client()
-        csrf_tok = "admin_scan_csrf_token_5678"
-        with admin_client.session_transaction() as sess:
-            sess["admin_authenticated"] = True
-            sess["admin_user_id"] = 1
-            sess["admin_username"] = "admin"
-            sess["admin_role"] = "Super Admin"
-            sess["admin_csrf_token"] = csrf_tok
-
-        # Bad token rejected
-        res_bad = admin_client.post(
-            "/admin/api/run",
-            json={"dry_run": True, "csrf_token": "wrong"},
-        )
-        self.assertEqual(res_bad.status_code, 403)
-
-        # Valid token accepted
-        with patch("dashboard.routes.admin_api.get_db_manager") as mock_db_mgr:
-            mock_db_mgr.return_value.ping.return_value = True
-            res_good = admin_client.post(
-                "/admin/api/run",
-                json={"dry_run": True, "csrf_token": csrf_tok},
-            )
-            self.assertEqual(res_good.status_code, 202)
 
     # -------------------------------------------------------------------------
     # 4. Explicit Operational Service Boundaries & Input Validation

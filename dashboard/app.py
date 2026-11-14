@@ -127,7 +127,6 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
     from datetime import timedelta
     app.config["SESSION_COOKIE_NAME"] = "cyberscout_session"
     app.config["SESSION_COOKIE_HTTPONLY"] = True
-    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     is_prod = (
         os.getenv("CYBERSCOUT_ENV") == "production"
         or app.config.get("APP_ENV") == "production"
@@ -242,14 +241,8 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
 
     @app.context_processor
     def inject_template_context():
-        """Injects active user session, admin session details, CSRF token, CSP nonce, and app version into Jinja2 templates."""
+        """Injects active user and admin session details, CSP nonce, and app version into Jinja2 templates."""
         from src.core.version import get_version_info
-        
-        token = session.get("admin_csrf_token") or session.get("user_csrf_token")
-        if not token:
-            token = secrets.token_hex(32)
-            session["user_csrf_token"] = token
-            session["admin_csrf_token"] = token
 
         user_id = session.get("user_id") or session.get("admin_user_id")
         saved_count = 0
@@ -267,7 +260,6 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
 
         return {
             "app_info": get_version_info(),
-            "csrf_token": token,
             "csp_nonce": getattr(g, "csp_nonce", ""),
             "saved_count": saved_count,
             "current_user": {
@@ -281,7 +273,6 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
                 "username": session.get("admin_username", "Administrator"),
                 "role": session.get("admin_role", "Super Admin"),
                 "is_authenticated": bool(session.get("admin_authenticated")),
-                "csrf_token": token,
             },
         }
 

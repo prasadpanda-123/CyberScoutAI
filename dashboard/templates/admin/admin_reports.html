@@ -112,12 +112,9 @@
     btn.disabled = true;
     btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">autorenew</span> Generating...';
 
-    const csrf = "{{ session.get('admin_csrf_token', '') }}";
-
     fetch('/admin/api/report/trigger', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-      body: JSON.stringify({ csrf_token: csrf })
+      headers: { 'Content-Type': 'application/json' },
     })
     .then(r => r.json())
     .then(data => {

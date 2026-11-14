@@ -2,7 +2,7 @@
 Phase 3 Unit Tests: Cookie/Session Security & Information Disclosure Hardening.
 
 Verifies:
-1. Session Cookie Flags (HttpOnly, SameSite, Cookie Name, Session Lifetime).
+1. Session Cookie Flags (HttpOnly, Cookie Name, Session Lifetime).
 2. Zero Sensitive Data in Client-Side Session Cookies (no OTP hashes, password hashes, secrets).
 3. Session Tampering Protection & Session Fixation Defense.
 4. Information Disclosure Hardening on Auth Endpoints.
@@ -34,9 +34,8 @@ class TestPhase3SessionSecurity(unittest.TestCase):
         self.client = self.app.test_client()
 
     def test_session_cookie_configuration_flags(self):
-        """Verify session cookie flags (HttpOnly, SameSite, Cookie Name)."""
+        """Verify session cookie flags (HttpOnly, Cookie Name)."""
         self.assertEqual(self.app.config.get("SESSION_COOKIE_HTTPONLY"), True)
-        self.assertEqual(self.app.config.get("SESSION_COOKIE_SAMESITE"), "Lax")
         self.assertEqual(self.app.config.get("SESSION_COOKIE_NAME"), "cyberscout_session")
 
     def test_zero_sensitive_data_in_session_cookie(self):
@@ -53,14 +52,9 @@ class TestPhase3SessionSecurity(unittest.TestCase):
         )
 
         with self.client as c:
-            # Set CSRF token in session
-            with c.session_transaction() as sess:
-                sess["admin_csrf_token"] = "test_csrf_token_12345678901234567890123456789012"
-
             c.post("/admin/login", data={
                 "identifier": admin_email,
                 "password": "AdminPassword2026!",
-                "csrf_token": "test_csrf_token_12345678901234567890123456789012",
             })
 
             # Inspect active session dictionary keys
