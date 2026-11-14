@@ -52,7 +52,7 @@ export async function fetchApi<T = unknown>(
   const response = await fetch(url.toString(), {
     credentials: "include",  // Always send session cookies
     headers: {
-      "Content-Type": "application/json",
+      ...(typeof rest.body === "string" ? { "Content-Type": "application/json" } : {}),
       "Accept": "application/json",
       "X-Requested-With": "XMLHttpRequest",
       ...headers,

@@ -244,9 +244,10 @@ def admin_trigger_run():
         get_logger(__name__).error("Scan aborted: Database unavailable")
         return jsonify({"success": False, "error": "Database unavailable", "status": "failed"}), 503
     try:
+        payload = request.get_json(silent=True) if request.is_json else None
         dry_run = False
-        if request.is_json and request.json:
-            dry_run = bool(request.json.get("dry_run", False))
+        if isinstance(payload, dict):
+            dry_run = bool(payload.get("dry_run", False))
         res = api_service.trigger_scan(dry_run=dry_run)
         audit_repo.log_event("COLLECTORS", "TRIGGER_RUN", "SUCCESS", source_ip=get_client_ip(request), details=f"Scan job launched (job_id={res.get('job_id')})")
         return jsonify({
