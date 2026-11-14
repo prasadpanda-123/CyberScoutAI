@@ -101,7 +101,7 @@ class CtftimeCollector(BaseCollector):
         Executes CTFTime API collection.
 
         Args:
-            task: SearchTask emitted by SearchPlanner.
+            task: Validated SearchTask instance.
 
         Returns:
             CollectorResult containing normalized Opportunity objects.

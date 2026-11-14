@@ -5,6 +5,8 @@
 > **Database Target**: Hosted PostgreSQL 17 (e.g., Supabase Free Tier via IPv4 Session/Transaction Pooler)  
 > **Final Status**: **CONDITIONALLY READY — DOCUMENTED LIMITATIONS**  
 
+> **Security remediation update (2026-11-14):** Follow the current build and environment instructions below. Production bootstrap now requires `INITIAL_ADMIN_SETUP_TOKEN`; the Render build script applies database migrations before deployment. Historic audit and test results farther down this document predate this remediation and are not a substitute for a fresh production verification.
+
 ---
 
 ## 1. Executive Summary
@@ -20,13 +22,13 @@ The evaluation confirms that **CyberScout AI is capable of reliable operation on
 In the Render Web Service settings (Settings -> Build Command):
 
 ```bash
-pip install -r requirements.txt && python -m src.database.migrations.migration_manager
+bash scripts/render_build.sh
 ```
 
 ### Rationale:
-1. `pip install -r requirements.txt`: Installs all required runtime, web, database, and reporting dependencies.
-2. `python -m src.database.migrations.migration_manager`: Executes sequential, idempotent PostgreSQL migrations before new workers begin taking HTTP traffic.
-3. **Precompiled Frontend Assets**: Because `dashboard/static/css/tailwind.css` (~37 KB) is precompiled and committed in the repository, no Node.js or npm installation is required in the build environment, avoiding build bloat on Render's Python native runtime.
+1. Installs the Python runtime and frontend build dependencies.
+2. Builds React and CSS assets, then runs `python -m src.database.migrations.migration_manager` against the configured PostgreSQL database before new workers receive traffic.
+3. Prunes tests only from Render's build checkout after the build succeeds; the repository source remains unchanged.
 
 ---
 
@@ -58,7 +60,8 @@ All variables are loaded via standard POSIX environment variables. No secrets ar
 | `APP_ENV` | Required application configuration | `production` | Secondary environment flag ensuring production mode across CLI and WSGI layers. |
 | `SECRET_KEY` | Required security secret | *(64-char random hex)* | Cryptographic session signing key. Must be >= 16 chars and not an insecure default. Fails closed. |
 | `DATABASE_URL` | Required database configuration | `postgresql://user:pass@host:6543/postgres?sslmode=require` | PostgreSQL URI. Auto-converts `postgres://` to `postgresql://` and routes Supabase via IPv4 pooler. |
-| `CYBERSCOUT_SCHEDULER_SECRET` | Required security secret | *(64-char random hex)* | Shared HMAC-SHA256 secret for validating external scheduler triggers. |
+| `INITIAL_ADMIN_SETUP_TOKEN` | Required until first admin is created | *(high-entropy one-time secret)* | Authorizes `/setup` while no admin exists. Remove from Render after setup. |
+| `CYBERSCOUT_SCHEDULER_SECRET` | Required only for external cron | *(64-char random hex)* | Shared HMAC-SHA256 secret for validating external scheduler triggers. |
 | `SESSION_COOKIE_SECURE` | Required security secret | `true` | Enforces HTTPS-only cookies over Render's TLS-terminated reverse proxy. |
 | `PORT` | Required application configuration | `10000` | Automatically injected by Render; bound by Gunicorn. |
 | `BREVO_API_KEY` | External integration | `xkeysib-...` | Free-tier transactional email delivery key (300 free emails/day). |
@@ -67,6 +70,7 @@ All variables are loaded via standard POSIX environment variables. No secrets ar
 | `EMAIL_TO` | External integration | `analyst@yourdomain.com` | Target recipient for intelligence digests. |
 | `GITHUB_TOKEN` | Optional integration | `ghp_...` | Increases GitHub collector rate limit from 60 to 5,000 requests/hour. |
 | `FLASK_DEBUG` | Development-only | `0` | Must be `0` or unset in production. |
+| `FIRECRAWL_ENABLED` | Optional external integration | `false` | Production default is disabled. Enable only after Firecrawl provider-side redirect and egress protections block private and link-local destinations. |
 
 ---
 
@@ -280,14 +284,15 @@ Before opening public traffic on Render:
 
 - [ ] **1. Create Render Web Service**:
   - Runtime: `Python 3`
-  - Build Command: `pip install -r requirements.txt && python -m src.database.migrations.migration_manager`
+  - Build Command: `bash scripts/render_build.sh`
   - Start Command: `gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120`
 - [ ] **2. Configure Environment Variables**:
   - `CYBERSCOUT_ENV=production`
   - `APP_ENV=production`
   - `SECRET_KEY=<generate-64-char-random-hex>`
   - `DATABASE_URL=<your-hosted-postgresql-pooler-url>`
-  - `CYBERSCOUT_SCHEDULER_SECRET=<generate-64-char-random-hex>`
+  - `INITIAL_ADMIN_SETUP_TOKEN=<generate-a-unique-high-entropy-token>`
+  - `CYBERSCOUT_SCHEDULER_SECRET=<generate-64-char-random-hex>` (only if external cron is enabled)
   - `SESSION_COOKIE_SECURE=true`
   - `EMAIL_PROVIDER=brevo`
   - `BREVO_API_KEY=<your-brevo-api-key>`
@@ -298,7 +303,7 @@ Before opening public traffic on Render:
 - [ ] **4. Post-Deployment Verification**:
   - Verify `/health/live` returns HTTP 200.
   - Verify `/health/ready` returns HTTP 200 (verifies database connectivity).
-  - Access `/setup` to initialize the primary Administrator account.
+  - Access `/setup` over HTTPS, enter `INITIAL_ADMIN_SETUP_TOKEN`, and create the primary administrator. Remove the token from Render after setup.
   - Verify admin login and MFA at `/admin/login`.
 - [ ] **5. External Scheduler Trigger Setup**:
   - Set up Google Apps Script or GitHub Actions scheduled workflow to issue HMAC-signed POST requests to `https://<your-service>.onrender.com/api/scheduler/trigger`.

@@ -25,8 +25,6 @@ class AdminSecurityManager:
     MAX_FAILED_ATTEMPTS = 5
     LOCKOUT_DURATION_MINUTES = 15
 
-    # Memory store for failed login tracking: key=(ip, username, attempt_type) -> list of datetime timestamps
-    _failed_login_attempts: Dict[Tuple[Any, ...], list] = {}
 
     def __init__(
         self,
@@ -74,8 +72,7 @@ class AdminSecurityManager:
     @classmethod
     def is_locked_out(cls, ip_address: str, username: str, attempt_type: str = "admin_login") -> bool:
         """
-        Checks if target IP + username combination is locked out due to repeated failures.
-        Uses distributed PostgreSQL repository with safe fallback.
+        Checks shared PostgreSQL lockout state and fails closed if that state is unavailable.
         """
         repo = cls._get_login_repo()
         if repo:
@@ -89,17 +86,24 @@ class AdminSecurityManager:
                 )
             except Exception as e:
                 logger.warning(f"Error querying distributed lockout repository: {e}")
+                return True
 
-        # In-memory fallback
-        key = (ip_address.strip(), username.strip().lower(), attempt_type)
-        now = datetime.datetime.now(datetime.timezone.utc)
-        cutoff = now - datetime.timedelta(minutes=cls.LOCKOUT_DURATION_MINUTES)
+        # Without shared lockout state, allowing authentication would fail open.
+        return True
 
-        attempts = cls._failed_login_attempts.get(key, [])
-        valid_attempts = [t for t in attempts if t > cutoff]
-        cls._failed_login_attempts[key] = valid_attempts
-
-        return len(valid_attempts) >= cls.MAX_FAILED_ATTEMPTS
+    @classmethod
+    def consume_login_attempt(cls, ip_address: str, username: str, attempt_type: str = "admin_login") -> bool:
+        """Atomically reserve an authentication attempt across all app workers."""
+        repo = cls._get_login_repo()
+        if repo is None:
+            raise RuntimeError("Distributed login throttling is unavailable.")
+        return repo.check_and_record_rate_limit(
+            ip_address=ip_address,
+            identifier=username,
+            attempt_type=attempt_type,
+            max_attempts=cls.MAX_FAILED_ATTEMPTS,
+            window_minutes=cls.LOCKOUT_DURATION_MINUTES,
+        )
 
     @classmethod
     def record_failed_attempt(cls, ip_address: str, username: str, attempt_type: str = "admin_login") -> None:
@@ -117,14 +121,6 @@ class AdminSecurityManager:
             except Exception as e:
                 logger.warning(f"Error recording failed attempt in distributed repository: {e}")
 
-        key = (ip_address.strip(), username.strip().lower(), attempt_type)
-        now = datetime.datetime.now(datetime.timezone.utc)
-        cutoff = now - datetime.timedelta(minutes=cls.LOCKOUT_DURATION_MINUTES)
-
-        attempts = cls._failed_login_attempts.get(key, [])
-        valid_attempts = [t for t in attempts if t > cutoff]
-        valid_attempts.append(now)
-        cls._failed_login_attempts[key] = valid_attempts
 
     @classmethod
     def reset_failed_attempts(cls, ip_address: str, username: str, attempt_type: str = "admin_login") -> None:
@@ -142,9 +138,6 @@ class AdminSecurityManager:
             except Exception as e:
                 logger.warning(f"Error resetting failed attempts in distributed repository: {e}")
 
-        key = (ip_address.strip(), username.strip().lower(), attempt_type)
-        cls._failed_login_attempts.pop(key, None)
-        cls._failed_login_attempts.pop((ip_address.strip(), username.strip().lower()), None)
 
     @staticmethod
     def generate_csrf_token() -> str:

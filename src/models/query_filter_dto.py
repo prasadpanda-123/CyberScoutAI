@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
 
 
-ALLOWED_SORTS = {"relevance", "newest", "deadline", "score", "recommended"}
+ALLOWED_SORTS = {"relevance", "newest", "deadline", "score", "recommended", "title"}
 ALLOWED_SORT_DIRS = {"asc", "desc"}
 ALLOWED_PRICING_TYPES = {"free", "paid", "freemium", "unknown"}
 ALLOWED_DIFFICULTIES = {"beginner", "intermediate", "advanced", "expert"}
@@ -294,7 +294,7 @@ class OpportunityCardDTO:
     remote: bool
     location: Optional[str]
     pricing_type: Optional[str]
-    is_free: bool
+    is_free: Optional[bool]
     stipend_type: Optional[str]
     has_stipend: bool
     difficulty: Optional[str]
@@ -330,7 +330,7 @@ class OpportunityDetailDTO:
     remote: bool
     location: Optional[str]
     pricing_type: Optional[str]
-    is_free: bool
+    is_free: Optional[bool]
     stipend_type: Optional[str]
     stipend_amount: Optional[float]
     currency: Optional[str]

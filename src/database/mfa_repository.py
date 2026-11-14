@@ -62,7 +62,7 @@ class MfaRepository:
                     DO $$
                     BEGIN
                         IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'PendingMfa' AND policyname = 'pending_mfa_access_policy') THEN
-                            CREATE POLICY pending_mfa_access_policy ON "PendingMfa" FOR ALL TO authenticated, service_role USING (true) WITH CHECK (true);
+                            CREATE POLICY pending_mfa_access_policy ON "PendingMfa" FOR ALL USING (COALESCE(NULLIF(current_setting('app.is_admin', true), '') = 'true', false) OR COALESCE(NULLIF(current_setting('app.service_context', true), '') = 'true', false)) WITH CHECK (COALESCE(NULLIF(current_setting('app.is_admin', true), '') = 'true', false) OR COALESCE(NULLIF(current_setting('app.service_context', true), '') = 'true', false));
                         END IF;
                     END $$;
                     """

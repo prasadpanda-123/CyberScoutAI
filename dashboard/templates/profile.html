@@ -303,10 +303,13 @@
       <h3 class="text-sm font-bold text-text-primary">Sign Out of Session</h3>
       <p class="text-xs text-text-secondary">Terminates your active authentication session on this device.</p>
     </div>
-    <a href="/logout" class="bg-danger/10 hover:bg-danger text-danger hover:text-white border border-danger/30 text-xs font-bold px-4 py-2 rounded-lg transition-all flex items-center gap-1.5">
-      <span class="material-symbols-outlined text-[16px]">logout</span>
-      <span>Logout Now</span>
-    </a>
+    <form action="/logout" method="post">
+      <input type="hidden" name="csrf_token" value="{{ session.get('user_csrf_token', '') }}">
+      <button type="submit" class="bg-danger/10 hover:bg-danger text-danger hover:text-white border border-danger/30 text-xs font-bold px-4 py-2 rounded-lg transition-all flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-[16px]">logout</span>
+        <span>Logout Now</span>
+      </button>
+    </form>
   </div>
 
 </div>

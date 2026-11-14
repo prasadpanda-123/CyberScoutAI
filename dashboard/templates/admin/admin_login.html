@@ -1,116 +1,97 @@
 <!DOCTYPE html>
-<html class="dark" lang="en" data-theme="dark">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Authentication Gateway — CyberScout AI</title>
-  
-  <!-- CyberScout AI Favicon Suite -->
-  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
-  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
-  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+  <title>Administrator Login — CyberScout AI</title>
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon/favicon.svg') }}">
-  
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-  
-  <!-- Precompiled Static Tailwind CSS & Admin Theme -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 </head>
-<body class="bg-bg-body text-text-primary font-sans antialiased min-h-screen flex flex-col justify-center items-center p-4 selection:bg-admin-accent/30 selection:text-white">
+<body class="admin-body">
 
-  <div class="w-full max-w-md">
-    <!-- Header -->
-    <div class="text-center mb-8">
-      <div class="inline-flex items-center gap-3 mb-4">
-        <div class="h-14 w-14 rounded-2xl bg-danger/10 border border-danger/30 flex items-center justify-center p-2.5 shadow-sm">
-          <img src="{{ url_for('static', filename='images/cyberscout-icon.svg') }}" alt="CyberScout AI" class="w-full h-full object-contain">
+  <div class="a-login-wrap">
+    <div class="a-login-card">
+
+      <!-- Brand Header -->
+      <div style="text-align:center;margin-bottom:28px;">
+        <div class="a-brand-icon" style="width:48px;height:48px;margin:0 auto 12px;border-radius:var(--a-r-md);">
+          <img src="{{ url_for('static', filename='images/cyberscout-icon.svg') }}" alt="CyberScout AI" style="width:28px;height:28px;">
         </div>
+        <h1 style="font-size:20px;font-weight:700;color:var(--a-text-1);letter-spacing:-0.02em;margin-bottom:4px;">Administrator Control Surface</h1>
+        <p style="font-size:12px;color:var(--a-text-4);">Sign in to access privileged orchestration &amp; telemetry</p>
       </div>
-      <h1 class="text-xl font-bold text-danger tracking-tight">Admin Gateway</h1>
-      <p class="text-xs text-text-secondary mt-1">High-Privilege Authentication Boundary</p>
-      
-      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-danger/10 border border-danger/30 text-[11px] font-mono text-danger font-bold mt-3">
-        <span class="w-1.5 h-1.5 rounded-full bg-danger animate-pulse"></span>
-        STAGE 1: PRIMARY CREDENTIALS
-      </div>
-    </div>
 
-    <!-- Flashed Alerts -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="mb-4 space-y-2">
+      <!-- Flash Messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
           {% for category, message in messages %}
-            <div class="p-3 rounded-lg border text-xs flex items-center gap-2 {% if category == 'success' %}bg-success/10 border-success/30 text-success{% elif category in ['danger', 'error'] %}bg-danger/10 border-danger/30 text-danger{% elif category == 'warning' %}bg-warning/10 border-warning/30 text-warning{% else %}bg-info/10 border-info/30 text-info{% endif %}">
-              <span class="material-symbols-outlined text-[16px]">
-                {% if category == 'success' %}check_circle{% elif category in ['danger', 'error'] %}error{% elif category == 'warning' %}warning{% else %}info{% endif %}
-              </span>
-              <span>{{ message }}</span>
+            <div class="a-flash {{ category }}" style="margin-bottom:16px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span class="material-symbols-outlined" style="font-size:17px;flex-shrink:0;">
+                  {% if category == 'success' %}check_circle{% elif category in ['danger','error'] %}error{% elif category == 'warning' %}warning{% else %}info{% endif %}
+                </span>
+                <span>{{ message }}</span>
+              </div>
             </div>
           {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
-
-    <!-- Card -->
-    <div class="bg-surface p-6 sm:p-8 rounded-xl border border-danger/25 shadow-2xl shadow-danger/5">
-      <form action="/admin/login" method="POST" class="space-y-4">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        {% if next %}
-          <input type="hidden" name="next" value="{{ next }}">
         {% endif %}
+      {% endwith %}
 
-        <div>
-          <label for="admin_username" class="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">Admin Username or Email</label>
-          <div class="relative">
-            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-[18px]">badge</span>
-            <input type="text" id="admin_username" name="admin_username" required autofocus class="w-full bg-bg-body border border-border-subtle rounded-lg py-2.5 pl-10 pr-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-danger transition-colors font-mono" placeholder="admin">
-          </div>
+      <!-- Login Form -->
+      <form method="POST" action="{{ url_for('admin_ui.admin_login', next=next) }}" style="display:flex;flex-direction:column;gap:16px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+
+        <div class="a-form-group" style="margin-bottom:0;">
+          <label class="a-label" for="admin_username">Administrator Username or Email</label>
+          <input id="admin_username" type="text" name="admin_username" class="a-input" placeholder="e.g. secops_admin" autocomplete="username" required autofocus>
         </div>
 
-        <div>
-          <label for="admin_password" class="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">Admin Password</label>
-          <div class="relative">
-            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-[18px]">key</span>
-            <input type="password" id="admin_password" name="admin_password" required class="w-full bg-bg-body border border-border-subtle rounded-lg py-2.5 pl-10 pr-10 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-danger transition-colors" placeholder="••••••••">
-            <button type="button" onclick="toggleAdminPassword()" class="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary">
-              <span id="adminToggleIcon" class="material-symbols-outlined text-[18px]">visibility</span>
+        <div class="a-form-group" style="margin-bottom:0;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <label class="a-label" for="admin_password" style="margin-bottom:0;">Password</label>
+          </div>
+          <div style="position:relative;">
+            <input id="admin_password" type="password" name="admin_password" class="a-input" placeholder="••••••••••••" autocomplete="current-password" required style="padding-right:38px;">
+            <button type="button" onclick="togglePassword()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--a-text-4);cursor:pointer;">
+              <span id="pwIcon" class="material-symbols-outlined" style="font-size:16px;">visibility</span>
             </button>
           </div>
         </div>
 
-        <div class="pt-2">
-          <button type="submit" class="w-full bg-danger hover:bg-danger/90 text-white font-bold text-sm py-2.5 rounded-lg admin-glow transition-all flex items-center justify-center gap-2">
-            <span>Verify & Request OTP</span>
-            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
-          </button>
+        <!-- MFA Notice -->
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--a-r-sm);background:var(--a-surface-2);border:1px solid var(--a-border-1);">
+          <span class="material-symbols-outlined" style="font-size:16px;color:var(--a-primary);">verified_user</span>
+          <span style="font-size:11px;color:var(--a-text-3);">MFA Enforced: 6-digit email OTP required on credential match.</span>
         </div>
-      </form>
-    </div>
 
-    <!-- Return to user portal -->
-    <div class="mt-6 text-center">
-      <a href="{{ url_for('auth_ui.login') }}" class="inline-flex items-center gap-1 text-xs text-text-muted hover:text-text-primary transition-colors">
-        <span class="material-symbols-outlined text-[14px]">arrow_back</span>
-        <span>Return to User Portal</span>
-      </a>
+        <button type="submit" class="a-btn a-btn-primary" style="width:100%;padding:10px;font-size:13px;margin-top:4px;">
+          <span class="material-symbols-outlined" style="font-size:16px;">login</span>
+          Authenticate &amp; Continue
+        </button>
+      </form>
+
+      <!-- Return link -->
+      <div style="margin-top:22px;text-align:center;">
+        <a href="{{ url_for('dashboard_ui.landing') }}" style="color:var(--a-text-4);font-size:11.5px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;" onmouseover="this.style.color='var(--a-text-2)'" onmouseout="this.style.color='var(--a-text-4)'">
+          <span class="material-symbols-outlined" style="font-size:14px;">arrow_back</span>
+          Return to Public Portal
+        </a>
+      </div>
+
     </div>
   </div>
 
   <script nonce="{{ csp_nonce }}">
-    function toggleAdminPassword() {
+    function togglePassword() {
       const input = document.getElementById('admin_password');
-      const icon = document.getElementById('adminToggleIcon');
+      const icon = document.getElementById('pwIcon');
       if (input.type === 'password') {
         input.type = 'text';
-        icon.innerText = 'visibility_off';
+        icon.textContent = 'visibility_off';
       } else {
         input.type = 'password';
-        icon.innerText = 'visibility';
+        icon.textContent = 'visibility';
       }
     }
   </script>

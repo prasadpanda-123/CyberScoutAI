@@ -71,6 +71,7 @@ def test_unauthenticated_requests_blocked(client):
         ("POST", "/admin/api/scheduler/pause"),
         ("POST", "/admin/api/scheduler/resume"),
         ("POST", "/admin/api/scheduler/restart"),
+        ("GET",  "/admin/api/scheduler/status"),
         ("GET",  "/admin/api/opportunities/clear-old/preview"),
         ("POST", "/admin/api/opportunities/clear-old"),
         ("POST", "/admin/api/db/test"),
@@ -85,6 +86,34 @@ def test_unauthenticated_requests_blocked(client):
             res = client.get(ep, headers={"X-Requested-With": "XMLHttpRequest"})
         # Should redirect to login (302) or return 401/403
         assert res.status_code in (302, 401, 403), f"Endpoint {ep} allowed unauthenticated access with status {res.status_code}"
+
+
+def test_admin_scheduler_status_reports_runtime_state(client):
+    status = {
+        "background_daemon": {
+            "running": False,
+            "job_count": 2,
+            "schedule_type": "interval",
+            "interval_seconds": 300,
+        },
+        "is_running": True,
+        "enabled": True,
+        "frequency": "daily",
+        "timezone": "UTC",
+        "report_time": "08:00",
+        "next_run": "2025-01-02 08:00:00 UTC",
+        "last_email_sent": "2025-01-01 08:00:00 UTC",
+        "last_pipeline_run": "2025-01-01 07:55:00 UTC",
+    }
+
+    with patch("dashboard.routes.admin_api.api_service.get_scheduler_status", return_value=status):
+        response = client.get("/admin/api/scheduler/status")
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["background_daemon"]["running"] is False
+    assert data["scan_active"] is True
+    assert data["report_schedule"]["next_run"] == status["next_run"]
 
 
 def test_csrf_token_missing_rejected(client):

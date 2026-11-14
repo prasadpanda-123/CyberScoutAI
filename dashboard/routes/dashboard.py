@@ -19,7 +19,9 @@ api_service = APIService()
 @dashboard_bp.route("/")
 def landing():
     """Renders public CyberScout AI Landing Page."""
-    return render_template("landing.html")
+    if request.args.get("legacy") == "1":
+        return render_template("landing.html")
+    return render_template("react_shell.html")
 
 
 @dashboard_bp.route("/dashboard")
@@ -37,23 +39,35 @@ def index():
             "version": info.get("version", "1.2.0"),
         }), 200
 
-    summary = dash_service.get_summary_stats()
-    cat_dist = stats_service.get_category_distribution()
-    prio_dist = stats_service.get_priority_distribution()
-    src_dist = stats_service.get_source_distribution()
-    daily_trends = stats_service.get_daily_opportunity_trends()
-    recent_opps = dash_service.opp_repo.get_paginated_opportunities(limit=4, sort_by="newest")
+    if request.args.get("legacy") == "1":
+        summary = dash_service.get_summary_stats()
+        cat_dist = stats_service.get_category_distribution()
+        prio_dist = stats_service.get_priority_distribution()
+        src_dist = stats_service.get_source_distribution()
+        daily_trends = stats_service.get_daily_opportunity_trends()
+        recent_opps = dash_service.opp_repo.get_paginated_opportunities(limit=4, sort_by="newest")
 
-    return render_template(
-        "dashboard.html",
-        active_page="dashboard",
-        summary=summary,
-        category_distribution=cat_dist,
-        priority_distribution=prio_dist,
-        source_distribution=src_dist,
-        daily_trends=daily_trends,
-        recent_opportunities=recent_opps,
-    )
+        return render_template(
+            "dashboard.html",
+            active_page="dashboard",
+            summary=summary,
+            category_distribution=cat_dist,
+            priority_distribution=prio_dist,
+            source_distribution=src_dist,
+            daily_trends=daily_trends,
+            recent_opportunities=recent_opps,
+        )
+
+    return render_template("react_shell.html")
+
+
+@dashboard_bp.route("/saved")
+@login_required
+def saved_page():
+    """Serves the Saved Opportunities view via React SPA."""
+    if request.args.get("legacy") == "1":
+        return redirect("/opportunities?view=saved")
+    return render_template("react_shell.html")
 
 
 @dashboard_bp.route("/reports")
@@ -77,3 +91,11 @@ def download_report(filename):
     if not reports_dir.exists():
         abort(404)
     return send_from_directory(str(reports_dir), filename, as_attachment=True)
+
+
+@dashboard_bp.route("/app")
+@dashboard_bp.route("/app/<path:subpath>")
+def react_app(subpath=""):
+    """Serves the React SPA shell."""
+    return render_template("react_shell.html")
+

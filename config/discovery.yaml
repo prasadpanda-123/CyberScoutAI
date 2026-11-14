@@ -1,0 +1,151 @@
+# CyberScout AI — Discovery Engine Configuration
+# Governs Tavily Global Search API parameters, regional prioritization, and economic budgets.
+
+discovery:
+  enabled: true
+  provider: "tavily"
+
+  # Economic & Budget Controls
+  budget:
+    daily_search_limit: 50         # Maximum searches permitted per 24-hour cycle
+    monthly_budget: 1000           # Monthly hard cap for Tavily credits
+    max_searches_per_run: 25       # Searches executed per single daily scheduled run
+    max_results_per_query: 15      # Results collected per query slice (max 20)
+
+  # Network & Execution Parameters
+  client:
+    search_depth: "advanced"       # "basic" or "advanced"
+    timeout_seconds: 25.0          # HTTP connection & read timeout
+    max_retries: 3                 # Exponential backoff attempts
+    backoff_factor: 1.5            # Multiplier for exponential backoff
+
+  # Scheduling Alignment
+  schedule:
+    cron_time: "02:00"             # 2:00 AM local time
+    timezone: "Asia/Kolkata"       # IST timezone
+    frequency: "daily"
+    prevent_overlap: true          # Acquire PostgreSQL job lock
+
+  # Regional Priority Weights (1.0 = highest)
+  # India receives dedicated Priority 1 weighting
+  region_priorities:
+    india: 1.0                     # Dedicated Indian searches (min 35-45% of run)
+    global_remote: 0.9             # Virtual & remote opportunities
+    north_america: 0.7             # US / Canada
+    europe: 0.7                    # UK / EU / ENISA
+    asia: 0.6                      # Singapore / Japan / APAC
+    middle_east: 0.5               # UAE / Saudi Arabia / GISEC
+    africa: 0.5                    # Nigeria / Kenya / AfricaHackon
+    south_america: 0.5             # Latin America / OAS
+    oceania: 0.5                   # Australia / ACSC
+
+  # Opportunity Category Coverage
+  categories:
+    - internship
+    - job
+    - bug_bounty
+    - vulnerability_disclosure
+    - ctf
+    - hackathon
+    - free_training
+    - course_certification
+    - scholarship
+    - research
+    - conference
+    - workshop_webinar
+    - dfir_challenge
+    - open_source_program
+    - security_mentorship
+
+  # URL Security Defense
+  security:
+    enforce_ssrf_protection: true
+    reject_private_ips: true
+    reject_cloud_metadata: true
+    dns_rebinding_check: true      # Live DNS resolution enabled for extraction
+    allowed_schemes:
+      - "http"
+      - "https"
+
+# Phase C: Firecrawl Content Extraction Configuration
+extraction:
+  enabled: true
+  provider: "firecrawl"
+  api_url: "https://api.firecrawl.dev/v1/scrape"
+
+  # Extraction Budget & Rate Controls
+  budget:
+    daily_page_limit: 100          # Maximum pages scraped per 24 hours
+    max_pages_per_run: 25          # Maximum pages scraped per pipeline scan
+    max_response_size: 2097152     # 2 MB response size limit (prevents DoS)
+    rate_limit_rpm: 10             # Max 10 requests per minute
+
+  # Client Execution Parameters
+  client:
+    timeout_seconds: 30.0          # Scrape request timeout
+    max_retries: 3                 # Bounded exponential retries on 429/5xx
+    backoff_factor: 1.5            # Multiplier for backoff
+    wait_for_ms: 1000              # JS rendering wait time
+    only_main_content: true        # Clean content extraction
+    formats:
+      - "markdown"
+      - "html"
+
+# Phase D: AI Opportunity Classification Configuration
+classification:
+  enabled: true
+  primary_provider: "groq"
+  fallback_provider: "gemini"
+  prompt_version: "v1.0"
+
+  # Providers Configuration
+  groq:
+    model: "llama-3.3-70b-versatile"
+    api_url: "https://api.groq.com/openai/v1/chat/completions"
+    temperature: 0.1
+    max_tokens: 4096
+
+  gemini:
+    model: "gemini-2.5-flash"
+    temperature: 0.1
+    max_tokens: 4096
+
+  # Execution & Budget Controls
+  budget:
+    max_classifications_per_run: 25   # Maximum candidates classified per pipeline scan
+    daily_limit: 100                 # Maximum candidates classified per 24 hours
+    timeout_seconds: 30.0            # Request timeout per candidate
+    max_retries: 2                   # Bounded exponential retries on 429/5xx
+    backoff_factor: 1.5              # Multiplier for backoff
+
+# Phase E: Deterministic Free-Only Verification Configuration
+free_only:
+  enabled: true
+  rule_version: "v1.0"
+  max_candidates_per_run: 50
+  strict_zero_trust: true
+  require_verbatim_evidence: true
+
+# Phase F: Controlled Production Promotion, Deduplication, Ranking & Notification
+promotion:
+  dry_run: true                    # Set true initially; no production writes while dry-run mode is enabled
+  enabled: false                   # Explicit gate: only set true when production promotion is active
+  batch_size: 50                   # Max candidates evaluated for promotion per scan
+  default_source_id: "tavily"
+
+daily_report:
+  enabled: false                   # Daily Excel report generation toggle
+  timezone: "Asia/Kolkata"         # Configured daily report timezone
+  output_dir: "reports/daily"      # Directory for generated Excel workbooks
+  max_opportunities: 50            # Max opportunities included in daily digest
+  send_empty_report: true          # Send status-only digest when 0 new opportunities found
+
+email_delivery:
+  enabled: false                   # Email delivery toggle (Brevo REST API over HTTPS port 443)
+  provider: "brevo"
+  recipient: "alerts@cyberscout.ai"
+
+
+
+
+

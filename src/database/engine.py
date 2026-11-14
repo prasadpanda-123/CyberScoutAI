@@ -27,16 +27,27 @@ def get_db_url(custom_url: Optional[str] = None) -> str:
     Returns:
         Normalized postgresql:// connection URL string.
     """
-    raw_url = custom_url or os.getenv("DATABASE_URL", "").strip()
+    test_environment = (
+        "PYTEST_CURRENT_TEST" in os.environ
+        or os.getenv("APP_ENV") in ("test", "testing")
+        or os.getenv("CI")
+        or os.getenv("GITHUB_ACTIONS")
+    )
+    raw_url = custom_url.strip() if custom_url else ""
+
+    if not raw_url and test_environment:
+        raw_url = os.getenv("TEST_DATABASE_URL", "").strip()
+    elif not raw_url:
+        raw_url = os.getenv("DATABASE_URL", "").strip()
+        if not raw_url:
+            raw_url = os.getenv("SUPABASE_DATABASE_URL", "").strip() or os.getenv("DB_URL", "").strip()
 
     if not raw_url:
-        raw_url = os.getenv("SUPABASE_DATABASE_URL", "").strip() or os.getenv("DB_URL", "").strip()
-
-    if not raw_url:
-        if "PYTEST_CURRENT_TEST" in os.environ or os.getenv("APP_ENV") in ("test", "testing") or os.getenv("CI") or os.getenv("GITHUB_ACTIONS"):
-            raw_url = os.getenv("TEST_DATABASE_URL", "").strip()
-
-    if not raw_url:
+        if test_environment:
+            logger.error("TEST_DATABASE_URL is missing in a test/CI environment; refusing database URL fallbacks.")
+            raise DatabaseConnectionError(
+                "TEST_DATABASE_URL is required in test/CI environments. DATABASE_URL and other fallbacks are not used."
+            )
         logger.error("DATABASE_URL environment variable is missing.")
         raise DatabaseConnectionError("DATABASE_URL (or TEST_DATABASE_URL for tests) environment variable is required. SQLite is not supported.")
 
@@ -120,7 +131,7 @@ def create_db_engine(custom_url: Optional[str] = None) -> Engine:
         pool_size=3,
         max_overflow=5,
         pool_pre_ping=True,
-        pool_recycle=45,
+        pool_recycle=300,
         connect_args={
             "keepalives": 1,
             "keepalives_idle": 30,

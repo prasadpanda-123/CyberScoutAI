@@ -8,14 +8,25 @@ authentication, timestamp validation, replay protection, and server-side email c
 from flask import Blueprint, jsonify, request
 from src.scheduler.external_trigger_service import ExternalTriggerService
 from src.utils.ip_utils import get_client_ip
+from src.database.login_attempt_repository import LoginAttemptRepository
+from src.auth.decorators import admin_required
 
 external_trigger_bp = Blueprint("external_trigger_api", __name__)
+_trigger_limit_repo = None
 
 
 def get_trigger_service() -> ExternalTriggerService:
     from flask import current_app
     db_mgr = getattr(current_app, "db_manager", None) if current_app else None
     return ExternalTriggerService(db_manager=db_mgr)
+
+
+def _get_trigger_limit_repo():
+    global _trigger_limit_repo
+    if _trigger_limit_repo is None:
+        from flask import current_app
+        _trigger_limit_repo = LoginAttemptRepository(db_manager=getattr(current_app, "db_manager", None))
+    return _trigger_limit_repo
 
 
 @external_trigger_bp.route("/api/scheduler/trigger", methods=["POST"])
@@ -30,6 +41,15 @@ def trigger_external_schedule():
     """
     client_ip = get_client_ip(request)
 
+    try:
+        allowed = _get_trigger_limit_repo().check_and_record_rate_limit(
+            client_ip, "external-scheduler", "scheduler_webhook", max_attempts=20, window_minutes=15
+        )
+    except Exception:
+        return jsonify({"success": False, "status": "unavailable", "error": "Trigger service temporarily unavailable"}), 503
+    if not allowed:
+        return jsonify({"success": False, "status": "rejected", "error": "Too many trigger requests"}), 429
+
     # 1. Validate Content-Type
     content_type = request.headers.get("Content-Type", "")
     if not content_type.startswith("application/json") and not request.is_json:
@@ -40,7 +60,11 @@ def trigger_external_schedule():
         }), 400
 
     # 2. Extract raw body bytes and headers
-    raw_body = request.get_data()
+    if request.content_length is not None and request.content_length > 8192:
+        return jsonify({"success": False, "status": "rejected", "error": "Request body is too large"}), 413
+    raw_body = request.stream.read(8193)
+    if len(raw_body) > 8192:
+        return jsonify({"success": False, "status": "rejected", "error": "Request body is too large"}), 413
     headers_dict = {k: v for k, v in request.headers.items()}
 
     # 3. Process trigger via ExternalTriggerService
@@ -57,6 +81,7 @@ def trigger_external_schedule():
 
 @external_trigger_bp.route("/api/scheduler/status", methods=["GET"])
 @external_trigger_bp.route("/api/external/scheduler/status", methods=["GET"])
+@admin_required
 def get_scheduler_status():
     """
     GET /api/scheduler/status
@@ -77,8 +102,6 @@ def get_scheduler_status():
         "scheduler_mode": "external",
         "trigger_source": "google_apps_script",
         "current_status": current_status,
-        "last_run_id": latest_trigger.get("request_id"),
         "last_run_status": last_run_status,
-        "last_run_at": latest_trigger.get("received_at", status_info.get("last_run_time")),
         "last_email_status": last_email_status,
     }), 200

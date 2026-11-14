@@ -21,6 +21,7 @@ from src.database.keyword_repository import KeywordRepository
 from src.database.knowledge_manager import KnowledgeManager
 from src.database.migrations import MigrationManager
 from src.database.opportunity_repository import OpportunityRepository
+from src.database.password_reset_repository import PasswordResetRepository
 from src.database.provider_statistics import ProviderStatisticsTracker
 from src.database.reporting import ReportGenerator
 from src.database.retention import RetentionPolicyManager
@@ -39,6 +40,7 @@ __all__ = [
     "UserRepository",
     "AdminRepository",
     "OpportunityRepository",
+    "PasswordResetRepository",
     "SourceRepository",
     "KeywordRepository",
     "SearchHistoryRepository",

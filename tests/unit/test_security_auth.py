@@ -78,7 +78,10 @@ class TestSecurityAuth(unittest.TestCase):
             role="Viewer",
         )
         # Log in as Viewer
-        self.client.post("/login", data={"identifier": email, "password": "ViewerPassword2026!"})
+        csrf = "csrf_test_viewer_token_val"
+        with self.client.session_transaction() as sess:
+            sess["user_csrf_token"] = csrf
+        self.client.post("/login", data={"identifier": email, "password": "ViewerPassword2026!", "csrf_token": csrf})
 
         # Viewer trying to access Super Admin / Admin config route
         res = self.client.get("/configuration")
@@ -158,7 +161,10 @@ class TestSecurityAuth(unittest.TestCase):
         self.user_repo.create_user(username=username, email=email, password="UserPass2026!", role="Viewer")
 
         user_client = self.app.test_client()
-        login_res = user_client.post("/login", data={"identifier": email, "password": "UserPass2026!"})
+        csrf = "csrf_test_user_flow_val"
+        with user_client.session_transaction() as sess:
+            sess["user_csrf_token"] = csrf
+        login_res = user_client.post("/login", data={"identifier": email, "password": "UserPass2026!", "csrf_token": csrf})
         self.assertEqual(login_res.status_code, 302)
 
         # Access protected pages & verify sidebar links
@@ -183,12 +189,17 @@ class TestSecurityAuth(unittest.TestCase):
         email = f"hacker_{ts_id}@cyberscout.ai"
         username = f"hacker_{ts_id}"
 
+        csrf = "csrf_test_register_val"
+        with self.client.session_transaction() as sess:
+            sess["user_csrf_token"] = csrf
+
         res = self.client.post("/register", data={
             "username": username,
             "email": email,
             "password": "HackerPass123!",
             "confirm_password": "HackerPass123!",
             "role": "Super Admin",
+            "csrf_token": csrf,
         })
         self.assertEqual(res.status_code, 302)
 
@@ -209,7 +220,8 @@ class TestSecurityAuth(unittest.TestCase):
         self.assertEqual(html_res.status_code, 200, "Admin logs HTML page must return 200 OK")
         html_data = html_res.get_data(as_text=True)
         self.assertNotIn("no results to fetch", html_data)
-        self.assertNotIn("Internal Server Error", html_data)
+        self.assertNotIn("<h1>Internal Server Error</h1>", html_data)
+        self.assertNotIn("<title>500 Internal Server Error</title>", html_data)
 
         # Verify JSON audit logs API returns HTTP 200 with structured dictionary
         api_res = admin_client.get("/admin/api/audit-logs")

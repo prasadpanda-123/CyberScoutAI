@@ -69,7 +69,7 @@ class AnalyticsRepository:
             sql += " WHERE first_seen_at >= NOW() - (%s * INTERVAL '1 day')"
             params.append(days_limit)
 
-        with self.db_manager.transaction() as cur:
+        with self.db_manager.user_context(user_id) as cur:
             cur.execute(sql, tuple(params))
             row = cur.fetchone()
 

@@ -25,6 +25,7 @@ from src.collectors.rate_limiter import RateLimiter
 from src.collectors.retry import CollectorRetry
 from src.core.constants import CONFIG_DIR
 from src.core.logging import get_logger
+from src.discovery.url_validator import URLValidator
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -79,6 +80,8 @@ class HTTPClient:
         self.timeout = (self.connect_timeout, self.read_timeout)
         self.verify_ssl = True
         self.follow_redirects = True
+        self.max_response_bytes = max(1024, min(int(os.getenv("COLLECTOR_MAX_RESPONSE_BYTES", "5242880")), 20 * 1024 * 1024))
+        self.url_validator = URLValidator(resolve_dns=True)
         self.user_agents = [
             "CyberScoutAI/1.1.2 (+https://github.com/CyberScoutAI/cyberscout-ai)"
         ]
@@ -152,6 +155,10 @@ class HTTPClient:
             delimiter = "&" if "?" in target_url else "?"
             target_url = f"{target_url}{delimiter}{encoded_params}"
 
+        initial_validation = self.url_validator.validate(target_url)
+        if not initial_validation.is_valid:
+            raise HTTPClientError(f"Blocked unsafe collector URL: {initial_validation.rejection_reason}")
+
         # 1. Check response cache
         if use_cache and self.cache:
             cached_res = self.cache.get(target_url)
@@ -187,15 +194,63 @@ class HTTPClient:
 
         def _do_get():
             try:
-                resp = self.session.get(
-                    target_url,
-                    headers=req_headers,
-                    timeout=self.timeout,
-                    verify=self.verify_ssl,
-                    allow_redirects=self.follow_redirects,
-                )
-                status_code = resp.status_code
-                content_text = resp.text
+                current_url = target_url
+                previous_origin = urllib.parse.urlsplit(current_url).netloc.lower()
+                for redirect_count in range(6):
+                    validation = self.url_validator.validate(current_url)
+                    if not validation.is_valid:
+                        raise HTTPClientError(f"Blocked unsafe collector redirect: {validation.rejection_reason}")
+
+                    hop_headers = dict(req_headers)
+                    current_origin = urllib.parse.urlsplit(current_url).netloc.lower()
+                    if current_origin != previous_origin:
+                        for name in tuple(hop_headers):
+                            if name.lower() in ("authorization", "cookie", "proxy-authorization"):
+                                hop_headers.pop(name, None)
+
+                    resp = self.session.get(
+                        current_url,
+                        headers=hop_headers,
+                        timeout=self.timeout,
+                        verify=self.verify_ssl,
+                        allow_redirects=False,
+                        stream=True,
+                    )
+                    if self.follow_redirects and resp.status_code in (301, 302, 303, 307, 308):
+                        location = resp.headers.get("Location")
+                        resp.close()
+                        if not location or redirect_count >= 5:
+                            raise HTTPClientError("Collector redirect limit reached or Location header was missing")
+                        previous_origin = current_origin
+                        current_url = urllib.parse.urljoin(current_url, location)
+                        continue
+
+                    status_code = resp.status_code
+                    declared_length = resp.headers.get("Content-Length")
+                    if declared_length:
+                        try:
+                            if int(declared_length) > self.max_response_bytes:
+                                resp.close()
+                                raise HTTPClientError("Collector response exceeded the configured size limit")
+                        except ValueError:
+                            pass
+
+                    body = bytearray()
+                    try:
+                        for chunk in resp.iter_content(chunk_size=64 * 1024):
+                            if not chunk:
+                                continue
+                            body.extend(chunk)
+                            if len(body) > self.max_response_bytes:
+                                raise HTTPClientError("Collector response exceeded the configured size limit")
+                    finally:
+                        resp.close()
+
+                    content_text = bytes(body).decode(resp.encoding or "utf-8", errors="replace")
+                    break
+                else:
+                    raise HTTPClientError("Collector redirect limit exceeded")
+
                 if status_code == 401:
                     safe_err = sanitize_secret_text(f"HTTP 401 - {resp.reason}")
                     raise HTTPClientError(f"GitHub API 401 Unauthorized: {safe_err}")

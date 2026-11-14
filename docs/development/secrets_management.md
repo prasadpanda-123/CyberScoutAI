@@ -13,6 +13,9 @@ For GitHub Actions or other automation, secrets should be stored in GitHub Secre
 - Keep a local `.env` file outside version control.
 - Use `.env.example` as a template for the required names and shape of variables.
 - Do not hard-code secrets into source files, tests, or examples.
+- Set `DATABASE_URL` in the local `.env` or process environment. Process/deployment environment variables take precedence over `.env` values.
+- URL-encode reserved characters in database credentials and use the exact TLS-enabled connection URI and port supplied by the database provider.
+- Do not print connection strings in shell output, logs, screenshots, issue reports, or chat messages.
 
 ## Production Deployment
 

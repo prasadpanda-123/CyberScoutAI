@@ -344,6 +344,23 @@ MIGRATIONS: List[Migration] = [
         SELECT 1;
         """,
     ),
+    Migration(
+        version=17,
+        description="Shared Single-Use Password Reset Tokens",
+        sql="""
+        CREATE TABLE IF NOT EXISTS "PasswordResetTokens" (
+            token_hash CHAR(64) PRIMARY KEY,
+            user_id TEXT NOT NULL REFERENCES "Users"(id) ON DELETE CASCADE,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP NOT NULL,
+            consumed_at TIMESTAMP NULL
+        );
+        CREATE INDEX IF NOT EXISTS ix_password_reset_tokens_user
+            ON "PasswordResetTokens"(user_id);
+        CREATE INDEX IF NOT EXISTS ix_password_reset_tokens_expiry
+            ON "PasswordResetTokens"(expires_at);
+        """,
+    ),
 ]
 
 
@@ -734,8 +751,8 @@ class MigrationManager:
 
             # 4. Create base policies
             policies = [
-                ('UserPreferences', 'userpreferences_policy', 'CREATE POLICY userpreferences_policy ON "UserPreferences" FOR ALL USING (true) WITH CHECK (true);'),
-                ('UserSearchHistory', 'usersearchhistory_policy', 'CREATE POLICY usersearchhistory_policy ON "UserSearchHistory" FOR ALL USING (true) WITH CHECK (true);')
+                ('UserPreferences', 'userpreferences_policy', 'CREATE POLICY userpreferences_policy ON "UserPreferences" FOR ALL USING (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR COALESCE(NULLIF(current_setting(\'app.is_admin\', true), \'\') = \'true\', false) OR COALESCE(NULLIF(current_setting(\'app.service_context\', true), \'\') = \'true\', false)) WITH CHECK (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR COALESCE(NULLIF(current_setting(\'app.is_admin\', true), \'\') = \'true\', false) OR COALESCE(NULLIF(current_setting(\'app.service_context\', true), \'\') = \'true\', false));'),
+                ('UserSearchHistory', 'usersearchhistory_policy', 'CREATE POLICY usersearchhistory_policy ON "UserSearchHistory" FOR ALL USING (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR COALESCE(NULLIF(current_setting(\'app.is_admin\', true), \'\') = \'true\', false) OR COALESCE(NULLIF(current_setting(\'app.service_context\', true), \'\') = \'true\', false)) WITH CHECK (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR COALESCE(NULLIF(current_setting(\'app.is_admin\', true), \'\') = \'true\', false) OR COALESCE(NULLIF(current_setting(\'app.service_context\', true), \'\') = \'true\', false));')
             ]
             for tablename, policyname, sql in policies:
                 try:
@@ -877,7 +894,7 @@ class MigrationManager:
                     WHERE LOWER(tablename) = 'notificationoutbox' AND LOWER(policyname) = 'notification_outbox_policy';
                 """)
                 if not cursor.fetchone():
-                    cursor.execute('CREATE POLICY notification_outbox_policy ON "NotificationOutbox" FOR ALL USING (true) WITH CHECK (true);')
+                    cursor.execute('CREATE POLICY notification_outbox_policy ON "NotificationOutbox" FOR ALL USING (COALESCE(NULLIF(current_setting(\'app.is_admin\', true), \'\') = \'true\', false) OR COALESCE(NULLIF(current_setting(\'app.service_context\', true), \'\') = \'true\', false)) WITH CHECK (COALESCE(NULLIF(current_setting(\'app.is_admin\', true), \'\') = \'true\', false) OR COALESCE(NULLIF(current_setting(\'app.service_context\', true), \'\') = \'true\', false));')
             except Exception as pe:
                 logger.warning(f"Notice on policy notification_outbox_policy: {pe}")
 
@@ -1180,6 +1197,16 @@ class MigrationManager:
                     cursor.execute(
                         "INSERT INTO schema_version (version, applied_at, description) VALUES (%s, NOW(), %s) ON CONFLICT (version) DO NOTHING;",
                         (16, "Phase 12 Canonical User ID UUID Migration"),
+                    )
+                    conn.commit()
+                    applied_count += 1
+
+                if current_version < 17:
+                    from src.database.password_reset_repository import PasswordResetRepository
+                    PasswordResetRepository(self.db_manager)._ensure_table()
+                    cursor.execute(
+                        "INSERT INTO schema_version (version, applied_at, description) VALUES (%s, NOW(), %s) ON CONFLICT (version) DO NOTHING;",
+                        (17, "Shared Single-Use Password Reset Tokens"),
                     )
                     conn.commit()
                     applied_count += 1

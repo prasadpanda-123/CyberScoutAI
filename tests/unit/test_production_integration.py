@@ -5,6 +5,7 @@ and Non-blocking Async Scan execution.
 
 import os
 import unittest
+from unittest.mock import patch
 from src.core.exceptions import DatabaseConnectionError
 from src.database.engine import get_db_url
 from src.core.version import get_version_info
@@ -15,21 +16,34 @@ from dashboard.config import DashboardConfig
 class TestProductionIntegration(unittest.TestCase):
     def test_production_mode_requires_database_url(self):
         """Verify get_db_url raises DatabaseConnectionError when DATABASE_URL is missing in production mode."""
-        orig_env = os.getenv("APP_ENV")
-        orig_url = os.getenv("DATABASE_URL")
-        try:
-            os.environ["APP_ENV"] = "production"
-            if "DATABASE_URL" in os.environ:
-                del os.environ["DATABASE_URL"]
+        with patch.dict(os.environ, {"APP_ENV": "production"}, clear=True):
             with self.assertRaises(DatabaseConnectionError):
                 get_db_url()
-        finally:
-            if orig_env is not None:
-                os.environ["APP_ENV"] = orig_env
-            else:
-                os.environ.pop("APP_ENV", None)
-            if orig_url is not None:
-                os.environ["DATABASE_URL"] = orig_url
+
+    def test_test_environment_prefers_test_database_url(self):
+        test_url = "postgresql://test:test@localhost/cyberscout_test"
+        with patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "test",
+                "DATABASE_URL": "postgresql://app:secret@localhost/cyberscout_production",
+                "TEST_DATABASE_URL": test_url,
+            },
+            clear=True,
+        ):
+            self.assertEqual(get_db_url(), test_url)
+
+    def test_test_environment_requires_test_database_url(self):
+        with patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "test",
+                "DATABASE_URL": "postgresql://app:secret@localhost/cyberscout_production",
+            },
+            clear=True,
+        ):
+            with self.assertRaisesRegex(DatabaseConnectionError, "TEST_DATABASE_URL"):
+                get_db_url()
 
     def test_supabase_pooler_port_6543_normalization(self):
         """Verify Supabase pooler connection on port 5432 is auto-normalized to port 6543."""

@@ -46,6 +46,7 @@ git commit -m "feat(collectors): add custom parser for RSS feeds"
 ## 🧪 Testing Guidelines
 
 - Every code change must include corresponding unit tests in `tests/unit/`.
+- Database-backed tests require a dedicated PostgreSQL test database. Set `TEST_DATABASE_URL` to that database before running tests; never use a development or production database. For `unittest` discovery, also set `DATABASE_URL` to the same test URL because unittest does not load pytest's `conftest.py`.
 - Ensure all automated tests pass prior to submitting a Pull Request:
 ```bash
 python -m unittest discover -s tests/unit

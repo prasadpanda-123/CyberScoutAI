@@ -1,155 +1,216 @@
 <!DOCTYPE html>
-<html class="dark" lang="en" data-theme="dark">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Administrator Portal{% endblock %} — CyberScout AI v{{ app_info.version }}</title>
-  
-  <!-- CyberScout AI Favicon Suite -->
+  <title>{% block title %}Administrator Portal{% endblock %} — CyberScout AI</title>
+
+  <!-- Favicons -->
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
-  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
-  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon/favicon.svg') }}">
-  
-  <!-- Fonts & Icons -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-  
-  <!-- Precompiled Static Tailwind CSS & Admin Theme -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+
+  <!-- Admin Design System v4.0 (Self-contained, clean, zero-drama) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+
   {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-bg-body text-text-primary antialiased min-h-screen flex flex-col selection:bg-admin-accent/30 selection:text-white">
+<body class="admin-body">
 
-  <!-- Mobile Overlay -->
-  <div id="adminMobileOverlay" class="fixed inset-0 bg-black/70 z-40 hidden md:hidden"></div>
+  <!-- Mobile Sidebar Overlay -->
+  <div id="aMobileOverlay" class="a-mobile-overlay" onclick="closeMobileSidebar()"></div>
 
-  <!-- Admin SideNavBar -->
-  <aside id="adminSidebar" class="fixed left-0 top-0 h-full w-[260px] bg-surface border-r border-admin-accent/20 flex flex-col py-5 px-3 z-50 transition-transform duration-300 md:translate-x-0 -translate-x-full shadow-[inset_0_0_20px_rgba(239,68,68,0.04)]">
-    <!-- Header with Notion Collapse Button -->
-    <div class="flex items-center justify-between gap-2 mb-6 px-2">
-      <a href="{{ url_for('admin_ui.admin_dashboard') }}" class="flex items-center gap-3 text-decoration-none">
-        <div class="h-9 w-9 rounded-lg bg-admin-accent/10 border border-admin-accent/30 flex items-center justify-center shrink-0 p-1">
-          <img src="{{ url_for('static', filename='images/cyberscout-icon.svg') }}" alt="CyberScout AI" class="w-full h-full object-contain">
+  <!-- ═══════════ SIDEBAR NAVIGATION ═══════════ -->
+  <aside id="aSidebar" class="a-sidebar">
+    <!-- Brand Header -->
+    <div class="a-sidebar-header">
+      <a href="{{ url_for('admin_ui.admin_dashboard') }}" class="a-brand">
+        <div class="a-brand-icon">
+          <img src="{{ url_for('static', filename='images/cyberscout-icon.svg') }}" alt="CyberScout AI">
         </div>
         <div>
-          <h1 class="text-[15px] font-bold text-admin-accent tracking-tight leading-none">Admin Portal</h1>
-          <p class="text-[11px] font-semibold text-text-muted uppercase tracking-wider mt-0.5">Control Surface</p>
+          <div class="a-brand-title">CyberScout AI</div>
+          <div class="a-brand-sub">Admin Console</div>
         </div>
       </a>
-      <div class="flex items-center">
-        <!-- Notion Collapse Button (Desktop) -->
-        <button type="button" id="adminSidebarCollapseBtn" class="sidebar-collapse-btn" title="Close sidebar (Ctrl+\)" aria-label="Collapse sidebar">
-          <svg class="w-4 h-4 text-text-muted hover:text-white transition-colors pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-          </svg>
-        </button>
-        <!-- Mobile Drawer Close Button -->
-        <button type="button" id="adminSidebarMobileCloseBtn" class="md:hidden p-1.5 text-text-muted hover:text-text-primary ml-1" aria-label="Close sidebar">
-          <span class="material-symbols-outlined text-[20px] pointer-events-none">close</span>
-        </button>
-      </div>
+      <button id="aSidebarCollapseBtn" class="a-sidebar-collapse-btn" title="Toggle sidebar (Ctrl+\)" onclick="toggleSidebar()">
+        <span class="material-symbols-outlined" style="font-size:18px;">menu_open</span>
+      </button>
     </div>
 
-    <!-- Navigation Links -->
-    <nav class="flex-1 flex flex-col gap-1 overflow-y-auto">
-      <div class="px-2 mb-1 text-[11px] font-semibold text-admin-accent/80 uppercase tracking-wider">Administration</div>
+    <!-- Navigation Sections -->
+    <nav class="a-nav">
+      <!-- SECTION 1: DISCOVERY & AUTOMATION -->
+      <div class="a-nav-section">Discovery &amp; Harvester</div>
 
-      <a href="{{ url_for('admin_ui.admin_dashboard') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_dashboard' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_dashboard' %}text-admin-accent icon-fill{% endif %}">admin_panel_settings</span>
-        <span>Dashboard</span>
+      <a href="{{ url_for('admin_ui.admin_dashboard') }}"
+         class="a-nav-link {% if active_page == 'admin_dashboard' %}a-active{% endif %}">
+        <span class="material-symbols-outlined a-nav-icon">space_dashboard</span>
+        <span>Command Center</span>
       </a>
 
-      <a href="{{ url_for('admin_ui.admin_users') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_users' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_users' %}text-admin-accent icon-fill{% endif %}">group</span>
-        <span>User Accounts</span>
+      <a href="{{ url_for('admin_ui.admin_collectors') }}"
+         class="a-nav-link {% if active_page == 'admin_collectors' %}a-active{% endif %}">
+        <span class="material-symbols-outlined a-nav-icon">radar</span>
+        <span>AI Discovery Engines</span>
       </a>
 
-      <a href="{{ url_for('admin_ui.admin_scheduler') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page in ['admin_scheduler', 'admin_collectors'] %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page in ['admin_scheduler', 'admin_collectors'] %}text-admin-accent icon-fill{% endif %}">schedule</span>
-        <span>Scheduler &amp; Automation</span>
+      <a href="{{ url_for('admin_ui.admin_data_quality') }}"
+         class="a-nav-link {% if active_page == 'admin_data_quality' %}a-active{% endif %}">
+        <span class="material-symbols-outlined a-nav-icon">verified_user</span>
+        <span>Quality &amp; Quarantine</span>
       </a>
 
-      <a href="{{ url_for('admin_ui.admin_reports') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_reports' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_reports' %}text-admin-accent icon-fill{% endif %}">folder</span>
-        <span>Reports Center</span>
+      <a href="{{ url_for('admin_ui.admin_scheduler') }}"
+         class="a-nav-link {% if active_page == 'admin_scheduler' %}a-active{% endif %}">
+        <span class="material-symbols-outlined a-nav-icon">schedule</span>
+        <span>Pipeline Scheduler</span>
       </a>
 
-      <a href="{{ url_for('admin_ui.admin_logs') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page == 'admin_logs' %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page == 'admin_logs' %}text-admin-accent icon-fill{% endif %}">terminal</span>
-        <span>Logs &amp; Audit</span>
+      <!-- SECTION 2: INTELLIGENCE & AUDIT -->
+      <div class="a-nav-section">Intelligence &amp; Reports</div>
+
+      <a href="{{ url_for('admin_ui.admin_reports') }}"
+         class="a-nav-link {% if active_page == 'admin_reports' %}a-active{% endif %}">
+        <span class="material-symbols-outlined a-nav-icon">table_view</span>
+        <span>Reports &amp; Daily Excel</span>
       </a>
 
-      <a href="{{ url_for('admin_ui.admin_reliability') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors text-sm {% if active_page in ['admin_reliability', 'admin_system', 'admin_configuration', 'admin_diagnostics', 'admin_email', 'admin_data_quality', 'admin_analytics', 'admin_source_health'] %}text-admin-accent font-bold bg-admin-accent/10 border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-admin-accent/5 hover:text-on-surface{% endif %}">
-        <span class="material-symbols-outlined text-[18px] text-text-secondary {% if active_page in ['admin_reliability', 'admin_system', 'admin_configuration', 'admin_diagnostics', 'admin_email', 'admin_data_quality', 'admin_analytics', 'admin_source_health'] %}text-admin-accent icon-fill{% endif %}">health_and_safety</span>
-        <span>System &amp; Telemetry</span>
+      <a href="{{ url_for('admin_ui.admin_analytics') }}"
+         class="a-nav-link {% if active_page == 'admin_analytics' %}a-active{% endif %}">
+        <span class="material-symbols-outlined a-nav-icon">insights</span>
+        <span>Analytics &amp; Metrics</span>
+      </a>
+
+      <a href="{{ url_for('admin_ui.admin_source_health') }}"
+         class="a-nav-link {% if active_page == 'admin_source_health' %}a-active{% endif %}">
+        <span class="material-symbols-outlined a-nav-icon">sensors</span>
+        <span>Source Health</span>
+      </a>
+
+      <a href="{{ url_for('admin_ui.admin_logs') }}"
+         class="a-nav-link {% if active_page == 'admin_logs' %}a-active{% endif %}">
+        <span class="material-symbols-outlined a-nav-icon">terminal</span>
+        <span>Logs &amp; Security Audit</span>
+      </a>
+
+      <!-- SECTION 3: SYSTEM ADMINISTRATION -->
+      <div class="a-nav-section">Administration</div>
+
+      <a href="{{ url_for('admin_ui.admin_users') }}"
+         class="a-nav-link {% if active_page == 'admin_users' %}a-active{% endif %}">
+        <span class="material-symbols-outlined a-nav-icon">manage_accounts</span>
+        <span>User Accounts &amp; RBAC</span>
+      </a>
+
+      <a href="{{ url_for('admin_ui.admin_email') }}"
+         class="a-nav-link {% if active_page == 'admin_email' %}a-active{% endif %}">
+        <span class="material-symbols-outlined a-nav-icon">mark_email_read</span>
+        <span>Email &amp; Delivery</span>
+      </a>
+
+      <a href="{{ url_for('admin_ui.admin_configuration') }}"
+         class="a-nav-link {% if active_page == 'admin_configuration' %}a-active{% endif %}">
+        <span class="material-symbols-outlined a-nav-icon">tune</span>
+        <span>Configuration &amp; Flags</span>
+      </a>
+
+      <a href="{{ url_for('admin_ui.admin_diagnostics') }}"
+         class="a-nav-link {% if active_page == 'admin_diagnostics' %}a-active{% endif %}">
+        <span class="material-symbols-outlined a-nav-icon">troubleshoot</span>
+        <span>System Diagnostics</span>
+      </a>
+
+      <a href="{{ url_for('admin_ui.admin_system') }}"
+         class="a-nav-link {% if active_page == 'admin_system' %}a-active{% endif %}">
+        <span class="material-symbols-outlined a-nav-icon">memory</span>
+        <span>Specs &amp; Environment</span>
+      </a>
+
+      <a href="{{ url_for('admin_ui.admin_reliability') }}"
+         class="a-nav-link {% if active_page == 'admin_reliability' %}a-active{% endif %}">
+        <span class="material-symbols-outlined a-nav-icon">shield</span>
+        <span>Reliability &amp; DR</span>
       </a>
     </nav>
 
-    <!-- Footer Profile Link -->
-    <div class="mt-auto pt-3 border-t border-border-subtle">
-      <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors {% if active_page == 'admin_profile' %}text-admin-accent font-bold bg-surface-container-high border-l-2 border-admin-accent{% else %}text-on-surface-variant hover:bg-bg-card-hover hover:text-on-surface{% endif %}" href="{{ url_for('admin_ui.admin_profile') }}">
-        <div class="h-8 w-8 rounded-full bg-admin-accent/10 text-admin-accent flex items-center justify-center font-bold text-xs border border-admin-accent/20 shrink-0">
+    <!-- Operator Profile Footer -->
+    <div class="a-sidebar-footer">
+      <a href="{{ url_for('admin_ui.admin_profile') }}" class="a-operator-card {% if active_page == 'admin_profile' %}a-active{% endif %}">
+        <div class="a-operator-avatar">
           {{ (current_admin.username or session.get('admin_username') or 'A')[0]|upper }}
         </div>
-        <div class="overflow-hidden text-left flex-1">
-          <div class="text-sm font-semibold text-text-primary truncate">{{ current_admin.username or session.get('admin_username') or 'Administrator' }}</div>
+        <div style="flex:1;overflow:hidden;">
+          <div class="a-operator-name">{{ current_admin.username or session.get('admin_username') or 'Administrator' }}</div>
+          <div class="a-operator-role">{{ current_admin.role or 'Administrator' }}</div>
         </div>
-        <span class="material-symbols-outlined text-text-muted text-[18px]">chevron_right</span>
+        <span class="material-symbols-outlined" style="font-size:16px;color:var(--a-text-4);">chevron_right</span>
       </a>
     </div>
   </aside>
 
-  <!-- Top Bar & Main Canvas -->
-  <div id="adminMainWrapper" class="flex-1 md:ml-[260px] flex flex-col min-h-screen transition-all duration-300">
-    <!-- Admin Top Bar -->
-    <header class="sticky top-0 z-30 h-14 bg-surface/90 backdrop-blur-md border-b border-border-subtle px-4 md:px-8 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <!-- Floating Expand / Toggle Button (Hidden on Desktop when Sidebar is Open) -->
-        <button type="button" id="adminSidebarExpandBtn" class="sidebar-expand-btn" title="Open sidebar (Ctrl+\)" aria-label="Open sidebar">
-          <svg class="w-4 h-4 text-text-secondary hover:text-white transition-colors pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
+  <!-- ═══════════ MAIN CONTENT AREA ═══════════ -->
+  <div class="a-main">
+
+    <!-- Sticky Topbar -->
+    <header class="a-topbar">
+      <div class="a-topbar-left">
+        <button class="a-topbar-toggle" id="aMobileToggle" onclick="openMobileSidebar()" title="Open sidebar">
+          <span class="material-symbols-outlined">menu</span>
         </button>
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-danger/10 border border-danger/30 text-[11px] font-mono text-danger font-bold">
-          <span class="w-1.5 h-1.5 rounded-full bg-danger animate-pulse"></span>
-          HIGH-PRIVILEGE BOUNDARY
-        </span>
+
+        <div class="a-privilege-pill">
+          <span class="a-live-dot green"></span>
+          <span>Phase G Verified &middot; RLS Active</span>
+        </div>
       </div>
 
-      <div class="flex items-center gap-4">
-        <a href="{{ url_for('admin_ui.admin_profile') }}" class="hidden sm:flex items-center gap-2 text-xs text-decoration-none hover:opacity-80 transition-opacity">
-          <span class="text-text-muted">Operator:</span>
-          <span class="font-bold text-text-primary font-mono">{{ current_admin.username }}</span>
-          <span class="text-[10px] bg-surface-container-high border border-border-subtle px-2 py-0.5 rounded text-text-secondary uppercase">{{ current_admin.role }}</span>
+      <div class="a-topbar-right">
+        <!-- Live System Clock -->
+        <div class="a-clock">
+          <div class="a-clock-time" id="aClockTime">--:--:--</div>
+          <div class="a-clock-date" id="aClockDate">Loading...</div>
+        </div>
+
+        <!-- Operator Pill -->
+        <a href="{{ url_for('admin_ui.admin_profile') }}" style="display:flex;align-items:center;gap:8px;text-decoration:none;">
+          <span class="a-badge a-badge-primary" style="font-size:11px;">
+            <span class="material-symbols-outlined" style="font-size:13px;">shield_person</span>
+            {{ current_admin.username or session.get('admin_username') or 'Admin' }}
+          </span>
         </a>
-        <a href="{{ url_for('admin_ui.admin_logout') }}" class="bg-danger/10 hover:bg-danger text-danger hover:text-white border border-danger/30 text-xs font-bold px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5">
-          <span class="material-symbols-outlined text-[15px]">power_settings_new</span>
-          <span>Logout</span>
-        </a>
+
+        <!-- Logout Action -->
+        <form action="{{ url_for('admin_ui.admin_logout') }}" method="post" class="inline-flex">
+          <input type="hidden" name="csrf_token" value="{{ session.get('admin_csrf_token', '') }}">
+          <button type="submit" class="a-topbar-logout" title="End administrative session">
+            <span class="material-symbols-outlined" style="font-size:15px;">logout</span>
+            <span>Exit</span>
+          </button>
+        </form>
       </div>
     </header>
 
-    <!-- Main Content Area -->
-    <main class="flex-1 p-4 md:p-8 max-w-[1600px] w-full mx-auto">
-      <!-- Flash Alert Container -->
+    <!-- Page Content Slot -->
+    <main class="a-content">
+      <!-- Flash Alert Banners -->
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-          <div class="mb-6 space-y-2">
+          <div style="margin-bottom:18px;display:flex;flex-direction:column;gap:8px;">
             {% for category, message in messages %}
-              <div class="p-3.5 rounded-lg border text-sm flex items-center justify-between {% if category == 'success' %}bg-success/10 border-success/30 text-success{% elif category in ['danger', 'error'] %}bg-danger/10 border-danger/30 text-danger{% elif category == 'warning' %}bg-warning/10 border-warning/30 text-warning{% else %}bg-info/10 border-info/30 text-info{% endif %}">
-                <div class="flex items-center gap-2">
-                  <span class="material-symbols-outlined text-[18px]">
-                    {% if category == 'success' %}check_circle{% elif category in ['danger', 'error'] %}error{% elif category == 'warning' %}warning{% else %}info{% endif %}
+              <div class="a-flash {{ category }}" role="alert">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span class="material-symbols-outlined" style="font-size:18px;">
+                    {% if category == 'success' %}check_circle
+                    {% elif category in ['danger', 'error'] %}error
+                    {% elif category == 'warning' %}warning
+                    {% else %}info{% endif %}
                   </span>
                   <span>{{ message }}</span>
                 </div>
-                <button type="button" onclick="this.parentElement.remove()" class="text-current opacity-70 hover:opacity-100">
-                  <span class="material-symbols-outlined text-[16px]">close</span>
+                <button class="a-flash-dismiss" onclick="this.closest('.a-flash').remove()" aria-label="Dismiss">
+                  <span class="material-symbols-outlined" style="font-size:16px;">close</span>
                 </button>
               </div>
             {% endfor %}
@@ -160,124 +221,96 @@
       {% block content %}{% endblock %}
     </main>
 
-    <!-- Footer -->
-    <footer class="mt-auto border-t border-border-subtle py-4 px-4 md:px-8 text-xs text-text-muted flex flex-col sm:flex-row justify-between items-center gap-2 bg-surface/50">
-      <div>CyberScout AI Administrative Control Surface · Strict RLS & MFA Protected</div>
-      <div class="flex items-center gap-2 font-mono">
-        <span class="text-danger">AUDIT LOGGING ACTIVE</span>
+    <!-- Calm Footer -->
+    <footer class="a-footer">
+      <div>CyberScout AI &mdash; Autonomous Cybersecurity Opportunity Discovery &amp; Verification</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="a-mono" style="font-size:10.5px;color:var(--a-text-4);">ENGINE v4.0 &middot; 2026</span>
+        <span class="a-live-dot green" title="Operational"></span>
       </div>
     </footer>
+
   </div>
 
+  <!-- ═══════════ SCRIPTS ═══════════ -->
   <script nonce="{{ csp_nonce }}">
-    function isAdminDesktop() {
-      return window.innerWidth >= 768;
+    // Sidebar Collapse Logic
+    function getSidebarState() {
+      return localStorage.getItem('cs_admin_sidebar') === 'collapsed';
     }
 
-    function toggleAdminDesktopSidebar() {
-      const isCollapsed = document.body.classList.toggle('sidebar-collapsed');
-      localStorage.setItem('cyberscout_admin_sidebar_collapsed', isCollapsed ? 'true' : 'false');
-      const sidebar = document.getElementById('adminSidebar');
-      if (sidebar) {
-        if (isCollapsed) {
-          sidebar.classList.add('-translate-x-full');
-          sidebar.classList.remove('md:translate-x-0');
-        } else {
-          sidebar.classList.remove('-translate-x-full');
-          sidebar.classList.add('md:translate-x-0');
-        }
-      }
-    }
-
-    function handleAdminSidebarCollapse() {
-      if (isAdminDesktop()) {
-        toggleAdminDesktopSidebar();
+    function setSidebarCollapsed(collapsed) {
+      localStorage.setItem('cs_admin_sidebar', collapsed ? 'collapsed' : 'open');
+      if (collapsed) {
+        document.body.classList.add('a-sidebar-collapsed');
       } else {
-        toggleAdminMobileSidebar();
+        document.body.classList.remove('a-sidebar-collapsed');
       }
     }
 
-    function handleAdminSidebarOpen() {
-      if (isAdminDesktop()) {
-        toggleAdminDesktopSidebar();
+    function toggleSidebar() {
+      if (window.innerWidth < 768) {
+        openMobileSidebar();
       } else {
-        toggleAdminMobileSidebar();
+        setSidebarCollapsed(!getSidebarState());
       }
     }
 
-    function toggleAdminMobileSidebar() {
-      const sidebar = document.getElementById('adminSidebar');
-      const overlay = document.getElementById('adminMobileOverlay');
-      if (!sidebar) return;
-      const isClosed = sidebar.classList.contains('-translate-x-full');
-      if (isClosed) {
-        sidebar.classList.remove('-translate-x-full');
-        if (overlay) overlay.classList.remove('hidden');
-      } else {
-        sidebar.classList.add('-translate-x-full');
-        if (overlay) overlay.classList.add('hidden');
-      }
+    function openMobileSidebar() {
+      document.body.classList.add('a-mobile-sidebar-open');
     }
 
-    function setupAdminSidebarEventListeners() {
-      const isCollapsed = localStorage.getItem('cyberscout_admin_sidebar_collapsed') === 'true';
-      if (isCollapsed && isAdminDesktop()) {
-        document.body.classList.add('sidebar-collapsed');
-        const sidebar = document.getElementById('adminSidebar');
-        if (sidebar) {
-          sidebar.classList.add('-translate-x-full');
-          sidebar.classList.remove('md:translate-x-0');
-        }
-      }
-
-      const collapseBtn = document.getElementById('adminSidebarCollapseBtn');
-      if (collapseBtn) {
-        collapseBtn.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleAdminSidebarCollapse();
-        });
-      }
-
-      const expandBtn = document.getElementById('adminSidebarExpandBtn');
-      if (expandBtn) {
-        expandBtn.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleAdminSidebarOpen();
-        });
-      }
-
-      const mobileOverlay = document.getElementById('adminMobileOverlay');
-      if (mobileOverlay) {
-        mobileOverlay.addEventListener('click', (e) => {
-          e.preventDefault();
-          toggleAdminMobileSidebar();
-        });
-      }
-
-      const mobileCloseBtn = document.getElementById('adminSidebarMobileCloseBtn');
-      if (mobileCloseBtn) {
-        mobileCloseBtn.addEventListener('click', (e) => {
-          e.preventDefault();
-          toggleAdminMobileSidebar();
-        });
-      }
+    function closeMobileSidebar() {
+      document.body.classList.remove('a-mobile-sidebar-open');
     }
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', setupAdminSidebarEventListeners);
-    } else {
-      setupAdminSidebarEventListeners();
-    }
-
+    // Keyboard Shortcut: Ctrl+\ or Cmd+\
     document.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
         e.preventDefault();
-        handleAdminSidebarCollapse();
+        toggleSidebar();
       }
+      if (e.key === 'Escape') closeMobileSidebar();
     });
+
+    // Initialize Sidebar State
+    (function initSidebar() {
+      if (window.innerWidth >= 768 && getSidebarState()) {
+        document.body.classList.add('a-sidebar-collapsed');
+      }
+    })();
+
+    // Topbar Live Clock
+    function updateClock() {
+      const now = new Date();
+      const timeEl = document.getElementById('aClockTime');
+      const dateEl = document.getElementById('aClockDate');
+      if (!timeEl) return;
+
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      timeEl.textContent = `${h}:${m}:${s}`;
+
+      const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      dateEl.textContent = `${days[now.getDay()]} ${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+    }
+
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // Auto-dismiss Flash Alerts
+    setTimeout(() => {
+      document.querySelectorAll('.a-flash').forEach(el => {
+        el.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(-4px)';
+        setTimeout(() => el.remove(), 300);
+      });
+    }, 7000);
   </script>
+
   {% block extra_scripts %}{% endblock %}
 </body>
 </html>

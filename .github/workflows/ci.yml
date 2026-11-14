@@ -7,6 +7,34 @@ on:
     branches: [ main ]
 
 jobs:
+  frontend:
+    name: Build Web Assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+
+      - name: Install Root Build Dependencies
+        run: npm ci
+
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build CSS and Frontend
+        run: npm run build
+
   test:
     name: Build & Run Test Suite
     runs-on: ubuntu-latest

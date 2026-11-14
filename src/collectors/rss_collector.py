@@ -86,7 +86,7 @@ class GenericRSSCollector(BaseCollector):
         Executes RSS collection for target SearchTask URL.
 
         Args:
-            task: SearchTask emitted by SearchPlanner.
+            task: Validated SearchTask instance.
 
         Returns:
             CollectorResult containing normalized Opportunity dictionaries.

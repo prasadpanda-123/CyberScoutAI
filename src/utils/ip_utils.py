@@ -104,6 +104,12 @@ def get_client_ip(request: Optional[Any] = None) -> str:
 
     direct_ip = normalize_ip(getattr(request, "remote_addr", None)) or "127.0.0.1"
 
+    # ProxyFix has already selected the client address from the configured trusted hop
+    # count. Do not independently trust client-supplied forwarding headers afterward.
+    environ = getattr(request, "environ", {}) or {}
+    if "werkzeug.proxy_fix.orig" in environ:
+        return direct_ip
+
     trusted_proxies = get_trusted_proxy_count()
     if trusted_proxies <= 0:
         # Local development / Direct connection: Do not trust forwarded headers

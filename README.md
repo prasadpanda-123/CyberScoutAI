@@ -34,8 +34,8 @@ CyberScout AI is built on a strictly decoupled presentation-engine-data architec
 |  [ Automation & Scheduler Engine (src/automation/) ]                          |
 |    Background Daemon Thread, YAML Interval Triggers, Signal Handlers          |
 |                                                                               |
-|  [ 6-Stage Intelligence & Processing Pipeline (src/) ]                        |
-|    SearchPlanner ➔ Collectors ➔ Processors ➔ Ranking ➔ KB ➔ Notifier         |
+|  [ Modern Global AI Discovery & Processing Architecture (src/) ]              |
+|    GlobalDiscoveryService (Tavily) ➔ Candidate Staging ➔ Firecrawl ➔ Ranking |
 |                                                                               |
 |  [ PostgreSQL / Supabase Database Storage ]                                   |
 |    Schema v2, Transaction Pooler, Foreign Key Enforcement, 12 Core Tables     |
@@ -91,6 +91,19 @@ pip install -r requirements.txt
 Launch the browser control center on `http://127.0.0.1:5000`:
 ```bash
 python main.py --dashboard
+```
+
+For frontend development, run `npm run dev` from `frontend/`. The Vite server proxies backend requests to `http://127.0.0.1:5000` by default. If that port is occupied, set `PORT` for the Flask process and `CYBERSCOUT_API_TARGET` for Vite to the same alternate port.
+
+On Windows PowerShell, for example:
+```powershell
+# Backend
+$env:PORT = "5001"
+python main.py --dashboard
+
+# In a second terminal, from frontend/
+$env:CYBERSCOUT_API_TARGET = "http://127.0.0.1:5001"
+npm run dev -- --host 127.0.0.1 --port 4173
 ```
 
 ### Automation Daemon
@@ -174,23 +187,24 @@ CyberScout AI automatically manages environment settings using a root-level `.en
 ```bash
 cp .env.example .env
 ```
-3. **Configure Secrets**: Add your credentials to `.env`:
+3. **Configure Secrets**: Set database and provider credentials only in your local `.env` file or managed deployment secret store. The checked-in template leaves secrets blank:
 ```ini
 APP_ENV=development
 LOG_LEVEL=INFO
 LOG_FILE=cyberscout.log
-DATABASE_URL=postgresql://postgres:password@localhost:5432/cyberscout
+DATABASE_URL=
 
 # Optional GitHub Personal Access Token (5,000 req/hr capacity)
-GITHUB_TOKEN=ghp_your_actual_token_here
+GITHUB_TOKEN=
 
 # Optional SMTP Email Settings (Brevo SMTP Relay)
 SMTP_HOST=smtp-relay.brevo.com
 SMTP_PORT=587
 SMTP_USER=user@example.com
-SMTP_PASSWORD=your_brevo_smtp_key
+SMTP_PASSWORD=
 RECIPIENT_EMAIL=user@example.com
 ```
+Copy the database URI directly from your provider into the private `.env` or deployment secret setting. URL-encode reserved characters in credentials, use the provider's specified pooler port, and require TLS where supported. Never paste connection strings into source files, issue reports, or chat messages.
 4. **Inspect Environment Status**:
 ```bash
 python main.py --env-status

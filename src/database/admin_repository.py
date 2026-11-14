@@ -33,6 +33,7 @@ class AdminRepository:
         password: str,
         role: str = "Admin",
         is_active: bool = True,
+        first_admin_only: bool = False,
     ) -> Dict[str, Any]:
         """
         Creates a new administrator account in the Admins table with PBKDF2 SHA-256 password hashing.
@@ -70,6 +71,12 @@ class AdminRepository:
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         try:
+            if first_admin_only and not getattr(self.db_manager, "is_sqlite", False):
+                # Serialize bootstrap attempts and check the invariant in the same transaction.
+                cursor.execute('LOCK TABLE "Admins" IN SHARE ROW EXCLUSIVE MODE;')
+                cursor.execute('SELECT 1 FROM "Admins" LIMIT 1;')
+                if cursor.fetchone():
+                    raise ValueError("Initial administrator setup has already been completed.")
             cursor.execute(
                 sql,
                 (
@@ -93,6 +100,9 @@ class AdminRepository:
                 "is_active": is_active,
                 "created_at": ts,
             }
+        except ValueError:
+            conn.rollback()
+            raise
         except Exception as e:
             conn.rollback()
             raise ValueError(f"Administrator Username or Email already exists: {e}")

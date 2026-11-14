@@ -41,6 +41,7 @@ CyberScout AI operates as a decoupled presentation-engine-data architecture desi
 - **Scan Exclusivity**: The PostgreSQL `ScanJobs` table tracks active jobs (`queued`, `running`). Concurrent scan requests from any worker are rejected with HTTP 409 Conflict.
 - **Stale Job Recovery**: Crashed or timed-out workers are automatically recovered; running jobs exceeding `STALE_THRESHOLD_MINUTES` (30 mins) are marked failed by `recover_stale_jobs()`.
 - **MFA Centralization**: Administrative MFA state resides in `PendingMfa`, allowing login initialization on one worker and OTP completion on another.
+- **Password Reset Tokens**: Reset-token hashes and expiry state are shared in PostgreSQL; token consumption, password update, and user-session revocation happen in one transaction.
 - **HMAC Replay Protection**: External scheduler request nonces are tracked in `scheduler_webhook_requests` to prevent replay attacks across worker processes.
 
 ---
@@ -54,9 +55,12 @@ All production settings are driven by environment variables. Never commit secret
 | Variable | Recommended Production Value | Description |
 | :--- | :--- | :--- |
 | `APP_ENV` | `production` | Enables production mode and security configurations. |
+| `CYBERSCOUT_ENV` | `production` | Required by the Render build and runtime to activate production security settings. |
 | `SECRET_KEY` | *(64-character random hex string)* | Flask session signing secret. |
+| `INITIAL_ADMIN_SETUP_TOKEN` | *(one-time high-entropy secret)* | Required for `/setup` in production. Remove it from Render after creating the first administrator. |
+| `PUBLIC_APP_URL` | `https://your-public-hostname` | Canonical HTTPS origin used in password-reset emails; never derived from request or proxy headers. |
 | `SESSION_COOKIE_SECURE` | `true` | Enforces HTTPS-only cookies (requires reverse proxy TLS). |
-| `DATABASE_URL` | `postgresql://user:pass@host:5432/dbname?sslmode=require` | PostgreSQL database connection URI. |
+| `DATABASE_URL` | *(managed secret; provider-issued PostgreSQL URI with TLS enabled)* | PostgreSQL database connection URI. Keep it out of source control and logs; URL-encode reserved characters in credentials and use the exact port supplied by the database provider. |
 | `PORT` | `5000` (or cloud-provided) | Port for the WSGI server. |
 
 ### Optional / Integration Variables
@@ -67,8 +71,9 @@ All production settings are driven by environment variables. Never commit secret
 | `BREVO_API_KEY` | Brevo v3 API key (`xkeysib-...`) for report delivery. |
 | `EMAIL_FROM` | Sender address verified in Brevo / SMTP server. |
 | `EMAIL_TO` | Target recipient email address for intelligence digests. |
-| `SCHEDULER_SECRET` | Shared secret for external HMAC-SHA256 scheduler webhook triggers. |
+| `CYBERSCOUT_SCHEDULER_SECRET` | Shared secret for external HMAC-SHA256 scheduler webhook triggers. |
 | `GITHUB_TOKEN` | Personal Access Token (5,000 req/hr) for GitHub collector. |
+| `FIRECRAWL_ENABLED` | Defaults to `false` in production. Set to `true` only after enabling Firecrawl provider-side redirect and egress protections against private and link-local destinations. |
 
 ---
 
@@ -87,6 +92,7 @@ python -m src.database.migrations.migration_manager
 - `AuditLogs` & `AppLogs` (System audit trail and diagnostics)
 - `ScanJobs` (Cross-worker job state machine)
 - `PendingMfa` (MFA tokens with atomic attempt counters)
+- `PasswordResetTokens` (hashed, expiring, single-use password reset tokens)
 - `scheduler_webhook_requests` (HMAC webhook replay protection)
 
 ---
@@ -104,6 +110,18 @@ npm run build:css
 ```
 
 Verified static output: `dashboard/static/css/tailwind.css` (~37 KB).
+
+### Render Build Command
+
+Set the Render service's **Build Command** to:
+
+```bash
+bash scripts/render_build.sh
+```
+
+The script installs runtime and frontend build dependencies, builds the CSS and React assets, applies PostgreSQL migrations, then removes the `tests/` directory from the Render build checkout. Set `DATABASE_URL` in Render before building so migrations can complete. The pruning step requires Render's `RENDER=true` environment variable and validates the project root before deleting anything. Tests remain in the Git repository and are not removed from developer workspaces.
+
+Keep the service's **Start Command** as the existing `Procfile` command. Do not configure a separate test-pruning command or run the pruning script outside a Render build.
 
 ---
 
@@ -154,8 +172,8 @@ CyberScout AI routes are segmented into four distinct operational tiers:
 ### Tier 4: Health Probes & Telemetry (`health_bp`)
 - `GET /health/live` & `GET /api/health/live` — Process Liveness probe (HTTP 200, no database required, recommended for Render Health Check Path).
 - `GET /health/ready` & `GET /api/health/ready` — Service Readiness probe (HTTP 200 connected, HTTP 503 degraded, checks PostgreSQL).
-- `GET /health` — SSR visual telemetry dashboard (or JSON metrics if `Accept: application/json`).
-- `GET /api/health` & `GET /api/health/database` — JSON health metrics payloads.
+- `GET /health` — Admin-protected visual telemetry dashboard.
+- `GET /api/health` & `GET /api/health/database` — Minimal public liveness/readiness state only; no database version, host, or table counts.
 
 ### Content Security Policy (CSP)
 Strict nonce-based policy enforced on all HTML responses:
@@ -187,6 +205,6 @@ Before exposing CyberScout AI to public traffic:
 - [ ] **4. Cookie Security**: Set `APP_ENV=production` and `SESSION_COOKIE_SECURE=true`.
 - [ ] **5. Database**: Set `DATABASE_URL` with SSL enabled (`sslmode=require`).
 - [ ] **6. Schema Migrations**: Run `python -m src.database.migrations.migration_manager`.
-- [ ] **7. Admin Seeding**: Seed initial administrator account with a high-entropy password.
+- [ ] **7. Admin Bootstrap**: Set `INITIAL_ADMIN_SETUP_TOKEN`, create the first administrator through `/setup` over HTTPS, then remove the token from Render.
 - [ ] **8. Email Delivery**: Configure `EMAIL_PROVIDER=brevo` and set `BREVO_API_KEY`.
-- [ ] **9. External Scheduler**: If using external cron, set `SCHEDULER_SECRET` in both the scheduler client and server environment.
+- [ ] **9. External Scheduler**: If using external cron, set `CYBERSCOUT_SCHEDULER_SECRET` in both the scheduler client and server environment. The trigger endpoint accepts at most 20 requests per IP per 15 minutes and 8 KiB per request.

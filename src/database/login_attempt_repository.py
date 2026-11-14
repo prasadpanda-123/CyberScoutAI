@@ -42,6 +42,7 @@ class LoginAttemptRepository:
         CREATE INDEX IF NOT EXISTS idx_login_attempts_type 
         ON "LoginAttempts" (attempt_type, attempted_at);
         """
+        initialized = False
         try:
             conn = self.db_manager.get_connection()
             cursor = conn.cursor()
@@ -64,6 +65,7 @@ class LoginAttemptRepository:
                     cursor.execute(sql)
                 conn.commit()
                 self._table_initialized = True
+                initialized = True
             except Exception as e:
                 conn.rollback()
                 logger.debug(f"LoginAttempts table initialization notice: {e}")
@@ -71,6 +73,9 @@ class LoginAttemptRepository:
                 cursor.close()
         except Exception as e:
             logger.debug(f"Could not initialize LoginAttempts table: {e}")
+        if initialized:
+            # Keep the distributed throttle table bounded across long-lived Render instances.
+            self.prune_old_attempts(max_age_minutes=24 * 60)
 
     def record_failed_attempt(
         self,
@@ -135,12 +140,56 @@ class LoginAttemptRepository:
                 return int(row[0]) if row else 0
             except Exception as e:
                 logger.warning(f"Failed to query login attempts count: {e}")
-                return 0
+                raise RuntimeError("Login attempt state is unavailable; authentication must fail closed.") from e
             finally:
                 cursor.close()
         except Exception as e:
             logger.warning(f"Database connection error checking login attempts: {e}")
-            return 0
+            raise RuntimeError("Login attempt state is unavailable; authentication must fail closed.") from e
+
+    def check_and_record_rate_limit(
+        self,
+        ip_address: str,
+        identifier: str,
+        attempt_type: str,
+        *,
+        max_attempts: int,
+        window_minutes: int,
+    ) -> bool:
+        """Atomically records a request if its shared PostgreSQL rate-limit bucket allows it."""
+        self._ensure_table()
+        if not self._table_initialized:
+            raise RuntimeError("Distributed rate-limit storage is unavailable.")
+
+        clean_ip = (ip_address or "unknown").strip()[:64]
+        clean_id = (identifier or "").strip().lower()[:255]
+        clean_type = (attempt_type or "request").strip()[:32]
+        try:
+            with self.db_manager.transaction() as cursor:
+                # Serialize requests within a bucket so concurrent workers cannot race the count.
+                cursor.execute(
+                    "SELECT pg_advisory_xact_lock(hashtext(%s), hashtext(%s));",
+                    (f"{clean_type}:{clean_ip}", clean_id),
+                )
+                cursor.execute(
+                    """SELECT COUNT(*) FROM "LoginAttempts"
+                       WHERE ip_address = %s AND identifier = %s AND attempt_type = %s
+                         AND attempted_at >= CURRENT_TIMESTAMP - (%s * INTERVAL '1 minute');""",
+                    (clean_ip, clean_id, clean_type, int(window_minutes)),
+                )
+                row = cursor.fetchone()
+                count = int(row[0]) if row else 0
+                if count >= max_attempts:
+                    return False
+                cursor.execute(
+                    """INSERT INTO "LoginAttempts" (ip_address, identifier, attempt_type, attempted_at)
+                       VALUES (%s, %s, %s, CURRENT_TIMESTAMP);""",
+                    (clean_ip, clean_id, clean_type),
+                )
+            return True
+        except Exception as exc:
+            logger.error(f"Distributed rate-limit check failed for {clean_type}: {exc}")
+            raise RuntimeError("Distributed rate-limit storage is unavailable.") from exc
 
     def is_locked_out(
         self,

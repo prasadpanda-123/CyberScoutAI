@@ -5,6 +5,7 @@ System Health Status & Telemetry API Route (Part 12).
 from flask import Blueprint, current_app, jsonify, render_template, request
 from dashboard.services.dashboard_service import DashboardService
 from src.database.connection import DatabaseManager
+from src.auth.decorators import admin_required
 
 health_bp = Blueprint("health", __name__)
 dash_service = DashboardService()
@@ -22,10 +23,11 @@ def api_health():
     Returns structured JSON system and database health status.
     """
     db_mgr = get_db_manager()
-    metrics = db_mgr.get_health_metrics()
-    metrics["healthy"] = metrics.get("connected", False)
-    status_code = 200 if metrics.get("connected") else 503
-    return jsonify(metrics), status_code
+    try:
+        connected = bool(db_mgr.ping())
+    except Exception:
+        connected = False
+    return jsonify({"status": "ok" if connected else "degraded", "healthy": connected}), 200 if connected else 503
 
 
 @health_bp.route("/api/health/database", methods=["GET"])
@@ -34,9 +36,7 @@ def api_health_database():
     Returns exact Part 7 database health JSON payload.
     """
     db_mgr = get_db_manager()
-    metrics = db_mgr.get_health_metrics()
-    status_code = 200 if metrics.get("connected") else 503
-    return jsonify(metrics), status_code
+    return api_health()
 
 
 @health_bp.route("/health/live", methods=["GET"])
@@ -84,6 +84,7 @@ def health_readiness():
 
 
 @health_bp.route("/health")
+@admin_required
 def index():
     """Renders visual system health dashboard or returns JSON health metrics."""
     if (

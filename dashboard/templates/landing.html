@@ -68,11 +68,11 @@
 
         <div class="flex flex-wrap gap-4 pt-2">
           <a href="{{ url_for('auth_ui.register') }}" class="bg-primary hover:bg-primary-container text-surface-container-lowest font-bold text-sm px-6 py-3 rounded-lg brand-glow transition-all flex items-center gap-2">
-            <span>Explore Opportunities</span>
+            <span>Create Free Account</span>
             <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
           </a>
           <a href="{{ url_for('auth_ui.login') }}" class="border border-border-subtle text-text-secondary hover:text-text-primary hover:bg-surface-container font-semibold text-sm px-6 py-3 rounded-lg transition-colors">
-            Access Portal
+            Sign In
           </a>
         </div>
       </div>
@@ -111,8 +111,8 @@
             <span class="material-symbols-outlined text-danger text-2xl">shield</span>
             <span class="text-[10px] text-danger font-mono bg-danger/10 px-2 py-0.5 rounded border border-danger/20">STRICT</span>
           </div>
-          <div class="text-2xl font-bold text-text-primary">Enterprise RBAC</div>
-          <div class="text-xs text-text-muted">Isolated admin portal with TOTP MFA protection</div>
+          <div class="text-2xl font-bold text-text-primary">Verified Legitimacy</div>
+          <div class="text-xs text-text-muted">Rigorous fraud &amp; paywall prevention algorithms</div>
         </div>
       </div>
     </div>
@@ -151,9 +151,8 @@
     <div class="max-w-[1400px] mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-text-muted">
       <div>© 2026 CyberScout AI Platform. All rights reserved.</div>
       <div class="flex items-center gap-6">
-        <a href="{{ url_for('auth_ui.login') }}" class="hover:text-primary transition-colors">User Login</a>
-        <a href="{{ url_for('admin_ui.admin_login') }}" class="hover:text-danger transition-colors">Admin Gateway</a>
-        <span class="font-mono">v{{ app_info.version|default('2.2.0') }}</span>
+        <a href="{{ url_for('auth_ui.login') }}" class="hover:text-primary transition-colors">Sign In</a>
+        <a href="{{ url_for('auth_ui.register') }}" class="hover:text-primary transition-colors">Create Account</a>
       </div>
     </div>
   </footer>

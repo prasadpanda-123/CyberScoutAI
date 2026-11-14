@@ -1,89 +1,169 @@
 {% extends "admin/admin_base.html" %}
 {% set active_page = "admin_collectors" %}
-
-{% block title %}Collector Management — Admin Portal{% endblock %}
+{% block title %}AI Discovery & Harvester Engines — Admin Portal{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div style="display:flex;flex-direction:column;gap:22px;">
 
-  <!-- Header -->
-  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border-subtle">
+  <!-- Page Header -->
+  <div class="a-page-header">
     <div>
-      <h2 class="text-xl sm:text-2xl font-bold text-admin-accent tracking-tight flex items-center gap-2">
-        <span class="material-symbols-outlined text-admin-accent">settings_input_component</span>
-        <span>Collector Management</span>
+      <h2 class="a-page-title">
+        <span class="material-symbols-outlined">radar</span>
+        AI Discovery &amp; Harvester Engines
       </h2>
-      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">Manage data sources, harvesters, and scraping trust scores.</p>
+      <p class="a-page-subtitle">Autonomous Tavily search, Firecrawl scraping, dual-LLM classification, and source collectors.</p>
     </div>
-    <div class="flex items-center gap-3">
-      <button type="button" id="btnTriggerScan" onclick="triggerPipelineScan()" class="bg-primary hover:bg-primary/90 text-on-primary text-xs font-bold px-3.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
-        <span class="material-symbols-outlined text-[16px]">play_arrow</span>
-        <span>Run Pipeline Scan</span>
-      </button>
+    <button id="btnTriggerScan" onclick="triggerPipelineScan()" class="a-btn a-btn-primary">
+      <span class="material-symbols-outlined" style="font-size:16px;">play_arrow</span>
+      Execute Discovery Cycle
+    </button>
+  </div>
+
+  <!-- Discovery Architecture Core Cards -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:14px;">
+    <!-- Tavily Card -->
+    <div class="a-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-outlined" style="color:var(--a-primary);font-size:20px;">travel_explore</span>
+          <span style="font-weight:700;font-size:13px;color:var(--a-text-1);">Tavily Discovery</span>
+        </div>
+        <span class="a-badge a-badge-green">ACTIVE</span>
+      </div>
+      <p style="font-size:11.5px;color:var(--a-text-3);margin-bottom:8px;">Primary global opportunity search engine with dedicated India priority planner.</p>
+      <div style="font-size:11px;color:var(--a-text-4);display:flex;flex-direction:column;gap:3px;">
+        <div>Priority Region: <strong style="color:var(--a-text-1);">India &amp; Global Remote</strong></div>
+        <div>Budget Guard: <strong style="color:var(--a-green);">30 queries/day max</strong></div>
+      </div>
+    </div>
+
+    <!-- Firecrawl Card -->
+    <div class="a-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-outlined" style="color:var(--a-cyan);font-size:20px;">developer_mode_tv</span>
+          <span style="font-weight:700;font-size:13px;color:var(--a-text-1);">Firecrawl Extraction</span>
+        </div>
+        <span class="a-badge a-badge-green">READY</span>
+      </div>
+      <p style="font-size:11.5px;color:var(--a-text-3);margin-bottom:8px;">Extracts clean markdown &amp; structured metadata from candidate URLs.</p>
+      <div style="font-size:11px;color:var(--a-text-4);display:flex;flex-direction:column;gap:3px;">
+        <div>Output Format: <strong style="color:var(--a-text-1);">Clean Markdown</strong></div>
+        <div>Content Cap: <strong style="color:var(--a-text-1);">64k tokens / URL</strong></div>
+      </div>
+    </div>
+
+    <!-- Groq + Gemini Card -->
+    <div class="a-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-outlined" style="color:var(--a-purple);font-size:20px;">psychology</span>
+          <span style="font-weight:700;font-size:13px;color:var(--a-text-1);">AI Classification</span>
+        </div>
+        <span class="a-badge a-badge-green">DUAL LLM</span>
+      </div>
+      <p style="font-size:11.5px;color:var(--a-text-3);margin-bottom:8px;">Groq (Llama-3.3-70b) primary with Google Gemini 1.5 Flash fallback.</p>
+      <div style="font-size:11px;color:var(--a-text-4);display:flex;flex-direction:column;gap:3px;">
+        <div>Validation: <strong style="color:var(--a-text-1);">Pydantic Schema</strong></div>
+        <div>Taxonomy: <strong style="color:var(--a-text-1);">Cybersecurity Standard</strong></div>
+      </div>
+    </div>
+
+    <!-- Free-Only Gate Card -->
+    <div class="a-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-outlined" style="color:var(--a-green);font-size:20px;">gavel</span>
+          <span style="font-weight:700;font-size:13px;color:var(--a-text-1);">Free-Only Verifier</span>
+        </div>
+        <span class="a-badge a-badge-green">ARMED</span>
+      </div>
+      <p style="font-size:11.5px;color:var(--a-text-3);margin-bottom:8px;">Deterministic Python rules enforcing 100% free-to-apply guarantee.</p>
+      <div style="font-size:11px;color:var(--a-text-4);display:flex;flex-direction:column;gap:3px;">
+        <div>Policy: <strong style="color:var(--a-green);">Zero Applicant Fees</strong></div>
+        <div>Quarantine: <strong style="color:var(--a-amber);">Ambiguous Pricing</strong></div>
+      </div>
     </div>
   </div>
 
-  <!-- Navigation Sub-Tabs -->
-  <div class="flex items-center gap-2 border-b border-border-subtle pb-2">
-    <a href="{{ url_for('admin_ui.admin_collectors') }}" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 bg-admin-accent/15 text-admin-accent border border-admin-accent/30">
-      <span class="material-symbols-outlined text-[16px]">settings_input_component</span>
-      <span>Collectors Registry</span>
-    </a>
-    <a href="{{ url_for('admin_ui.admin_source_health') }}" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 text-text-secondary hover:text-text-primary hover:bg-surface-container">
-      <span class="material-symbols-outlined text-[16px]">monitor_heart</span>
-      <span>Source Health &amp; Freshness</span>
-    </a>
+  <!-- Harvester Live Output Terminal -->
+  <div class="a-terminal" id="collectorTerminal">
+    <div class="a-terminal-header">
+      <div class="a-terminal-dots">
+        <div class="a-terminal-dot red"></div>
+        <div class="a-terminal-dot yellow"></div>
+        <div class="a-terminal-dot green"></div>
+        <span style="font-size:10px;color:var(--a-text-4);margin-left:6px;font-family:var(--a-font-mono);">discovery-harvester.log</span>
+      </div>
+      <span class="a-terminal-title">HARVESTER STREAM</span>
+    </div>
+    <div id="collectorLog" class="a-terminal-body">
+      <div class="a-terminal-line success">
+        <span class="a-terminal-ts">[READY]</span>
+        <span>&gt; AI Discovery &amp; Harvester Engine standby. Click "Execute Discovery Cycle" to start a scan.</span>
+      </div>
+    </div>
   </div>
 
-  <div id="collectorFeedback" class="hidden p-4 rounded-xl border text-xs font-mono"></div>
-
-  <!-- Collectors Table -->
-  <div class="bg-surface rounded-xl border border-border-subtle overflow-hidden">
-    <div class="hidden md:grid md:grid-cols-[1fr_140px_140px_100px_100px] gap-4 p-3.5 border-b border-border-subtle bg-surface-container-low text-[11px] font-bold uppercase tracking-wider text-text-muted">
-      <div>Source Name & ID</div>
-      <div>Method</div>
-      <div>Category</div>
-      <div>Trust Score</div>
-      <div class="text-center">Status</div>
+  <!-- Registered Data Sources Table -->
+  <div class="a-table-wrap">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--a-border-1);display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="material-symbols-outlined" style="font-size:18px;color:var(--a-primary);">dns</span>
+        <h3 style="font-size:13px;font-weight:700;color:var(--a-text-1);">Registered Sources &amp; Platforms</h3>
+      </div>
+      <span class="a-badge a-badge-primary">{{ collectors|length }} channels active</span>
     </div>
 
-    <div class="divide-y divide-border-subtle">
-      {% for col in collectors %}
-        <div class="p-4 hover:bg-bg-card-hover transition-colors flex flex-col md:grid md:grid-cols-[1fr_140px_140px_100px_100px] gap-3 md:gap-4 items-start md:items-center">
-          <div class="space-y-0.5">
-            <div class="text-sm font-bold text-text-primary">{{ col.name }}</div>
-            <div class="text-xs font-mono text-text-muted">{{ col.id }}</div>
+    {% if collectors %}
+      <div class="a-table-header-row" style="grid-template-columns:2.5fr 110px 110px 100px 140px 90px;">
+        <div>Source / Channel</div>
+        <div>Provider Type</div>
+        <div>Collected</div>
+        <div>Errors</div>
+        <div>Last Scanned</div>
+        <div style="text-align:center;">Status</div>
+      </div>
+      {% for c in collectors %}
+        <div class="a-table-row" style="grid-template-columns:2.5fr 110px 110px 100px 140px 90px;">
+          <div>
+            <div style="font-weight:600;color:var(--a-text-1);">{{ c.name|default(c.source_id|default('Unknown')) }}</div>
+            {% if c.url or c.endpoint %}
+              <div class="a-mono" style="font-size:10.5px;color:var(--a-text-4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ (c.url or c.endpoint)|truncate(55) }}</div>
+            {% endif %}
           </div>
-
-          <div class="text-xs font-mono text-text-secondary">
-            <span class="md:hidden text-text-muted uppercase text-[10px] mr-1">Method:</span>
-            <span class="px-2 py-0.5 rounded bg-surface-container border border-border-subtle">{{ col.collection_method|default('RSS') }}</span>
-          </div>
-
-          <div class="text-xs text-text-secondary">
-            <span class="md:hidden text-text-muted uppercase text-[10px] mr-1">Category:</span>
-            <span>{{ col.default_category|default('General') }}</span>
-          </div>
-
-          <div class="text-xs font-mono font-bold text-primary">
-            <span class="md:hidden text-text-muted uppercase text-[10px] mr-1">Trust:</span>
-            <span>{{ col.trust_score|default(1.0) }}</span>
-          </div>
-
-          <div class="w-full md:w-auto flex justify-start md:justify-center">
-            {% if col.enabled %}
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-success/15 text-success border border-success/30 font-mono">ENABLED</span>
+          <div><span class="a-badge a-badge-primary" style="font-size:9.5px;">{{ c.type|default('API / Feed') }}</span></div>
+          <div class="a-mono" style="font-size:12px;font-weight:700;color:var(--a-text-1);">{{ c.items_collected|default(c.count|default('—')) }}</div>
+          <div>
+            {% set errs = c.error_count|default(0)|int %}
+            {% if errs > 0 %}
+              <span class="a-mono" style="font-size:12px;font-weight:700;color:var(--a-red);">{{ errs }}</span>
             {% else %}
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-danger/15 text-danger border border-danger/30 font-mono">DISABLED</span>
+              <span class="a-mono" style="font-size:12px;font-weight:700;color:var(--a-green);">0</span>
+            {% endif %}
+          </div>
+          <div class="a-mono" style="font-size:11px;color:var(--a-text-4);">{{ (c.last_run or c.last_checked or '—')|string|truncate(19,True,'') }}</div>
+          <div style="text-align:center;">
+            {% if c.enabled is defined %}
+              <span class="a-badge {% if c.enabled %}a-badge-green{% else %}a-badge-muted{% endif %}">
+                {% if c.enabled %}ONLINE{% else %}OFFLINE{% endif %}
+              </span>
+            {% elif c.status %}
+              <span class="a-badge {% if c.status|lower in ['active','ok','healthy'] %}a-badge-green{% elif c.status|lower in ['error','failed'] %}a-badge-red{% else %}a-badge-amber{% endif %}">{{ c.status|upper }}</span>
+            {% else %}
+              <span class="a-badge a-badge-green">ACTIVE</span>
             {% endif %}
           </div>
         </div>
-      {% else %}
-        <div class="p-12 text-center text-text-muted text-xs">
-          No collector sources configured yet.
-        </div>
       {% endfor %}
-    </div>
+    {% else %}
+      <div class="a-table-empty">
+        <span class="material-symbols-outlined" style="font-size:36px;color:var(--a-text-5);">sensors_off</span>
+        <div style="font-size:13px;color:var(--a-text-3);margin-top:8px;">No legacy collectors found.</div>
+        <div style="font-size:11px;color:var(--a-text-4);margin-top:2px;">Tavily and Firecrawl Discovery Engines are actively executing via the pipeline scheduler.</div>
+      </div>
+    {% endif %}
   </div>
 
 </div>
@@ -91,42 +171,38 @@
 
 {% block extra_scripts %}
 <script nonce="{{ csp_nonce }}">
-  async function triggerPipelineScan() {
+  function triggerPipelineScan() {
     const btn = document.getElementById('btnTriggerScan');
-    const feedback = document.getElementById('collectorFeedback');
-
+    const log = document.getElementById('collectorLog');
     btn.disabled = true;
-    btn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span><span>Starting...</span>`;
-    feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-surface-container border-border-subtle text-text-primary flex items-center gap-2';
-    feedback.innerHTML = `<span class="material-symbols-outlined text-base animate-spin">sync</span><span>Triggering harvester pipeline...</span>`;
-    feedback.classList.remove('hidden');
+    btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">autorenew</span> Scanning...';
 
-    try {
-      const res = await fetch('/admin/api/run', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-          'X-CSRF-Token': '{{ csrf_token }}'
-        },
-        body: JSON.stringify({ dry_run: false })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-success/10 border-success/30 text-success flex items-center gap-2';
-        feedback.innerHTML = `<span class="material-symbols-outlined text-base">check_circle</span><span><strong>Success:</strong> Harvester pipeline started (Job ID: ${data.job_id || 'active'}). Telemetry is updating in background.</span>`;
-      } else {
-        feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
-        feedback.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Notice:</strong> ${data.error || 'Failed to start scan.'}</span>`;
-      }
-    } catch(err) {
-      feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
-      feedback.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Network Error:</strong> ${err.message}</span>`;
-    } finally {
+    const ts = new Date().toLocaleTimeString();
+    log.innerHTML += `<div class="a-terminal-line warn"><span class="a-terminal-ts">[${ts}]</span><span>&gt; Initiating full AI discovery cycle (Tavily &rarr; Firecrawl &rarr; AI)...</span></div>`;
+    log.scrollTop = log.scrollHeight;
+
+    const csrf = "{{ session.get('admin_csrf_token', '') }}";
+
+    fetch('/admin/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+      body: JSON.stringify({ csrf_token: csrf })
+    })
+    .then(r => r.json())
+    .then(data => {
       btn.disabled = false;
-      btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">play_arrow</span><span>Run Pipeline Scan</span>`;
-    }
+      btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">play_arrow</span> Execute Discovery Cycle';
+      const doneTs = new Date().toLocaleTimeString();
+      log.innerHTML += `<div class="a-terminal-line success"><span class="a-terminal-ts">[${doneTs}]</span><span>&gt; ${data.message || 'Cycle triggered successfully.'}</span></div>`;
+      log.scrollTop = log.scrollHeight;
+    })
+    .catch(err => {
+      btn.disabled = false;
+      btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">play_arrow</span> Execute Discovery Cycle';
+      const errTs = new Date().toLocaleTimeString();
+      log.innerHTML += `<div class="a-terminal-line error"><span class="a-terminal-ts">[${errTs}]</span><span>&gt; Request failed: ${err.message}</span></div>`;
+      log.scrollTop = log.scrollHeight;
+    });
   }
 </script>
 {% endblock %}

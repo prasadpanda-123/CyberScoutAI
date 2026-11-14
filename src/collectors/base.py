@@ -110,7 +110,7 @@ class BaseCollector(ABC):
         Default template method invoking discover() -> fetch() -> validate() -> parse() -> normalize().
 
         Args:
-            task: Validated SearchTask instance emitted by SearchPlanner.
+            task: Validated SearchTask instance.
 
         Returns:
             Standardized CollectorResult instance.

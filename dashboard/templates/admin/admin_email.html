@@ -1,137 +1,93 @@
 {% extends "admin/admin_base.html" %}
 {% set active_page = "admin_email" %}
-
-{% block title %}Email & Notification Control — Admin Portal{% endblock %}
+{% block title %}Email & Brevo Delivery — Admin Portal{% endblock %}
 
 {% block content %}
-<div class="space-y-6 max-w-4xl">
+<div style="display:flex;flex-direction:column;gap:22px;">
 
-  <!-- Header -->
-  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border-subtle">
+  <!-- Page Header -->
+  <div class="a-page-header">
     <div>
-      <h2 class="text-xl sm:text-2xl font-bold text-admin-accent tracking-tight flex items-center gap-2">
-        <span class="material-symbols-outlined text-admin-accent">mail</span>
-        <span>Email & Notification Control</span>
+      <h2 class="a-page-title">
+        <span class="material-symbols-outlined">mark_email_read</span>
+        Email &amp; Brevo Delivery Hub
       </h2>
-      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">SMTP transport connectivity verification and test dispatch.</p>
+      <p class="a-page-subtitle">Monitor Brevo transactional delivery, test SMTP sockets, and inspect date-locked idempotency records.</p>
     </div>
-  </div>
-
-  <!-- Email Control Card -->
-  <div class="bg-surface rounded-xl border border-border-subtle p-6 space-y-6">
-    <div class="flex items-center justify-between pb-4 border-b border-border-subtle">
-      <div class="flex items-center gap-3">
-        <div class="h-10 w-10 rounded-lg bg-info/10 text-info flex items-center justify-center">
-          <span class="material-symbols-outlined text-2xl">mark_email_read</span>
-        </div>
-        <div>
-          <h3 class="text-base font-bold text-text-primary">SMTP Transport Engine</h3>
-          <p class="text-xs text-text-muted">Sends daily midnight bulletins and 2FA authentication passcodes</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid sm:grid-cols-2 gap-4">
-      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
-        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Provider Type</div>
-        <div class="text-sm font-bold text-text-primary">{{ smtp_health.provider|default('Configured Mailer') }}</div>
-      </div>
-
-      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
-        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Transport Status</div>
-        <div class="text-sm font-bold {% if smtp_health.healthy %}text-success{% else %}text-warning{% endif %} flex items-center gap-1.5">
-          <span class="w-2 h-2 rounded-full {% if smtp_health.healthy %}bg-success{% else %}bg-warning{% endif %}"></span>
-          <span>{{ smtp_health.status|default('Operational') }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Actions -->
-    <div class="pt-4 border-t border-border-subtle">
-      <button type="button" id="btnTestEmail" onclick="sendTestEmail()" class="bg-danger hover:bg-danger/90 text-white font-bold text-xs px-5 py-2.5 rounded-lg admin-glow transition-all flex items-center gap-2">
-        <span class="material-symbols-outlined text-[16px]">send</span>
-        <span>Dispatch Test Intelligence Email</span>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button onclick="testBrevoHealth()" id="btnBrevoHealth" class="a-btn a-btn-ghost">
+        <span class="material-symbols-outlined" style="font-size:16px;">health_and_safety</span>
+        Check Brevo Connection
       </button>
     </div>
   </div>
 
-  <div id="emailFeedback" class="hidden p-4 rounded-xl border text-xs"></div>
-
-  <!-- Notification Outbox Observability (Phase 7) -->
-  <div class="bg-surface rounded-xl border border-border-subtle p-6 space-y-6">
-    <div class="flex items-center justify-between pb-4 border-b border-border-subtle">
-      <div class="flex items-center gap-3">
-        <div class="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-          <span class="material-symbols-outlined text-2xl">outbox</span>
-        </div>
-        <div>
-          <h3 class="text-base font-bold text-text-primary">Notification Outbox & Delivery State</h3>
-          <p class="text-xs text-text-muted">Persistent queue monitoring, idempotent dispatch metrics, and delivery health</p>
-        </div>
-      </div>
-      <div class="text-xs text-text-muted font-mono">
-        Total Recorded: <strong class="text-text-primary">{{ outbox_stats.total|default(0) }}</strong>
-      </div>
+  <!-- Status Cards Grid -->
+  <div class="a-kpi-grid">
+    <div class="a-kpi">
+      <div class="a-kpi-head"><div class="a-kpi-label">Provider</div><div class="a-kpi-icon" style="background:var(--a-blue-dim);color:var(--a-blue);"><span class="material-symbols-outlined">mail</span></div></div>
+      <div class="a-kpi-val" style="font-size:18px;">Brevo Transactional</div>
+      <div class="a-kpi-sub">API / SMTP TLS 587</div>
     </div>
 
-    <!-- Stats Grid -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
-        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Pending Delivery</div>
-        <div class="text-lg font-bold text-warning font-mono">{{ outbox_stats.pending|default(0) }}</div>
-      </div>
+    <div class="a-kpi">
+      <div class="a-kpi-head"><div class="a-kpi-label">Delivery Gate</div><div class="a-kpi-icon" style="background:var(--a-green-dim);color:var(--a-green);"><span class="material-symbols-outlined">lock</span></div></div>
+      <div class="a-kpi-val" style="font-size:18px;color:var(--a-green);">Simulated / Armed</div>
+      <div class="a-kpi-sub">EMAIL_DELIVERY_ENABLED=false</div>
+    </div>
 
-      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
-        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">In Processing</div>
-        <div class="text-lg font-bold text-info font-mono">{{ outbox_stats.processing|default(0) }}</div>
-      </div>
+    <div class="a-kpi">
+      <div class="a-kpi-head"><div class="a-kpi-label">Idempotency Lock</div><div class="a-kpi-icon" style="background:var(--a-cyan-dim);color:var(--a-cyan);"><span class="material-symbols-outlined">verified</span></div></div>
+      <div class="a-kpi-val" style="font-size:18px;color:var(--a-cyan);">Date &amp; Recipient</div>
+      <div class="a-kpi-sub">DailyReportDelivery unique index</div>
+    </div>
 
-      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
-        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Delivered (Sent)</div>
-        <div class="text-lg font-bold text-success font-mono">{{ outbox_stats.sent|default(0) }}</div>
-      </div>
+    <div class="a-kpi">
+      <div class="a-kpi-head"><div class="a-kpi-label">Outbox Status</div><div class="a-kpi-icon" style="background:var(--a-purple-dim);color:var(--a-purple);"><span class="material-symbols-outlined">send</span></div></div>
+      <div class="a-kpi-val" style="font-size:18px;">{{ outbox_stats.pending_count|default(0) }} Pending</div>
+      <div class="a-kpi-sub">NotificationOutbox queue</div>
+    </div>
+  </div>
 
-      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
-        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Delivery Failed</div>
-        <div class="text-lg font-bold {% if outbox_stats.failed and outbox_stats.failed > 0 %}text-danger{% else %}text-text-secondary{% endif %} font-mono">
-          {{ outbox_stats.failed|default(0) }}
+  <!-- Test Email Tool Card -->
+  <div class="a-card">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--a-border-1);">
+      <span class="material-symbols-outlined" style="font-size:18px;color:var(--a-primary);">forward_to_inbox</span>
+      <h3 style="font-size:13.5px;font-weight:700;color:var(--a-text-1);">Dispatch Diagnostic Test Email</h3>
+    </div>
+
+    <form id="testEmailForm" onsubmit="event.preventDefault();dispatchTestEmail();">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:14px;margin-bottom:14px;">
+        <div class="a-form-group" style="margin-bottom:0;">
+          <label class="a-label">Recipient Email Address</label>
+          <input type="email" id="testEmailRecipient" class="a-input" placeholder="e.g. security-lead@cyberscout.ai" required>
+        </div>
+        <div class="a-form-group" style="margin-bottom:0;">
+          <label class="a-label">Subject Line</label>
+          <input type="text" id="testEmailSubject" class="a-input" value="CyberScout AI — Diagnostic Delivery Verification" required>
         </div>
       </div>
-    </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <span style="font-size:11px;color:var(--a-text-4);">Respects EMAIL_DELIVERY_ENABLED safety switch. Zero unauthorized user emails.</span>
+        <button type="submit" id="btnSendTestEmail" class="a-btn a-btn-primary">
+          <span class="material-symbols-outlined" style="font-size:16px;">send</span>
+          Send Test Email
+        </button>
+      </div>
+    </form>
+  </div>
 
-    <!-- Recent Delivery Failures -->
-    {% if outbox_stats.recent_failures %}
-    <div class="space-y-3 pt-2">
-      <h4 class="text-xs font-bold uppercase tracking-wider text-danger flex items-center gap-1.5">
-        <span class="material-symbols-outlined text-sm">error</span>
-        <span>Recent Delivery Failures (Max Bounded Retries)</span>
-      </h4>
-      <div class="overflow-x-auto border border-border-subtle rounded-lg">
-        <table class="w-full text-left text-xs">
-          <thead class="bg-surface-container-low text-text-muted text-[11px] uppercase border-b border-border-subtle">
-            <tr>
-              <th class="p-2.5">User ID</th>
-              <th class="p-2.5">Opportunity</th>
-              <th class="p-2.5">Attempts</th>
-              <th class="p-2.5">Last Error</th>
-              <th class="p-2.5">Failed At</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-border-subtle text-text-secondary font-mono text-[11px]">
-            {% for f in outbox_stats.recent_failures %}
-            <tr>
-              <td class="p-2.5 text-text-primary">{{ f.user_id }}</td>
-              <td class="p-2.5">{{ f.opportunity_id }}</td>
-              <td class="p-2.5 text-warning font-bold">{{ f.attempt_count }}</td>
-              <td class="p-2.5 text-danger font-sans max-w-xs truncate" title="{{ f.last_error }}">{{ f.last_error }}</td>
-              <td class="p-2.5">{{ f.failed_at[:19].replace('T', ' ') if f.failed_at else 'N/A' }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+  <!-- Delivery Idempotency Policy Notice -->
+  <div class="a-card" style="border-left:3px solid var(--a-cyan);">
+    <div style="display:flex;align-items:flex-start;gap:12px;">
+      <span class="material-symbols-outlined" style="font-size:24px;color:var(--a-cyan);flex-shrink:0;">shield</span>
+      <div>
+        <h4 style="font-size:13px;font-weight:700;color:var(--a-text-1);margin-bottom:3px;">Anti-Spam Idempotency Guarantee</h4>
+        <p style="font-size:11.5px;color:var(--a-text-3);line-height:1.5;">
+          The <code class="a-mono">DailyReportDelivery</code> table enforces a PostgreSQL composite unique constraint on <code class="a-mono">(report_date, recipient)</code>. Even during pipeline retries, worker restarts, or scheduler reconnections, no recipient can ever receive duplicate daily digests.
+        </p>
       </div>
     </div>
-    {% endif %}
   </div>
 
 </div>
@@ -139,42 +95,55 @@
 
 {% block extra_scripts %}
 <script nonce="{{ csp_nonce }}">
-  async function sendTestEmail() {
-    const btn = document.getElementById('btnTestEmail');
-    const feedback = document.getElementById('emailFeedback');
-    
+  function testBrevoHealth() {
+    const btn = document.getElementById('btnBrevoHealth');
     btn.disabled = true;
-    btn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span><span>Sending...</span>`;
-    
-    feedback.className = 'p-4 rounded-xl border text-xs bg-surface-container border-border-subtle text-text-primary flex items-center gap-2';
-    feedback.innerHTML = `<span class="material-symbols-outlined text-base animate-spin">sync</span><span>Connecting to SMTP server...</span>`;
-    feedback.classList.remove('hidden');
+    btn.textContent = 'Checking...';
 
-    try {
-      const res = await fetch('/admin/api/email/test', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-          'X-CSRF-Token': '{{ csrf_token }}'
-        }
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        feedback.className = 'p-4 rounded-xl border text-xs bg-success/10 border-success/30 text-success flex items-center gap-2';
-        feedback.innerHTML = `<span class="material-symbols-outlined text-base">check_circle</span><span><strong>Success:</strong> ${data.message || 'Test email dispatched successfully.'}</span>`;
-      } else {
-        feedback.className = 'p-4 rounded-xl border text-xs bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
-        feedback.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Notice:</strong> ${data.message || data.error || 'Failed to dispatch email.'}</span>`;
-      }
-    } catch(err) {
-      feedback.className = 'p-4 rounded-xl border text-xs bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
-      feedback.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Error:</strong> ${err.message}</span>`;
-    } finally {
+    const csrf = "{{ session.get('admin_csrf_token', '') }}";
+    fetch('/admin/api/system/smtp-health', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+      body: JSON.stringify({ csrf_token: csrf })
+    })
+    .then(r => r.json())
+    .then(d => {
       btn.disabled = false;
-      btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">send</span><span>Dispatch Test Intelligence Email</span>`;
-    }
+      btn.textContent = 'Check Brevo Connection';
+      alert(`Brevo SMTP Status: ${d.status || 'OK'}\n${d.message || 'Connected to TLS 587'}`);
+    })
+    .catch(e => {
+      btn.disabled = false;
+      btn.textContent = 'Check Brevo Connection';
+      alert(`Error checking Brevo: ${e.message}`);
+    });
+  }
+
+  function dispatchTestEmail() {
+    const btn = document.getElementById('btnSendTestEmail');
+    const recipient = document.getElementById('testEmailRecipient').value;
+    const subject = document.getElementById('testEmailSubject').value;
+
+    btn.disabled = true;
+    btn.textContent = 'Dispatching...';
+
+    const csrf = "{{ session.get('admin_csrf_token', '') }}";
+    fetch('/admin/api/email/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+      body: JSON.stringify({ recipient: recipient, subject: subject, csrf_token: csrf })
+    })
+    .then(r => r.json())
+    .then(d => {
+      btn.disabled = false;
+      btn.textContent = 'Send Test Email';
+      alert(d.message || 'Test email dispatched.');
+    })
+    .catch(e => {
+      btn.disabled = false;
+      btn.textContent = 'Send Test Email';
+      alert('Error sending test email: ' + e.message);
+    });
   }
 </script>
 {% endblock %}

@@ -64,7 +64,7 @@ class SessionRepository:
                     DO $$
                     BEGIN
                         IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ServerSessions' AND policyname = 'server_sessions_access_policy') THEN
-                            CREATE POLICY server_sessions_access_policy ON "ServerSessions" FOR ALL TO authenticated, service_role USING (true) WITH CHECK (true);
+                            CREATE POLICY server_sessions_access_policy ON "ServerSessions" FOR ALL USING (COALESCE(NULLIF(current_setting('app.is_admin', true), '') = 'true', false) OR COALESCE(NULLIF(current_setting('app.service_context', true), '') = 'true', false)) WITH CHECK (COALESCE(NULLIF(current_setting('app.is_admin', true), '') = 'true', false) OR COALESCE(NULLIF(current_setting('app.service_context', true), '') = 'true', false));
                         END IF;
                     END $$;
                     """

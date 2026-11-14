@@ -35,6 +35,86 @@ class UserPreferencesRepository:
             logger.warning(f"Invalid non-UUID user_id: {user_id}")
             return None
 
+    @staticmethod
+    def _parse_json_list(value: Any) -> List[str]:
+        if not value:
+            return []
+        if isinstance(value, list):
+            return value
+        try:
+            parsed = json.loads(value)
+            return parsed if isinstance(parsed, list) else []
+        except Exception:
+            return []
+
+    @classmethod
+    def _preferences_from_row(cls, data: Dict[str, Any]) -> UserPreferencesDTO:
+        return UserPreferencesDTO(
+            skills=cls._parse_json_list(data.get("skills")),
+            interests=cls._parse_json_list(data.get("interests")),
+            preferred_categories=cls._parse_json_list(data.get("preferred_categories")),
+            preferred_types=cls._parse_json_list(data.get("preferred_types")),
+            prefers_remote=data.get("prefers_remote"),
+            preferred_location=data.get("preferred_location"),
+            experience_level=data.get("experience_level"),
+            email_notifications_enabled=bool(data.get("email_notifications_enabled", True)),
+            in_app_notifications_enabled=bool(data.get("in_app_notifications_enabled", True)),
+            notify_new_opportunities=bool(data.get("notify_new_opportunities", True)),
+            notify_meaningful_updates=bool(data.get("notify_meaningful_updates", True)),
+            notify_reopened_opportunities=bool(data.get("notify_reopened_opportunities", True)),
+            delivery_mode=str(data.get("delivery_mode", "digest")),
+            digest_frequency=str(data.get("digest_frequency", "daily")),
+            quiet_hours_enabled=bool(data.get("quiet_hours_enabled", False)),
+            quiet_hours_start=str(data.get("quiet_hours_start", "22:00")),
+            quiet_hours_end=str(data.get("quiet_hours_end", "08:00")),
+            timezone=str(data.get("timezone", "UTC")),
+            min_score_threshold=float(data.get("min_score_threshold", 0.0) or 0.0),
+        )
+
+    @staticmethod
+    def _behavior_from_rows(rows: List[Any]) -> Tuple[List[str], List[str]]:
+        tags_set: Set[str] = set()
+        categories_set: Set[str] = set()
+
+        for row in rows:
+            if hasattr(row, "get"):
+                raw_tags = row.get("tags")
+                category = row.get("category")
+                opportunity_type = row.get("opportunity_type")
+            else:
+                raw_tags, category, opportunity_type = row[0], row[1], row[2]
+
+            if category and str(category).strip():
+                categories_set.add(str(category).strip().lower())
+            if opportunity_type and str(opportunity_type).strip():
+                categories_set.add(str(opportunity_type).strip().lower())
+
+            if isinstance(raw_tags, list):
+                tags_set.update(
+                    str(tag).strip().lower()
+                    for tag in raw_tags
+                    if tag and str(tag).strip()
+                )
+            elif isinstance(raw_tags, str) and raw_tags:
+                try:
+                    parsed_tags = json.loads(raw_tags)
+                except json.JSONDecodeError:
+                    parsed_tags = raw_tags.split(",")
+                if isinstance(parsed_tags, list):
+                    tags_set.update(
+                        str(tag).strip().lower()
+                        for tag in parsed_tags
+                        if tag and str(tag).strip()
+                    )
+                else:
+                    tags_set.update(
+                        tag.strip().lower()
+                        for tag in raw_tags.split(",")
+                        if tag.strip()
+                    )
+
+        return sorted(tags_set), sorted(categories_set)
+
     def get_preferences(self, user_id: Any) -> Optional[UserPreferencesDTO]:
         """
         Retrieves declared career preferences for a user.
@@ -60,58 +140,90 @@ class UserPreferencesRepository:
             FROM "UserPreferences"
             WHERE user_id = %s;
         """
-        conn = self.db_manager.get_connection()
         try:
-            cursor = conn.cursor()
-            cursor.execute(sql, (uid,))
-            row = cursor.fetchone()
-            cursor.close()
+            with self.db_manager.user_context(uid) as cursor:
+                cursor.execute(sql, (uid,))
+                row = cursor.fetchone()
 
             if not row:
                 return None
 
             d = row_to_dict(row)
-
-            def parse_json_list(val: Any) -> List[str]:
-                if not val:
-                    return []
-                if isinstance(val, list):
-                    return val
-                try:
-                    res = json.loads(val)
-                    return res if isinstance(res, list) else []
-                except Exception:
-                    return []
-
-            return UserPreferencesDTO(
-                skills=parse_json_list(d.get("skills")),
-                interests=parse_json_list(d.get("interests")),
-                preferred_categories=parse_json_list(d.get("preferred_categories")),
-                preferred_types=parse_json_list(d.get("preferred_types")),
-                prefers_remote=d.get("prefers_remote"),
-                preferred_location=d.get("preferred_location"),
-                experience_level=d.get("experience_level"),
-                email_notifications_enabled=bool(d.get("email_notifications_enabled", True)),
-                in_app_notifications_enabled=bool(d.get("in_app_notifications_enabled", True)),
-                notify_new_opportunities=bool(d.get("notify_new_opportunities", True)),
-                notify_meaningful_updates=bool(d.get("notify_meaningful_updates", True)),
-                notify_reopened_opportunities=bool(d.get("notify_reopened_opportunities", True)),
-                delivery_mode=str(d.get("delivery_mode", "digest")),
-                digest_frequency=str(d.get("digest_frequency", "daily")),
-                quiet_hours_enabled=bool(d.get("quiet_hours_enabled", False)),
-                quiet_hours_start=str(d.get("quiet_hours_start", "22:00")),
-                quiet_hours_end=str(d.get("quiet_hours_end", "08:00")),
-                timezone=str(d.get("timezone", "UTC")),
-                min_score_threshold=float(d.get("min_score_threshold", 0.0) or 0.0),
-            )
+            return self._preferences_from_row(d)
         except Exception as e:
             logger.error(f"Failed to get preferences for user {user_id}: {e}")
             raise RepositoryError(f"Failed to get user preferences: {e}", original_exception=e)
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
+
+    def get_personalization_data(
+        self, user_id: Any
+    ) -> Tuple[Optional[UserPreferencesDTO], Tuple[List[str], List[str]]]:
+        """Loads declared preferences and saved-item behavior using one database query."""
+        uid = self._normalize_uid(user_id)
+        if uid is None:
+            return None, ([], [])
+
+        sql = """
+            SELECT
+                p.user_id AS preference_user_id,
+                p.skills,
+                p.interests,
+                p.preferred_categories,
+                p.preferred_types,
+                p.prefers_remote,
+                p.preferred_location,
+                p.experience_level,
+                p.email_notifications_enabled,
+                p.in_app_notifications_enabled,
+                p.notify_new_opportunities,
+                p.notify_meaningful_updates,
+                p.notify_reopened_opportunities,
+                p.delivery_mode,
+                p.digest_frequency,
+                p.quiet_hours_enabled,
+                p.quiet_hours_start,
+                p.quiet_hours_end,
+                p.timezone,
+                p.min_score_threshold,
+                COALESCE((
+                    SELECT json_agg(json_build_object(
+                        'tags', saved.tags,
+                        'category', saved.category,
+                        'opportunity_type', saved.opportunity_type
+                    ))
+                    FROM (
+                        SELECT o.tags, o.category, o.opportunity_type
+                        FROM "SavedOpportunities" so
+                        JOIN "Opportunities" o ON o.id = so.opportunity_id
+                        WHERE so.user_id = %s
+                        LIMIT 50
+                    ) saved
+                ), '[]'::json) AS saved_behavior
+            FROM (SELECT 1) AS request_context
+            LEFT JOIN "UserPreferences" p ON p.user_id = %s;
+        """
+        try:
+            with self.db_manager.user_context(uid) as cursor:
+                cursor.execute(sql, (uid, uid))
+                row = cursor.fetchone()
+            if not row:
+                return None, ([], [])
+
+            data = row_to_dict(row, cursor.description)
+            preferences = (
+                self._preferences_from_row(data)
+                if data.get("preference_user_id") is not None
+                else None
+            )
+            saved_behavior = data.get("saved_behavior") or []
+            if isinstance(saved_behavior, str):
+                saved_behavior = json.loads(saved_behavior)
+            if not isinstance(saved_behavior, list):
+                saved_behavior = []
+
+            return preferences, self._behavior_from_rows(saved_behavior)
+        except Exception as e:
+            logger.error(f"Failed to load personalization data for user {user_id}: {e}")
+            raise RepositoryError(f"Failed to load user personalization data: {e}", original_exception=e)
 
     def save_preferences(self, user_id: Any, preferences: UserPreferencesDTO) -> bool:
         """
@@ -171,7 +283,7 @@ class UserPreferencesRepository:
                 updated_at = CURRENT_TIMESTAMP;
         """
         try:
-            with self.db_manager.transaction() as cursor:
+            with self.db_manager.user_context(uid) as cursor:
                 cursor.execute(
                     sql,
                     (
@@ -228,7 +340,7 @@ class UserPreferencesRepository:
             params.extend([self._normalize_uid(x) for x in target_user_ids])
         sql += ";"
         try:
-            with self.db_manager.transaction() as cursor:
+            with self.db_manager.service_context() as cursor:
                 cursor.execute(sql, params)
                 rows = cursor.fetchall()
                 subscribed = []
@@ -303,7 +415,7 @@ class UserPreferencesRepository:
             VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP);
         """
         try:
-            with self.db_manager.transaction() as cursor:
+            with self.db_manager.user_context(uid) as cursor:
                 cursor.execute(sql, (rec_id, uid, clean_q[:255], filters_json))
             return True
         except Exception as e:
@@ -323,12 +435,10 @@ class UserPreferencesRepository:
             ORDER BY searched_at DESC
             LIMIT %s;
         """
-        conn = self.db_manager.get_connection()
         try:
-            cursor = conn.cursor()
-            cursor.execute(sql, (uid, max(1, min(limit, 20))))
-            rows = cursor.fetchall()
-            cursor.close()
+            with self.db_manager.user_context(uid) as cursor:
+                cursor.execute(sql, (uid, max(1, min(limit, 20))))
+                rows = cursor.fetchall()
 
             results = []
             for row in rows:
@@ -349,11 +459,6 @@ class UserPreferencesRepository:
         except Exception as e:
             logger.warning(f"Failed to get recent searches for user {user_id}: {e}")
             return []
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
 
     def get_user_behavior_profile(self, user_id: Any) -> Tuple[List[str], List[str]]:
         """
@@ -373,58 +478,11 @@ class UserPreferencesRepository:
             WHERE so.user_id = %s
             LIMIT 50;
         """
-        conn = self.db_manager.get_connection()
         try:
-            cursor = conn.cursor()
-            cursor.execute(sql, (uid,))
-            rows = cursor.fetchall()
-            cursor.close()
-
-            tags_set: Set[str] = set()
-            cats_set: Set[str] = set()
-
-            for row in rows:
-                if hasattr(row, "get"):
-                    raw_tags = row.get("tags")
-                    cat = row.get("category")
-                    op_type = row.get("opportunity_type")
-                else:
-                    raw_tags = row[0]
-                    cat = row[1]
-                    op_type = row[2]
-
-                if cat and str(cat).strip():
-                    cats_set.add(str(cat).strip().lower())
-                if op_type and str(op_type).strip():
-                    cats_set.add(str(op_type).strip().lower())
-
-                if raw_tags:
-                    if isinstance(raw_tags, list):
-                        for t in raw_tags:
-                            if t and str(t).strip():
-                                tags_set.add(str(t).strip().lower())
-                    elif isinstance(raw_tags, str):
-                        try:
-                            parsed = json.loads(raw_tags)
-                            if isinstance(parsed, list):
-                                for t in parsed:
-                                    if t and str(t).strip():
-                                        tags_set.add(str(t).strip().lower())
-                            else:
-                                for t in raw_tags.split(","):
-                                    if t.strip():
-                                        tags_set.add(t.strip().lower())
-                        except Exception:
-                            for t in raw_tags.split(","):
-                                if t.strip():
-                                    tags_set.add(t.strip().lower())
-
-            return sorted(list(tags_set)), sorted(list(cats_set))
+            with self.db_manager.user_context(uid) as cursor:
+                cursor.execute(sql, (uid,))
+                rows = cursor.fetchall()
+            return self._behavior_from_rows(rows)
         except Exception as e:
             logger.warning(f"Failed to compute behavior profile for user {user_id}: {e}")
             return [], []
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass

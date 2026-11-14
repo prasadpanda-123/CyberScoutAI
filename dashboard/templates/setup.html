@@ -51,6 +51,13 @@
       </p>
 
       <form action="/setup" method="POST" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{ session.get('user_csrf_token', '') }}">
+        {% if setup_token_required %}
+        <div>
+          <label for="setup_token" class="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">Initial Setup Authorization Token</label>
+          <input type="password" id="setup_token" name="setup_token" required autocomplete="off" class="w-full bg-bg-body border border-border-subtle rounded-lg py-2.5 px-3 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors">
+        </div>
+        {% endif %}
         <div>
           <label for="username" class="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">Super Admin Username</label>
           <input type="text" id="username" name="username" required autofocus class="w-full bg-bg-body border border-border-subtle rounded-lg py-2.5 px-3 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors" placeholder="admin">
@@ -63,12 +70,12 @@
 
         <div>
           <label for="password" class="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">Admin Password</label>
-          <input type="password" id="password" name="password" minlength="8" required class="w-full bg-bg-body border border-border-subtle rounded-lg py-2.5 px-3 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors" placeholder="••••••••••••">
+          <input type="password" id="password" name="password" minlength="10" required class="w-full bg-bg-body border border-border-subtle rounded-lg py-2.5 px-3 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors" placeholder="••••••••••••">
         </div>
 
         <div>
           <label for="confirm_password" class="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">Confirm Password</label>
-          <input type="password" id="confirm_password" name="confirm_password" minlength="8" required class="w-full bg-bg-body border border-border-subtle rounded-lg py-2.5 px-3 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors" placeholder="••••••••••••">
+          <input type="password" id="confirm_password" name="confirm_password" minlength="10" required class="w-full bg-bg-body border border-border-subtle rounded-lg py-2.5 px-3 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors" placeholder="••••••••••••">
         </div>
 
         <div class="pt-2">

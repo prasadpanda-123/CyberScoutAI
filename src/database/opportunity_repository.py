@@ -1071,16 +1071,25 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
                 where_clauses.append("o.deadline <= %s::date")
                 params.append(dl)
 
-        # 3. Saved Only Join
+        # 3. Join the user's saved state into the page query to avoid another database round trip.
         join_clause = ""
-        if filter_dto.saved_only and filter_dto.user_id:
+        join_params: List[Any] = []
+        saved_select = "FALSE AS is_saved"
+        if filter_dto.user_id:
             try:
                 import uuid
                 uid_str = str(uuid.UUID(str(filter_dto.user_id).strip()))
-                join_clause = 'INNER JOIN "SavedOpportunities" so ON so.opportunity_id = o.id AND so.user_id = %s'
-                params.append(uid_str)
+                join_kind = "INNER" if filter_dto.saved_only else "LEFT"
+                join_clause = (
+                    f'{join_kind} JOIN "SavedOpportunities" so '
+                    'ON so.opportunity_id = o.id AND so.user_id = %s'
+                )
+                join_params.append(uid_str)
+                saved_select = "TRUE AS is_saved" if filter_dto.saved_only else "(so.opportunity_id IS NOT NULL) AS is_saved"
             except (ValueError, TypeError, AttributeError):
-                join_clause = 'INNER JOIN "SavedOpportunities" so ON 1=0'
+                if filter_dto.saved_only:
+                    join_clause = 'INNER JOIN "SavedOpportunities" so ON 1=0'
+                    saved_select = "FALSE AS is_saved"
 
         where_sql = " AND ".join(where_clauses)
 
@@ -1101,6 +1110,8 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
             order_by = f"ORDER BY (o.deadline IS NULL), o.deadline {sort_dir}, o.id ASC"
         elif sort_field == "score":
             order_by = f"ORDER BY o.score {sort_dir}, o.id ASC"
+        elif sort_field == "title":
+            order_by = f"ORDER BY lower(o.title) {sort_dir}, o.id ASC"
         elif sort_field == "recommended":
             if filter_dto.keyword:
                 order_by = "ORDER BY rank DESC, o.score DESC, o.id ASC"
@@ -1109,10 +1120,10 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
         else:
             order_by = "ORDER BY o.score DESC, o.id ASC"
 
-        # 5. Count query
+        # Retain the count query only for empty or out-of-range pages.
         count_sql = f'SELECT COUNT(*) FROM "Opportunities" o {join_clause} WHERE {where_sql};'
 
-        # 6. Items query with pagination
+        # 5. Items query with pagination and an in-query total for non-empty pages
         limit = max(1, min(200, getattr(filter_dto, "per_page", 24)))
         page = max(1, getattr(filter_dto, "page", 1))
         offset = (page - 1) * limit
@@ -1123,7 +1134,7 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
                 o.provider, o.company, o.location, o.remote, o.is_free, 
                 o.pricing_type, o.stipend_type, o.stipend_amount, o.stipend_currency,
                 o.difficulty, o.score, o.deadline, o.tags, o.discovered_date, 
-                o.opportunity_type, {rank_select}
+                o.opportunity_type, {rank_select}, {saved_select}, COUNT(*) OVER() AS total_count
             FROM "Opportunities" o
             {join_clause}
             WHERE {where_sql}
@@ -1134,17 +1145,24 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
         conn = self.db_manager.get_connection()
         try:
             cursor = conn.cursor()
-            # Execute Count
-            cursor.execute(count_sql, tuple(params))
-            count_row = cursor.fetchone()
-            total_count = int(count_row[0] if count_row else 0)
-
-            # Execute Query (rank_param is needed if rank_select has placeholder)
-            full_query_params = tuple(rank_param + params + [limit, offset])
+            if filter_dto.user_id:
+                cursor.execute("SET LOCAL app.current_user_id = %s;", (str(filter_dto.user_id),))
+                cursor.execute("SET LOCAL app.is_admin = 'false';")
+                cursor.execute("SET LOCAL app.service_context = 'false';")
+            # rank_param is needed because the rank expression precedes WHERE parameters.
+            full_query_params = tuple(rank_param + join_params + params + [limit, offset])
             cursor.execute(query_sql, full_query_params)
             rows = cursor.fetchall() or []
             desc_cols = [c[0] for c in cursor.description] if cursor.description else []
             items = [dict(r) if hasattr(r, "keys") else dict(zip(desc_cols, r)) for r in rows]
+            if items:
+                total_count = int(items[0].pop("total_count", 0))
+                for item in items[1:]:
+                    item.pop("total_count", None)
+            else:
+                cursor.execute(count_sql, tuple(join_params + params))
+                count_row = cursor.fetchone()
+                total_count = int(count_row[0] if count_row else 0)
 
             # Facet aggregations for filters UI
             facet_counts = self._get_facet_counts(cursor)
@@ -1158,54 +1176,50 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
                 pass
 
     def _get_facet_counts(self, cursor) -> Dict[str, Dict[str, int]]:
-        """Retrieve active counts for top categories, types, and sources."""
+        """Retrieve top active category, type, and source counts in one query."""
         facets: Dict[str, Dict[str, int]] = {
             "categories": {},
             "opportunity_types": {},
-            "sources": {}
+            "sources": {},
         }
         try:
             cursor.execute("""
-                SELECT category, COUNT(*) as cnt 
-                FROM "Opportunities" 
-                WHERE status = 'active' AND category IS NOT NULL AND category != ''
-                GROUP BY category 
-                ORDER BY cnt DESC 
-                LIMIT 20;
+                WITH category_counts AS (
+                    SELECT category::text AS value, COUNT(*) AS cnt
+                    FROM "Opportunities"
+                    WHERE status = 'active' AND category IS NOT NULL AND category != ''
+                    GROUP BY category
+                    ORDER BY cnt DESC
+                    LIMIT 20
+                ),
+                type_counts AS (
+                    SELECT opportunity_type::text AS value, COUNT(*) AS cnt
+                    FROM "Opportunities"
+                    WHERE status = 'active' AND opportunity_type IS NOT NULL AND opportunity_type != ''
+                    GROUP BY opportunity_type
+                    ORDER BY cnt DESC
+                    LIMIT 20
+                ),
+                source_counts AS (
+                    SELECT source_id::text AS value, COUNT(*) AS cnt
+                    FROM "Opportunities"
+                    WHERE status = 'active' AND source_id IS NOT NULL AND source_id != ''
+                    GROUP BY source_id
+                    ORDER BY cnt DESC
+                    LIMIT 20
+                )
+                SELECT 'categories' AS facet, value, cnt FROM category_counts
+                UNION ALL
+                SELECT 'opportunity_types' AS facet, value, cnt FROM type_counts
+                UNION ALL
+                SELECT 'sources' AS facet, value, cnt FROM source_counts;
             """)
-            for r in cursor.fetchall():
-                key = r[0] if not hasattr(r, "get") else r["category"]
-                cnt = r[1] if not hasattr(r, "get") else r["cnt"]
+            for row in cursor.fetchall():
+                facet = row["facet"] if hasattr(row, "get") else row[0]
+                key = row["value"] if hasattr(row, "get") else row[1]
+                cnt = row["cnt"] if hasattr(row, "get") else row[2]
                 if key:
-                    facets["categories"][str(key)] = int(cnt)
-
-            cursor.execute("""
-                SELECT opportunity_type, COUNT(*) as cnt 
-                FROM "Opportunities" 
-                WHERE status = 'active' AND opportunity_type IS NOT NULL AND opportunity_type != ''
-                GROUP BY opportunity_type 
-                ORDER BY cnt DESC 
-                LIMIT 20;
-            """)
-            for r in cursor.fetchall():
-                key = r[0] if not hasattr(r, "get") else r["opportunity_type"]
-                cnt = r[1] if not hasattr(r, "get") else r["cnt"]
-                if key:
-                    facets["opportunity_types"][str(key)] = int(cnt)
-
-            cursor.execute("""
-                SELECT source_id, COUNT(*) as cnt 
-                FROM "Opportunities" 
-                WHERE status = 'active' AND source_id IS NOT NULL AND source_id != ''
-                GROUP BY source_id 
-                ORDER BY cnt DESC 
-                LIMIT 20;
-            """)
-            for r in cursor.fetchall():
-                key = r[0] if not hasattr(r, "get") else r["source_id"]
-                cnt = r[1] if not hasattr(r, "get") else r["cnt"]
-                if key:
-                    facets["sources"][str(key)] = int(cnt)
+                    facets[facet][str(key)] = int(cnt)
         except Exception as e:
             logger.warning(f"Error computing facet counts: {e}")
 
@@ -1231,7 +1245,7 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
             ON CONFLICT (user_id, opportunity_id) DO UPDATE SET notes = EXCLUDED.notes;
         """
         try:
-            with self.db_manager.transaction() as cursor:
+            with self.db_manager.user_context(uid_str) as cursor:
                 cursor.execute(sql, (saved_id, uid_str, opportunity_id, notes))
             return True
         except Exception as e:
@@ -1248,7 +1262,7 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
 
         sql = 'DELETE FROM "SavedOpportunities" WHERE user_id = %s AND opportunity_id = %s;'
         try:
-            with self.db_manager.transaction() as cursor:
+            with self.db_manager.user_context(uid_str) as cursor:
                 cursor.execute(sql, (uid_str, opportunity_id))
             return True
         except Exception as e:
@@ -1264,18 +1278,10 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
             return False
 
         sql = 'SELECT 1 FROM "SavedOpportunities" WHERE user_id = %s AND opportunity_id = %s LIMIT 1;'
-        conn = self.db_manager.get_connection()
-        try:
-            cursor = conn.cursor()
+        with self.db_manager.user_context(uid_str) as cursor:
             cursor.execute(sql, (uid_str, opportunity_id))
             row = cursor.fetchone()
-            cursor.close()
-            return bool(row)
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
+        return bool(row)
 
     def get_saved_ids_for_user(self, user_id: Any, opportunity_ids: Optional[List[str]] = None) -> Set[str]:
         """Returns the set of opportunity IDs saved by the user."""
@@ -1294,18 +1300,10 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
             sql = 'SELECT opportunity_id FROM "SavedOpportunities" WHERE user_id = %s;'
             params = (uid_str,)
 
-        conn = self.db_manager.get_connection()
-        try:
-            cursor = conn.cursor()
+        with self.db_manager.user_context(uid_str) as cursor:
             cursor.execute(sql, params)
             rows = cursor.fetchall()
-            cursor.close()
-            return {r[0] if not hasattr(r, "get") else r["opportunity_id"] for r in rows}
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
+        return {r[0] if not hasattr(r, "get") else r["opportunity_id"] for r in rows}
 
     def count_saved_opportunities(self, user_id: Any) -> int:
         """Counts total saved opportunities for a user."""
@@ -1318,18 +1316,10 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
             return 0
 
         sql = 'SELECT COUNT(*) FROM "SavedOpportunities" WHERE user_id = %s;'
-        conn = self.db_manager.get_connection()
-        try:
-            cursor = conn.cursor()
+        with self.db_manager.user_context(uid_str) as cursor:
             cursor.execute(sql, (uid_str,))
             row = cursor.fetchone()
-            cursor.close()
-            return int(row[0] if row else 0)
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
+        return int(row[0] if row else 0)
 
     def update_lifecycle_states(self) -> Dict[str, int]:
         """

@@ -26,6 +26,7 @@ class DashboardConfig:
     PORT = int(os.environ.get("PORT", 5000))
     HOST = "0.0.0.0"
     DATABASE_URL = os.environ.get("DATABASE_URL")
+    PUBLIC_APP_URL = os.environ.get("PUBLIC_APP_URL", "")
     JSON_SORT_KEYS = False
     TEMPLATES_AUTO_RELOAD = True
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB global request body limit (SEC-10)

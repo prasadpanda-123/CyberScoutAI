@@ -130,3 +130,9 @@ Each arrow is a **hard boundary**: the stage on the right must not need to know 
 - **Traceability:** every item carries its originating `run_id` through the whole pipeline (stored in `SearchHistory`, referenced from `Opportunities`), so any record can be traced back to exactly which run discovered/last-touched it.
 - **Idempotency:** re-running the same `run_id`'s data through Storage must not create duplicate rows — upserts are keyed by `id` (or `url_hash` for cross-run dedup), not blind inserts.
 - **Isolation:** failure in any single collector or normalizer function must degrade gracefully (fewer opportunities that day) rather than catastrophically (no email at all, or a corrupted database).
+
+## Runtime Stage Failure Reporting
+
+The current runner isolates discovery, extraction, classification, free-only verification, promotion, and direct collector execution. An exception in one stage does not prevent subsequent stages from running. Failed collector results and stage summaries with `status` set to `partial` or `failed` are also reported as stage issues.
+
+The result includes `stage_errors`, an array of stable stage names, and `partial`, which is true when a stage issue occurred but persistence succeeded. Exception details remain in server logs rather than being added to the API result. `success` and `status` continue to describe persistence completion; consumers should check `partial` and `stage_errors` when they need to know whether every intelligence stage completed.

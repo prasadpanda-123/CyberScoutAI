@@ -5,10 +5,10 @@ from src.core.exceptions import ConfigurationError
 
 load_dotenv()
 
-test_db_url = os.getenv("TEST_DATABASE_URL", "").strip() or os.getenv("DATABASE_URL", "").strip()
+test_db_url = os.getenv("TEST_DATABASE_URL", "").strip()
 
 if test_db_url.startswith("sqlite") or not test_db_url:
-    raise ConfigurationError("TEST_DATABASE_URL (or DATABASE_URL) environment variable pointing to a PostgreSQL database is required for tests. SQLite is not supported.")
+    raise ConfigurationError("TEST_DATABASE_URL pointing to a PostgreSQL test database is required. DATABASE_URL is not used as a fallback; SQLite is not supported.")
 
 os.environ["DATABASE_URL"] = test_db_url
 os.environ["APP_ENV"] = "test"

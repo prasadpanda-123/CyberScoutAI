@@ -36,10 +36,11 @@ def _verify_csrf(req) -> bool:
 @login_required
 def index():
     """
-    Renders SSR-first opportunity discovery view with complete initial HTML,
-    PostgreSQL full-text search, server-side facet filtering, intelligent ranking,
-    and personalized recommendations.
+    Renders opportunity discovery view via React SPA shell or legacy SSR template.
     """
+    if request.args.get("legacy") != "1":
+        return render_template("react_shell.html")
+
     user_id = session.get("user_id") or session.get("admin_user_id")
     
     # Check if this is the saved-opportunities tab/view
@@ -134,10 +135,11 @@ def index():
 @opportunities_bp.route("/opportunities/<opportunity_id>", methods=["GET"])
 def detail(opportunity_id: str):
     """
-    Renders SSR opportunity detail view.
-    Exposes canonical structured fields, similar opportunities, and explainable
-    match analysis for authenticated users while supporting anonymous public access.
+    Renders opportunity detail view via React SPA shell or legacy SSR template.
     """
+    if request.args.get("legacy") != "1":
+        return render_template("react_shell.html")
+
     user_id = session.get("user_id") or session.get("admin_user_id")
     opp = opp_service.get_opportunity_detail(opportunity_id, user_id=str(user_id) if user_id else None)
 

@@ -25,7 +25,6 @@ from src.collectors.ctftime_collector import CtftimeCollector
 from src.collectors.devpost_collector import DevpostCollector
 from src.collectors.github_collector import GithubSearchCollector
 from src.collectors.gsoc_collector import GSoCCollector
-from src.collectors.html_collector import HtmlScraperCollector
 from src.collectors.microsoft_learn_collector import MicrosoftLearnCollector
 from src.collectors.outreachy_collector import OutreachyCollector
 from src.collectors.rss_collector import GenericRSSCollector

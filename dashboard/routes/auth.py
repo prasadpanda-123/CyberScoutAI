@@ -1,12 +1,17 @@
+import html
 import hashlib
+import hmac
+import os
 import secrets
-import time
-from typing import Dict, Any, Optional
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
+from urllib.parse import quote, urlsplit
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
+from werkzeug.security import generate_password_hash
 
 from src.auth.admin_auth import AdminSecurityManager
 from src.database.admin_repository import AdminRepository
 from src.database.audit_log_repository import AuditLogRepository
+from src.database.password_reset_repository import PasswordResetRepository
+from src.database.login_attempt_repository import LoginAttemptRepository
 from src.database.user_repository import UserRepository
 from src.utils.ip_utils import get_client_ip
 from src.core.logging import get_logger
@@ -16,46 +21,49 @@ auth_bp = Blueprint("auth_ui", __name__)
 user_repo = UserRepository()
 admin_repo = AdminRepository()
 audit_repo = AuditLogRepository()
-
-_PASSWORD_RESETS: Dict[str, Dict[str, Any]] = {}
-
-
-def _store_password_reset_token(user_id: str, raw_token: str, email: str) -> None:
-    token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
-    _PASSWORD_RESETS[token_hash] = {
-        "user_id": user_id,
-        "email": email,
-        "expires_at": time.time() + 3600,  # 1 hour
-    }
+password_reset_repo = PasswordResetRepository()
+_auth_rate_limit_repo = None
 
 
-def _verify_password_reset_token(raw_token: str) -> Optional[Dict[str, Any]]:
-    if not raw_token or not isinstance(raw_token, str):
-        return None
-    token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
-    entry = _PASSWORD_RESETS.get(token_hash)
-    if not entry:
-        return None
-    if time.time() > entry.get("expires_at", 0):
-        _PASSWORD_RESETS.pop(token_hash, None)
-        return None
-    return entry
+def _rate_limit_repository():
+    global _auth_rate_limit_repo
+    if _auth_rate_limit_repo is None:
+        _auth_rate_limit_repo = LoginAttemptRepository(db_manager=user_repo.db_manager)
+    return _auth_rate_limit_repo
 
 
-def _invalidate_password_reset_token(raw_token: str) -> None:
-    if raw_token and isinstance(raw_token, str):
-        token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
-        _PASSWORD_RESETS.pop(token_hash, None)
+def _public_app_origin() -> str:
+    """Returns the configured canonical origin used for security-sensitive links."""
+    public_url = (current_app.config.get("PUBLIC_APP_URL") or "").strip()
+    parsed = urlsplit(public_url)
+    if (
+        parsed.scheme not in ("http", "https")
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+        or parsed.path not in ("", "/")
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise RuntimeError("PUBLIC_APP_URL must be a valid HTTP(S) origin.")
+    if current_app.config.get("APP_ENV") == "production" and parsed.scheme != "https":
+        raise RuntimeError("PUBLIC_APP_URL must use HTTPS in production.")
+    try:
+        parsed.port
+    except ValueError as exc:
+        raise RuntimeError("PUBLIC_APP_URL contains an invalid port.") from exc
+    return f"{parsed.scheme}://{parsed.netloc}"
 
 
 def _send_password_reset_email(email: str, username: str, raw_token: str) -> bool:
     try:
         from src.notifier.providers.brevo_provider import BrevoEmailProvider
-        reset_link = url_for("auth_ui.reset_password", token=raw_token, _external=True)
+        reset_link = f"{_public_app_origin()}/reset-password/{quote(raw_token, safe='')}"
+        safe_username = html.escape(username, quote=True)
         html_content = f"""
         <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #2d3748; border-radius: 8px; background: #0f172a; color: #f8fafc;">
           <h2 style="color: #38bdf8;">CyberScout AI Password Reset</h2>
-          <p>Hello {username},</p>
+          <p>Hello {safe_username},</p>
           <p>We received a request to reset your password. Click the button below to set a new password:</p>
           <div style="margin: 24px 0;">
             <a href="{reset_link}" style="background: #0284c7; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Reset Password</a>
@@ -95,13 +103,33 @@ def setup():
         flash("First-run setup is permanently disabled because administrator accounts already exist.", "info")
         return redirect(url_for("admin_ui.admin_login"))
 
+    setup_secret = os.environ.get("INITIAL_ADMIN_SETUP_TOKEN", "").strip()
+    production = (current_app.config.get("APP_ENV") or os.environ.get("CYBERSCOUT_ENV", "")).lower() in ("production", "prod")
+    if production and not setup_secret:
+        return "Initial administrator setup is disabled until INITIAL_ADMIN_SETUP_TOKEN is configured.", 503
+
     if request.method == "POST":
+        if setup_secret:
+            try:
+                setup_allowed = _rate_limit_repository().check_and_record_rate_limit(
+                    client_ip, "initial-admin-setup", "initial_admin_setup", max_attempts=8, window_minutes=15
+                )
+            except Exception as e:
+                logger.error(f"Initial administrator setup throttle is unavailable: {e}")
+                return "Initial administrator setup is temporarily unavailable.", 503
+            if not setup_allowed:
+                return "Too many initial administrator setup attempts. Try again later.", 429
+        submitted_setup_secret = request.form.get("setup_token", "").strip()
+        if (production and not setup_secret) or (setup_secret and not secrets.compare_digest(setup_secret, submitted_setup_secret)):
+            audit_repo.log_event("AUTH", "SETUP_FAILED", "TOKEN_INVALID", source_ip=client_ip, details="Initial administrator setup authorization failed")
+            return render_template("setup.html", setup_token_required=bool(setup_secret)), 403
+
         csrf_token = request.form.get("csrf_token", "").strip()
         expected_csrf = session.get("admin_csrf_token") or session.get("user_csrf_token")
         if not expected_csrf or not csrf_token or not AdminSecurityManager.verify_csrf_token(expected_csrf, csrf_token):
             audit_repo.log_event("AUTH", "SETUP_FAILED", "CSRF_FAILED", source_ip=client_ip, details="CSRF token validation failed on first-run setup")
             flash("CSRF validation failed. Please try again.", "danger")
-            return render_template("setup.html"), 400
+            return render_template("setup.html", setup_token_required=bool(setup_secret)), 400
 
         username = request.form.get("username", "").strip()
         email = request.form.get("email", "").strip()
@@ -112,8 +140,8 @@ def setup():
             flash("All fields are required.", "warning")
         elif password != confirm_password:
             flash("Passwords do not match.", "danger")
-        elif len(password) < 10:
-            flash("Administrator password must be at least 10 characters long.", "danger")
+        elif not AdminSecurityManager.validate_password_strength(password)[0]:
+            flash(AdminSecurityManager.validate_password_strength(password)[1], "danger")
         else:
             try:
                 admin_account = admin_repo.create_admin(
@@ -121,16 +149,18 @@ def setup():
                     email=email,
                     password=password,
                     role="Super Admin",
+                    first_admin_only=True,
                 )
                 audit_repo.log_event("AUTH", "SETUP_COMPLETE", "SUCCESS", user_id=admin_account["id"], username=username, source_ip=client_ip, details="Initial super admin created in Admins table")
                 session.clear()
                 flash(f"First-run setup complete! Super Admin '{username}' created successfully. Please log in to complete MFA setup.", "success")
                 return redirect(url_for("admin_ui.admin_login"))
             except Exception as e:
-                audit_repo.log_event("AUTH", "SETUP_FAILED", "FAILED", username=username, source_ip=client_ip, details=f"Setup account creation error: {e}")
-                flash(f"Setup error occurred during account creation: {e}", "danger")
+                audit_repo.log_event("AUTH", "SETUP_FAILED", "FAILED", username=username, source_ip=client_ip, details="Initial administrator account creation failed")
+                logger.error(f"Initial administrator setup failed: {e}")
+                flash("Setup could not be completed. Please verify the deployment configuration and try again.", "danger")
 
-    return render_template("setup.html")
+    return render_template("setup.html", setup_token_required=bool(setup_secret))
 
 
 from src.utils.url_utils import is_safe_internal_url
@@ -148,24 +178,49 @@ def login():
         return redirect(url_for("dashboard_ui.index"))
 
     if request.method == "POST":
-        identifier = request.form.get("identifier", "").strip()
-        password = request.form.get("password", "").strip()
-        csrf_token = request.form.get("csrf_token", "").strip()
-        raw_next = request.form.get("next") or request.args.get("next")
+        is_json = request.is_json or (request.headers.get("Accept") == "application/json" and request.get_json(silent=True) is not None)
+        json_data = request.get_json(silent=True) if is_json else None
+
+        if is_json and json_data:
+            identifier = (json_data.get("identifier") or json_data.get("username") or "").strip()
+            password = (json_data.get("password") or "").strip()
+            csrf_token = (json_data.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or "").strip()
+            raw_next = json_data.get("next") or request.args.get("next")
+        else:
+            identifier = (request.form.get("identifier") or request.form.get("username") or "").strip()
+            password = request.form.get("password", "").strip()
+            csrf_token = (request.form.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or "").strip()
+            raw_next = request.form.get("next") or request.args.get("next")
+
         next_url = raw_next if (raw_next and _is_safe_url(raw_next)) else url_for("dashboard_ui.index")
 
         # 0. CSRF Token Validation
         session_csrf = session.get("user_csrf_token") or session.get("admin_csrf_token")
         if not session_csrf or not csrf_token or not secrets.compare_digest(session_csrf, csrf_token):
             audit_repo.log_event("AUTH", "USER_LOGIN", "CSRF_FAILED", username=identifier or "Anonymous", source_ip=client_ip, details="CSRF token validation failed on user login")
+            if is_json:
+                return jsonify({"status": "failed", "error": "CSRF validation failed. Please try again."}), 400
             flash("CSRF validation failed. Please try again.", "danger")
             raw_next_arg = request.args.get("next", "")
             safe_next_arg = raw_next_arg if _is_safe_url(raw_next_arg) else ""
             return render_template("login.html", next=safe_next_arg), 400
 
         # 1. Distributed Rate Limiting & Abuse Protection
-        if AdminSecurityManager.is_locked_out(client_ip, identifier, attempt_type="user_login"):
+        try:
+            login_attempt_allowed = AdminSecurityManager.consume_login_attempt(
+                client_ip, identifier, attempt_type="user_login"
+            )
+        except Exception as e:
+            logger.error(f"Distributed user login throttle is unavailable: {e}")
+            if is_json:
+                return jsonify({"status": "failed", "error": "Service temporarily unavailable. Please try again shortly."}), 503
+            flash("Service temporarily unavailable. Please try again shortly.", "danger")
+            return render_template("login.html", next=next_url), 503
+
+        if not login_attempt_allowed:
             audit_repo.log_event("AUTH", "USER_LOGIN_LOCKED", "FAILED", username=identifier or "Anonymous", source_ip=client_ip, details="User login attempt while locked out")
+            if is_json:
+                return jsonify({"status": "failed", "error": "Account temporarily locked due to 5 consecutive failed login attempts. Please wait 15 minutes."}), 429
             flash("Account temporarily locked due to 5 consecutive failed login attempts. Please wait 15 minutes.", "danger")
             raw_next_arg = request.args.get("next", "")
             safe_next_arg = raw_next_arg if _is_safe_url(raw_next_arg) else ""
@@ -188,17 +243,23 @@ def login():
                 audit_repo.log_event("AUTH", "USER_LOGIN_ERROR", "SERVICE_UNAVAILABLE", username=identifier or "Anonymous", source_ip=client_ip, details="Database unavailable during authentication")
             except Exception:
                 pass
+            if is_json:
+                return jsonify({"status": "failed", "error": "Service temporarily unavailable. Please try again in a few moments."}), 503
             flash("Service temporarily unavailable. Please try again in a few moments.", "danger")
             raw_next_arg = request.args.get("next", "")
             safe_next_arg = raw_next_arg if _is_safe_url(raw_next_arg) else ""
             return render_template("login.html", next=safe_next_arg), 503
 
         if user:
-            # Enforce Portal Isolation: Admin accounts must authenticate via /admin/login
+            # Enforce Portal Isolation: Admin accounts cannot authenticate via user login
             if user.get("role") in ("Admin", "admin", "Super Admin", "Administrator"):
-                audit_repo.log_event("AUTH", "USER_LOGIN_REDIRECT", "PORTAL_ISOLATION", user_id=user["id"], username=user["username"], source_ip=client_ip, details="Admin attempted user login portal; redirected to /admin/login")
-                flash("Administrator accounts must authenticate through the dedicated Administrator Portal at /admin/login.", "warning")
-                return redirect(url_for("admin_ui.admin_login"))
+                audit_repo.log_event("AUTH", "USER_LOGIN_REJECTED", "PORTAL_ISOLATION", user_id=user["id"], username=user["username"], source_ip=client_ip, details="Admin attempted user login portal; rejected to prevent enumeration")
+                if is_json:
+                    return jsonify({"status": "failed", "error": "Invalid username/email or password."}), 401
+                flash("Invalid username/email or password.", "danger")
+                raw_next_arg = request.args.get("next", "")
+                safe_next_arg = raw_next_arg if _is_safe_url(raw_next_arg) else ""
+                return render_template("login.html", next=safe_next_arg), 401
 
             # Reset failed login attempt history on success
             AdminSecurityManager.reset_failed_attempts(client_ip, identifier, attempt_type="user_login")
@@ -209,18 +270,36 @@ def login():
             session["username"] = user["username"]
             session["email"] = user["email"]
             session["role"] = user["role"]
+            session["user_csrf_token"] = AdminSecurityManager.generate_csrf_token()
 
             audit_repo.log_event("AUTH", "USER_LOGIN", "SUCCESS", user_id=user["id"], username=user["username"], source_ip=client_ip, details="User login successful")
+            if is_json:
+                return jsonify({
+                    "status": "success",
+                    "message": f"Welcome back, {user['username']}!",
+                    "user": {
+                        "id": user["id"],
+                        "username": user["username"],
+                        "email": user["email"],
+                        "role": user["role"],
+                        "is_admin": False,
+                    },
+                    "csrf_token": session["user_csrf_token"],
+                    "redirect": next_url,
+                }), 200
             flash(f"Welcome back, {user['username']}!", "success")
             return redirect(next_url)
         else:
-            AdminSecurityManager.record_failed_attempt(client_ip, identifier, attempt_type="user_login")
             audit_repo.log_event("AUTH", "USER_LOGIN", "FAILED", username=identifier or "Anonymous", source_ip=client_ip, details="Invalid credentials")
+            if is_json:
+                return jsonify({"status": "failed", "error": "Invalid username/email or password."}), 401
             flash("Invalid username/email or password.", "danger")
 
     raw_next_arg = request.args.get("next", "")
     safe_next_arg = raw_next_arg if _is_safe_url(raw_next_arg) else ""
-    return render_template("login.html", next=safe_next_arg)
+    if request.args.get("legacy") == "1":
+        return render_template("login.html", next=safe_next_arg)
+    return render_template("react_shell.html")
 
 
 @auth_bp.route("/register", methods=["GET", "POST"])
@@ -231,50 +310,89 @@ def register():
         return redirect(url_for("dashboard_ui.index"))
 
     if request.method == "POST":
-        csrf_token = request.form.get("csrf_token", "").strip()
+        is_json = request.is_json or (request.headers.get("Accept") == "application/json" and request.get_json(silent=True) is not None)
+        json_data = request.get_json(silent=True) if is_json else None
+
+        if is_json and json_data:
+            username = (json_data.get("username") or "").strip()
+            email = (json_data.get("email") or "").strip()
+            password = (json_data.get("password") or "").strip()
+            confirm_password = (json_data.get("confirm_password") or password).strip()
+            csrf_token = (json_data.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or "").strip()
+        else:
+            username = request.form.get("username", "").strip()
+            email = request.form.get("email", "").strip()
+            password = request.form.get("password", "").strip()
+            confirm_password = request.form.get("confirm_password", "").strip()
+            csrf_token = (request.form.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or "").strip()
+
         expected_csrf = session.get("user_csrf_token") or session.get("admin_csrf_token")
         if not expected_csrf or not csrf_token or not secrets.compare_digest(expected_csrf, csrf_token):
             audit_repo.log_event("AUTH", "USER_REGISTER", "CSRF_FAILED", source_ip=client_ip, details="CSRF validation failed on registration")
+            if is_json:
+                return jsonify({"status": "failed", "error": "CSRF validation failed. Please try again."}), 400
             flash("CSRF validation failed. Please try again.", "danger")
             return render_template("register.html"), 400
 
-        username = request.form.get("username", "").strip()
-        email = request.form.get("email", "").strip()
-        password = request.form.get("password", "").strip()
-        confirm_password = request.form.get("confirm_password", "").strip()
         # Security Hardening (Phase 1): Always enforce default Viewer role server-side.
         role = "Viewer"
 
         if not username or not email or not password:
-            flash("All fields are required.", "warning")
+            msg = "All fields are required."
+            if is_json:
+                return jsonify({"status": "failed", "error": msg}), 400
+            flash(msg, "warning")
         elif len(password) < 8:
-            flash("Password must be at least 8 characters long.", "danger")
+            msg = "Password must be at least 8 characters long."
+            if is_json:
+                return jsonify({"status": "failed", "error": msg}), 400
+            flash(msg, "danger")
         elif password != confirm_password:
-            flash("Passwords do not match.", "danger")
+            msg = "Passwords do not match."
+            if is_json:
+                return jsonify({"status": "failed", "error": msg}), 400
+            flash(msg, "danger")
         else:
             try:
                 user = user_repo.create_user(username=username, email=email, password=password, role=role)
                 audit_repo.log_event("AUTH", "USER_REGISTER", "SUCCESS", user_id=user["id"], username=username, source_ip=client_ip, details="New student user registered")
+                if is_json:
+                    return jsonify({"status": "success", "message": "Registration successful! Please log in."}), 201
                 flash("Registration successful! Please log in with your credentials.", "success")
                 return redirect(url_for("auth_ui.login"))
             except ValueError as e:
                 audit_repo.log_event("AUTH", "USER_REGISTER", "FAILED", username=username, source_ip=client_ip, details=f"Registration validation failure: {e}")
+                if is_json:
+                    return jsonify({"status": "failed", "error": str(e)}), 400
                 flash(str(e), "danger")
 
-    return render_template("register.html")
+    if request.args.get("legacy") == "1":
+        return render_template("register.html")
+    return render_template("react_shell.html")
 
 
-@auth_bp.route("/logout")
+@auth_bp.route("/logout", methods=["POST"])
 def logout():
-    """Clears active session and redirects to public landing page '/'."""
+    """Revokes the active session using a CSRF-protected POST."""
     client_ip = get_client_ip(request)
+    json_payload = request.get_json(silent=True)
+    raw_csrf_token = (
+        request.headers.get("X-CSRFToken")
+        or request.headers.get("X-CSRF-Token")
+        or (json_payload.get("csrf_token") if isinstance(json_payload, dict) else "")
+        or request.form.get("csrf_token", "")
+    )
+    csrf_token = raw_csrf_token.strip() if isinstance(raw_csrf_token, str) else ""
+    expected_csrf = session.get("user_csrf_token") or session.get("admin_csrf_token")
+    if not expected_csrf or not csrf_token or not secrets.compare_digest(expected_csrf, csrf_token):
+        return jsonify({"status": "failed", "error": "CSRF validation failed."}), 400
+
     uid = session.get("user_id")
     uname = session.get("username")
     if uid:
         audit_repo.log_event("AUTH", "USER_LOGOUT", "SUCCESS", user_id=uid, username=uname, source_ip=client_ip, details="User logged out")
     session.clear()
-    flash("You have been logged out.", "info")
-    return redirect(url_for("dashboard_ui.landing"))
+    return jsonify({"status": "success"})
 
 
 @auth_bp.route("/forgot-password", methods=["GET", "POST"])
@@ -282,35 +400,85 @@ def forgot_password():
     """Handles password reset request flow with CSRF protection and token generation."""
     client_ip = get_client_ip(request)
     if request.method == "POST":
-        csrf_token = request.form.get("csrf_token", "").strip()
+        is_json = request.is_json or (request.headers.get("Accept") == "application/json" and request.get_json(silent=True) is not None)
+        json_data = request.get_json(silent=True) if is_json else None
+
+        if is_json and isinstance(json_data, dict):
+            raw_email = json_data.get("email")
+            raw_csrf = json_data.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or ""
+            email = raw_email.strip().lower() if isinstance(raw_email, str) else ""
+            csrf_token = raw_csrf.strip() if isinstance(raw_csrf, str) else ""
+        else:
+            email = request.form.get("email", "").strip().lower()
+            csrf_token = (request.form.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or "").strip()
+
         expected_csrf = session.get("user_csrf_token") or session.get("admin_csrf_token")
         if not expected_csrf or not csrf_token or not secrets.compare_digest(expected_csrf, csrf_token):
             audit_repo.log_event("AUTH", "FORGOT_PASSWORD", "CSRF_FAILED", source_ip=client_ip, details="CSRF validation failed on forgot-password")
+            if is_json:
+                return jsonify({"status": "failed", "error": "CSRF validation failed. Please try again."}), 400
             flash("CSRF validation failed. Please try again.", "danger")
             return render_template("forgot_password.html"), 400
 
-        email = request.form.get("email", "").strip().lower()
+        try:
+            rate_repo = _rate_limit_repository()
+            email_key = hmac.new(
+                str(current_app.config.get("SECRET_KEY", "")).encode("utf-8"),
+                email.encode("utf-8", errors="ignore"),
+                hashlib.sha256,
+            ).hexdigest()
+            allowed_ip = rate_repo.check_and_record_rate_limit(
+                client_ip, "forgot-password", "password_reset_ip", max_attempts=10, window_minutes=15
+            )
+            allowed_email = rate_repo.check_and_record_rate_limit(
+                "password-reset", email_key, "password_reset_email", max_attempts=3, window_minutes=60
+            )
+        except Exception as e:
+            logger.error(f"Password reset rate-limit storage is unavailable: {e}")
+            return jsonify({"status": "unavailable", "message": "Password reset is temporarily unavailable. Please try again later."}), 503
+
+        generic_message = "If an account matches that address, reset instructions will be sent."
+        if not allowed_ip or not allowed_email:
+            if is_json:
+                return jsonify({"status": "success", "message": generic_message}), 200
+            flash(generic_message, "info")
+            return redirect(url_for("auth_ui.login"))
+
         if email:
             target_user = user_repo.get_by_email(email)
             if target_user:
                 raw_token = secrets.token_urlsafe(32)
-                _store_password_reset_token(str(target_user["id"]), raw_token, target_user["email"])
-                _send_password_reset_email(target_user["email"], target_user.get("username", "User"), raw_token)
+                try:
+                    password_reset_repo.store_token(str(target_user["id"]), raw_token)
+                    _send_password_reset_email(target_user["email"], target_user.get("username", "User"), raw_token)
+                except Exception as e:
+                    logger.error(f"Could not prepare password reset request: {e}")
 
-        audit_repo.log_event("AUTH", "FORGOT_PASSWORD", "REQUESTED", source_ip=client_ip, details=f"Password reset requested for {email}")
-        flash(f"If an account exists for '{email}', password reset instructions have been dispatched.", "info")
+        audit_repo.log_event("AUTH", "FORGOT_PASSWORD", "REQUESTED", source_ip=client_ip, details="Password reset requested")
+        if is_json:
+            return jsonify({"status": "success", "message": generic_message}), 200
+        flash(generic_message, "info")
         return redirect(url_for("auth_ui.login"))
-    return render_template("forgot_password.html")
+
+    if request.args.get("legacy") == "1":
+        return render_template("forgot_password.html")
+    return render_template("react_shell.html")
 
 
 @auth_bp.route("/reset-password/<token>", methods=["GET", "POST"])
 def reset_password(token: str):
     """Renders reset password page and applies new credentials."""
     client_ip = get_client_ip(request)
-    token_record = _verify_password_reset_token(token)
-    if not token_record:
-        flash("Password reset link is invalid or has expired. Please request a new one.", "danger")
-        return redirect(url_for("auth_ui.forgot_password"))
+    if request.method == "GET":
+        try:
+            token_record = password_reset_repo.get_valid_token(token)
+        except Exception as e:
+            logger.error(f"Could not verify password reset token: {e}")
+            token_record = None
+        if not token_record:
+            flash("Password reset link is invalid or has expired. Please request a new one.", "danger")
+            return redirect(url_for("auth_ui.forgot_password"))
+        return render_template("reset_password.html", token=token)
 
     if request.method == "POST":
         csrf_token = request.form.get("csrf_token", "").strip()
@@ -329,16 +497,19 @@ def reset_password(token: str):
             flash("Passwords do not match.", "danger")
             return render_template("reset_password.html", token=token)
 
-        user_id = token_record["user_id"]
         try:
-            user_repo.update_password(user_id, new_password)
-            _invalidate_password_reset_token(token)
+            password_hash = generate_password_hash(new_password, method="pbkdf2:sha256")
+            user_id = password_reset_repo.complete_password_reset(token, password_hash)
+            if not user_id:
+                flash("Password reset link is invalid or has expired. Please request a new one.", "danger")
+                return redirect(url_for("auth_ui.forgot_password"))
+            session.clear()
             audit_repo.log_event("AUTH", "PASSWORD_RESET_COMPLETE", "SUCCESS", user_id=user_id, source_ip=client_ip, details="User successfully completed password reset flow")
             flash("Password updated successfully! Please sign in with your new credentials.", "success")
             return redirect(url_for("auth_ui.login"))
         except Exception as e:
-            logger.error(f"Error updating user password on reset: {e}")
-            flash(f"Failed to reset password: {e}", "danger")
+            logger.error(f"Error completing password reset: {e}")
+            flash("Could not reset your password. Please try again.", "danger")
 
     return render_template("reset_password.html", token=token)
 
@@ -697,6 +868,9 @@ def profile():
         preferences = UserPreferencesRepository(db_manager=user_repo.db_manager).get_preferences(user_id)
     except Exception as pe:
         logger.warning(f"Could not load preferences for user {user_id}: {pe}")
+
+    if request.args.get("legacy") != "1":
+        return render_template("react_shell.html")
 
     return render_template(
         "profile.html",

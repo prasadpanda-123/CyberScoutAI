@@ -41,7 +41,7 @@ class Config:
         """Loads environment variables from .env file if it exists."""
         env_path = PROJECT_ROOT / ".env"
         if env_path.exists():
-            load_dotenv(dotenv_path=env_path, override=True)
+            load_dotenv(dotenv_path=env_path, override=False)
 
     def _load_config_files(self, config_files: Optional[List[Path]]) -> None:
         """Loads and merges configuration YAML files."""

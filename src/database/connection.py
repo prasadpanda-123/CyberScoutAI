@@ -154,9 +154,14 @@ class PgCursorAdapter:
 
 
 class PgConnectionAdapter:
-    """DBAPI Connection Adapter wrapping PostgreSQL raw connections."""
+    """DBAPI adapter that retains SQLAlchemy's pool proxy until close."""
     def __init__(self, raw_conn):
         self._conn = raw_conn
+        self._closed = False
+
+    @property
+    def closed(self) -> bool:
+        return self._closed or bool(getattr(self._conn, "closed", 0))
 
     def cursor(self):
         if hasattr(self._conn, "get_transaction_status"):
@@ -165,7 +170,13 @@ class PgConnectionAdapter:
                     self._conn.rollback()
             except Exception:
                 pass
-        return PgCursorAdapter(self._conn.cursor())
+        cursor = PgCursorAdapter(self._conn.cursor())
+        # Treat ordinary repository access as trusted server work. User-scoped
+        # repository methods must replace this with user_context before querying.
+        cursor.execute("SET LOCAL app.current_user_id = '';")
+        cursor.execute("SET LOCAL app.is_admin = 'false';")
+        cursor.execute("SET LOCAL app.service_context = 'true';")
+        return cursor
 
     def commit(self):
         self._conn.commit()
@@ -174,10 +185,14 @@ class PgConnectionAdapter:
         self._conn.rollback()
 
     def close(self):
+        if self._closed:
+            return
         try:
             self._conn.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Could not return PostgreSQL connection to the pool: {e}")
+        finally:
+            self._closed = True
 
     def set_session(self, **kwargs):
         """
@@ -314,7 +329,29 @@ class DatabaseManager:
                 policy_rows = cursor.fetchall()
                 result["policies"] = [f"{r[0]}.{r[1]}" for r in policy_rows]
 
-                has_policy = len(policy_rows) >= 2
+                cursor.execute("""
+                    SELECT COUNT(*) FROM pg_policies
+                    WHERE schemaname = 'public'
+                      AND LOWER(policyname) IN (
+                        'audit_append_only', 'audit_select_policy', 'opportunity_write_policy',
+                        'scanjobs_policy', 'sourcehealth_policy', 'sources_policy', 'users_policy',
+                        'admins_policy', 'pendingmfa_policy', 'serversessions_policy',
+                        'pending_mfa_access_policy', 'server_sessions_access_policy',
+                        'searchhistory_policy', 'loginattempts_policy', 'savedopportunities_policy',
+                        'userpreferences_policy', 'usersearchhistory_policy', 'notification_outbox_policy'
+                      )
+                      AND (COALESCE(qual, '') LIKE '%app.service_context%'
+                           OR COALESCE(with_check, '') LIKE '%app.service_context%')
+                      AND (LOWER(policyname) NOT IN ('savedopportunities_policy', 'userpreferences_policy', 'usersearchhistory_policy')
+                           OR (COALESCE(qual, '') LIKE '%app.current_user_id%'
+                               AND COALESCE(qual, '') NOT LIKE '%IS NULL%'
+                               AND COALESCE(with_check, '') LIKE '%app.current_user_id%'
+                               AND COALESCE(with_check, '') NOT LIKE '%IS NULL%'));
+                """)
+                strict_user_policy_count_row = cursor.fetchone()
+                strict_user_policy_count = int(strict_user_policy_count_row[0]) if strict_user_policy_count_row else 0
+
+                has_policy = len(policy_rows) >= 2 and strict_user_policy_count == 18
                 has_all_tables_secured = (
                     len(result["missing_tables"]) == 0
                     and len(result["unprotected_tables"]) == 0
@@ -377,26 +414,29 @@ class DatabaseManager:
                         logger.debug(f"Notice on securing {table_name}: {te}")
 
                 # 2. Add explicit RLS policies idempotently
+                service_access = "(COALESCE(NULLIF(current_setting('app.is_admin', true), '') = 'true', false) OR COALESCE(NULLIF(current_setting('app.service_context', true), '') = 'true', false))"
                 policies = [
-                    ('AuditLogs', 'audit_append_only', 'CREATE POLICY audit_append_only ON "AuditLogs" FOR INSERT WITH CHECK (true);'),
+                    ('AuditLogs', 'audit_append_only', f'CREATE POLICY audit_append_only ON "AuditLogs" FOR INSERT WITH CHECK {service_access};'),
                     ('AuditLogs', 'audit_no_delete', 'CREATE POLICY audit_no_delete ON "AuditLogs" FOR DELETE USING (false);'),
                     ('AuditLogs', 'audit_no_update', 'CREATE POLICY audit_no_update ON "AuditLogs" FOR UPDATE USING (false);'),
-                    ('AuditLogs', 'audit_select_policy', 'CREATE POLICY audit_select_policy ON "AuditLogs" FOR SELECT USING (true);'),
+                    ('AuditLogs', 'audit_select_policy', f'CREATE POLICY audit_select_policy ON "AuditLogs" FOR SELECT USING {service_access};'),
                     ('Opportunities', 'opportunity_read_policy', 'CREATE POLICY opportunity_read_policy ON "Opportunities" FOR SELECT USING (true);'),
-                    ('Opportunities', 'opportunity_write_policy', 'CREATE POLICY opportunity_write_policy ON "Opportunities" FOR ALL USING (true) WITH CHECK (true);'),
-                    ('ScanJobs', 'scanjobs_policy', 'CREATE POLICY scanjobs_policy ON "ScanJobs" FOR ALL USING (true) WITH CHECK (true);'),
-                    ('SourceHealth', 'sourcehealth_policy', 'CREATE POLICY sourcehealth_policy ON "SourceHealth" FOR ALL USING (true) WITH CHECK (true);'),
-                    ('Sources', 'sources_policy', 'CREATE POLICY sources_policy ON "Sources" FOR ALL USING (true) WITH CHECK (true);'),
-                    ('Users', 'users_policy', 'CREATE POLICY users_policy ON "Users" FOR ALL USING (true) WITH CHECK (true);'),
-                    ('Admins', 'admins_policy', 'CREATE POLICY admins_policy ON "Admins" FOR ALL USING (true) WITH CHECK (true);'),
-                    ('PendingMfa', 'pendingmfa_policy', 'CREATE POLICY pendingmfa_policy ON "PendingMfa" FOR ALL USING (true) WITH CHECK (true);'),
-                    ('ServerSessions', 'serversessions_policy', 'CREATE POLICY serversessions_policy ON "ServerSessions" FOR ALL USING (true) WITH CHECK (true);'),
-                    ('SearchHistory', 'searchhistory_policy', 'CREATE POLICY searchhistory_policy ON "SearchHistory" FOR ALL USING (true) WITH CHECK (true);'),
-                    ('LoginAttempts', 'loginattempts_policy', 'CREATE POLICY loginattempts_policy ON "LoginAttempts" FOR ALL USING (true) WITH CHECK (true);'),
-                    ('SavedOpportunities', 'savedopportunities_policy', 'CREATE POLICY savedopportunities_policy ON "SavedOpportunities" FOR ALL USING (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR NULLIF(current_setting(\'app.current_user_id\', true), \'\') IS NULL) WITH CHECK (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR NULLIF(current_setting(\'app.current_user_id\', true), \'\') IS NULL);'),
-                    ('UserPreferences', 'userpreferences_policy', 'CREATE POLICY userpreferences_policy ON "UserPreferences" FOR ALL USING (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR NULLIF(current_setting(\'app.current_user_id\', true), \'\') IS NULL) WITH CHECK (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR NULLIF(current_setting(\'app.current_user_id\', true), \'\') IS NULL);'),
-                    ('UserSearchHistory', 'usersearchhistory_policy', 'CREATE POLICY usersearchhistory_policy ON "UserSearchHistory" FOR ALL USING (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR NULLIF(current_setting(\'app.current_user_id\', true), \'\') IS NULL) WITH CHECK (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR NULLIF(current_setting(\'app.current_user_id\', true), \'\') IS NULL);'),
-                    ('NotificationOutbox', 'notification_outbox_policy', 'CREATE POLICY notification_outbox_policy ON "NotificationOutbox" FOR ALL USING (true) WITH CHECK (true);'),
+                    ('Opportunities', 'opportunity_write_policy', f'CREATE POLICY opportunity_write_policy ON "Opportunities" FOR ALL USING {service_access} WITH CHECK {service_access};'),
+                    ('ScanJobs', 'scanjobs_policy', f'CREATE POLICY scanjobs_policy ON "ScanJobs" FOR ALL USING {service_access} WITH CHECK {service_access};'),
+                    ('SourceHealth', 'sourcehealth_policy', f'CREATE POLICY sourcehealth_policy ON "SourceHealth" FOR ALL USING {service_access} WITH CHECK {service_access};'),
+                    ('Sources', 'sources_policy', f'CREATE POLICY sources_policy ON "Sources" FOR ALL USING {service_access} WITH CHECK {service_access};'),
+                    ('Users', 'users_policy', f'CREATE POLICY users_policy ON "Users" FOR ALL USING {service_access} WITH CHECK {service_access};'),
+                    ('Admins', 'admins_policy', f'CREATE POLICY admins_policy ON "Admins" FOR ALL USING {service_access} WITH CHECK {service_access};'),
+                    ('PendingMfa', 'pendingmfa_policy', f'CREATE POLICY pendingmfa_policy ON "PendingMfa" FOR ALL USING {service_access} WITH CHECK {service_access};'),
+                    ('PendingMfa', 'pending_mfa_access_policy', f'CREATE POLICY pending_mfa_access_policy ON "PendingMfa" FOR ALL USING {service_access} WITH CHECK {service_access};'),
+                    ('ServerSessions', 'serversessions_policy', f'CREATE POLICY serversessions_policy ON "ServerSessions" FOR ALL USING {service_access} WITH CHECK {service_access};'),
+                    ('ServerSessions', 'server_sessions_access_policy', f'CREATE POLICY server_sessions_access_policy ON "ServerSessions" FOR ALL USING {service_access} WITH CHECK {service_access};'),
+                    ('SearchHistory', 'searchhistory_policy', f'CREATE POLICY searchhistory_policy ON "SearchHistory" FOR ALL USING {service_access} WITH CHECK {service_access};'),
+                    ('LoginAttempts', 'loginattempts_policy', f'CREATE POLICY loginattempts_policy ON "LoginAttempts" FOR ALL USING {service_access} WITH CHECK {service_access};'),
+                    ('SavedOpportunities', 'savedopportunities_policy', 'CREATE POLICY savedopportunities_policy ON "SavedOpportunities" FOR ALL USING (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR COALESCE(NULLIF(current_setting(\'app.is_admin\', true), \'\') = \'true\', false) OR COALESCE(NULLIF(current_setting(\'app.service_context\', true), \'\') = \'true\', false)) WITH CHECK (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR COALESCE(NULLIF(current_setting(\'app.is_admin\', true), \'\') = \'true\', false) OR COALESCE(NULLIF(current_setting(\'app.service_context\', true), \'\') = \'true\', false));'),
+                    ('UserPreferences', 'userpreferences_policy', 'CREATE POLICY userpreferences_policy ON "UserPreferences" FOR ALL USING (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR COALESCE(NULLIF(current_setting(\'app.is_admin\', true), \'\') = \'true\', false) OR COALESCE(NULLIF(current_setting(\'app.service_context\', true), \'\') = \'true\', false)) WITH CHECK (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR COALESCE(NULLIF(current_setting(\'app.is_admin\', true), \'\') = \'true\', false) OR COALESCE(NULLIF(current_setting(\'app.service_context\', true), \'\') = \'true\', false));'),
+                    ('UserSearchHistory', 'usersearchhistory_policy', 'CREATE POLICY usersearchhistory_policy ON "UserSearchHistory" FOR ALL USING (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR COALESCE(NULLIF(current_setting(\'app.is_admin\', true), \'\') = \'true\', false) OR COALESCE(NULLIF(current_setting(\'app.service_context\', true), \'\') = \'true\', false)) WITH CHECK (user_id::text = NULLIF(current_setting(\'app.current_user_id\', true), \'\') OR COALESCE(NULLIF(current_setting(\'app.is_admin\', true), \'\') = \'true\', false) OR COALESCE(NULLIF(current_setting(\'app.service_context\', true), \'\') = \'true\', false));'),
+                    ('NotificationOutbox', 'notification_outbox_policy', f'CREATE POLICY notification_outbox_policy ON "NotificationOutbox" FOR ALL USING {service_access} WITH CHECK {service_access};'),
                 ]
 
                 for tablename, policyname, sql in policies:
@@ -406,7 +446,10 @@ class DatabaseManager:
                             WHERE LOWER(tablename) = LOWER(%s) AND LOWER(policyname) = LOWER(%s);
                         """, (tablename, policyname))
                         exists = cursor.fetchone()
-                        if exists and force:
+                        if policyname not in ("audit_no_delete", "audit_no_update", "opportunity_read_policy"):
+                            cursor.execute(f'DROP POLICY IF EXISTS {policyname} ON "{tablename}";')
+                            cursor.execute(sql)
+                        elif exists and force:
                             cursor.execute(f'DROP POLICY IF EXISTS {policyname} ON "{tablename}";')
                             cursor.execute(sql)
                         elif not exists:
@@ -486,19 +529,14 @@ class DatabaseManager:
         Fails honestly if PostgreSQL is unreachable without resorting to mock fallbacks.
         Automatically reconnects if the connection was closed.
         """
-        is_closed = True
-        if self._connection is not None:
-            raw = getattr(self._connection, "_conn", None)
-            if raw is not None:
-                is_closed = getattr(raw, "closed", 0) != 0
+        is_closed = self._connection is None or self._connection.closed
 
-        if self._connection is None or is_closed:
+        if is_closed:
             self._connection = None
             try:
                 engine = self.get_engine()
                 raw_conn = engine.raw_connection()
-                dbapi_conn = getattr(raw_conn, "dbapi_connection", None) or getattr(raw_conn, "connection", raw_conn)
-                self._connection = PgConnectionAdapter(dbapi_conn)
+                self._connection = PgConnectionAdapter(raw_conn)
             except Exception as e:
                 err_str = str(e).lower()
                 if "ssl" in err_str or "closed" in err_str or "connection" in err_str or "set_session" in err_str or "transaction" in err_str or "translate host name" in err_str or "not known" in err_str or "timeout" in err_str:
@@ -509,8 +547,7 @@ class DatabaseManager:
                         self.reset_pool()
                         engine = self.get_engine()
                         raw_conn = engine.raw_connection()
-                        dbapi_conn = getattr(raw_conn, "dbapi_connection", None) or getattr(raw_conn, "connection", raw_conn)
-                        self._connection = PgConnectionAdapter(dbapi_conn)
+                        self._connection = PgConnectionAdapter(raw_conn)
                     except Exception as retry_err:
                         self._last_failure_reason = str(retry_err)
                         self._last_failure_timestamp_iso = datetime.now(timezone.utc).isoformat()
@@ -597,11 +634,18 @@ class DatabaseManager:
         Ensures queries are restricted strictly to user_id when active.
         """
         with self.transaction() as cursor:
-            if user_id:
-                try:
-                    cursor.execute("SET LOCAL app.current_user_id = %s;", (user_id,))
-                except Exception:
-                    pass
+            cursor.execute("SET LOCAL app.current_user_id = %s;", (str(user_id or ""),))
+            cursor.execute("SET LOCAL app.is_admin = 'false';")
+            cursor.execute("SET LOCAL app.service_context = 'false';")
+            yield cursor
+
+    @contextmanager
+    def service_context(self) -> Generator[Any, None, None]:
+        """Allows trusted background jobs to process user-owned rows explicitly."""
+        with self.transaction() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = '';")
+            cursor.execute("SET LOCAL app.is_admin = 'false';")
+            cursor.execute("SET LOCAL app.service_context = 'true';")
             yield cursor
 
     def check_connection_with_backoff(self, max_retries: int = 5) -> bool:
@@ -714,53 +758,55 @@ class DatabaseManager:
 
     def get_health_metrics(self) -> Dict[str, Any]:
         """
-        Computes current database connection health, latency, table counts, and masked host.
-        Fulfills Part 5 and Part 7 schema requirements.
+        Retrieves database health and exact counts with up to two queries.
         """
-        start_time = time.time()
-        is_connected = self.ping()
-        latency_ms = round((time.time() - start_time) * 1000, 2) if is_connected else -1
         masked_host = get_masked_db_host(self.custom_url)
-
-        tables_count = 0
-        pg_version = "Unknown"
+        start_time = time.perf_counter()
+        conn = None
+        cursor = None
         table_counts: Dict[str, int] = {}
+        pg_version = "Unknown"
+        tables_count = 0
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT version() AS version,
+                       COALESCE(array_agg(table_name ORDER BY table_name), ARRAY[]::text[]) AS table_names
+                FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
+            """)
+            status_row = cursor.fetchone()
+            if not status_row:
+                raise DatabaseConnectionError("Database health query returned no status row.")
 
-        if is_connected:
-            try:
-                tables = self.get_existing_tables()
-                tables_count = len(tables)
-            except Exception:
-                tables_count = 0
+            pg_version = str(status_row["version"] if hasattr(status_row, "get") else status_row[0]).split(",")[0]
+            table_names = status_row["table_names"] if hasattr(status_row, "get") else status_row[1]
+            existing_tables = set(table_names or [])
+            tables_count = len(existing_tables)
 
-            try:
-                conn = self.get_connection()
-                cursor = conn.cursor()
-                cursor.execute("SELECT version();")
-                v_row = cursor.fetchone()
-                if v_row:
-                    pg_version = str(v_row[0]).split(",")[0]
+            key_tables = [
+                "Opportunities", "Users", "Admins", "AuditLogs", "ScanJobs",
+                "SourceHealth", "Sources", "SearchHistory", "SavedOpportunities",
+                "UserPreferences", "scheduler_webhook_requests", "Statistics",
+            ]
+            count_tables = [table for table in key_tables if table in existing_tables]
+            if count_tables:
+                count_select = ", ".join(
+                    f'(SELECT COUNT(*) FROM "{table}") AS "{table}"'
+                    for table in count_tables
+                )
+                cursor.execute(f"SELECT {count_select};")
+                count_row = cursor.fetchone()
+                if count_row:
+                    for index, table in enumerate(count_tables):
+                        value = count_row[table] if hasattr(count_row, "get") else count_row[index]
+                        table_counts[table] = int(value)
 
-                # Safe table row counts for non-sensitive schema inspection
-                key_tables = [
-                    "Opportunities", "Users", "Admins", "AuditLogs", "ScanJobs",
-                    "SourceHealth", "Sources", "SearchHistory", "SavedOpportunities",
-                    "UserPreferences", "scheduler_webhook_requests", "Statistics"
-                ]
-                for tbl in key_tables:
-                    try:
-                        cursor.execute(f'SELECT COUNT(*) FROM "{tbl}";')
-                        r = cursor.fetchone()
-                        if r:
-                            table_counts[tbl] = int(r[0] if isinstance(r, (tuple, list)) else r.get("count", 0))
-                    except Exception:
-                        pass
-
-                cursor.close()
-                conn.rollback()
-            except Exception:
-                pg_version = "PostgreSQL"
-
+            latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+            now_iso = datetime.now(timezone.utc).isoformat()
+            self._last_check_iso = now_iso
+            self._last_successful_query_iso = now_iso
             return {
                 "connected": True,
                 "status": "ok",
@@ -775,7 +821,11 @@ class DatabaseManager:
                 "tables": tables_count,
                 "table_counts": table_counts,
             }
-        else:
+        except Exception as e:
+            latency_ms = -1
+            self._last_failure_reason = str(e)
+            self._last_failure_timestamp_iso = datetime.now(timezone.utc).isoformat()
+            logger.warning(f"Could not retrieve database health metrics: {e}")
             return {
                 "connected": False,
                 "status": "degraded",
@@ -783,6 +833,7 @@ class DatabaseManager:
                 "database_type": "PostgreSQL",
                 "host": masked_host,
                 "database_host": masked_host,
+                "latency_ms": latency_ms,
                 "reason": self._last_failure_reason or "Network unreachable",
                 "last_attempt": self._last_failure_timestamp_iso or datetime.now(timezone.utc).isoformat(),
                 "retry_attempts": self._retry_attempts or 5,
@@ -790,6 +841,17 @@ class DatabaseManager:
                 "table_counts": {},
                 "version": "Disconnected",
             }
+        finally:
+            if cursor:
+                try:
+                    cursor.close()
+                except Exception as e:
+                    logger.warning(f"Could not close database health cursor: {e}")
+            if conn:
+                try:
+                    conn.close()
+                except Exception as e:
+                    logger.warning(f"Could not close database health connection: {e}")
 
 
     def get_existing_tables(self) -> List[str]:

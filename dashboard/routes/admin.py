@@ -73,21 +73,40 @@ def admin_login():
         client_ip = get_client_ip(request)
 
         if request.method == "POST":
-            identifier = (
-                request.form.get("admin_username", "").strip()
-                or request.form.get("identifier", "").strip()
-                or request.form.get("username", "").strip()
-            )
-            password = (
-                request.form.get("admin_password", "").strip()
-                or request.form.get("password", "").strip()
-            )
-            csrf_token = request.form.get("csrf_token", "").strip()
-            raw_next = request.form.get("next") or request.args.get("next")
+            is_json = request.is_json or (request.headers.get("Accept") == "application/json" and request.get_json(silent=True) is not None)
+            json_data = request.get_json(silent=True) if is_json else None
+
+            if is_json and json_data:
+                identifier = (
+                    json_data.get("admin_username", "").strip()
+                    or json_data.get("identifier", "").strip()
+                    or json_data.get("username", "").strip()
+                )
+                password = (
+                    json_data.get("admin_password", "").strip()
+                    or json_data.get("password", "").strip()
+                )
+                csrf_token = (json_data.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or "").strip()
+                raw_next = json_data.get("next") or request.args.get("next")
+            else:
+                identifier = (
+                    request.form.get("admin_username", "").strip()
+                    or request.form.get("identifier", "").strip()
+                    or request.form.get("username", "").strip()
+                )
+                password = (
+                    request.form.get("admin_password", "").strip()
+                    or request.form.get("password", "").strip()
+                )
+                csrf_token = (request.form.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or "").strip()
+                raw_next = request.form.get("next") or request.args.get("next")
+
             next_url: str = raw_next if (raw_next and is_safe_internal_url(raw_next)) else url_for("admin_ui.admin_dashboard")
 
             # 1. Validate CSRF Token
             if not AdminSecurityManager.verify_csrf_token(session.get("admin_csrf_token"), csrf_token):
+                if is_json:
+                    return jsonify({"status": "failed", "error": "CSRF validation failed. Please try again."}), 400
                 flash("CSRF validation failed. Please try again.", "danger")
                 try:
                     audit_repo.log_event("AUTH", "ADMIN_LOGIN", "FAILED", username=identifier, source_ip=client_ip, details="CSRF token mismatch")
@@ -95,13 +114,20 @@ def admin_login():
                     pass
                 return render_template("admin/admin_login.html", next=next_url)
 
-            # 2. Check Rate Limit / Account Lockout
+            # 2. Atomically reserve a shared login attempt before password verification.
             try:
-                locked = AdminSecurityManager.is_locked_out(client_ip, identifier)
-            except Exception:
-                locked = False
+                login_attempt_allowed = AdminSecurityManager.consume_login_attempt(client_ip, identifier)
+            except Exception as e:
+                from src.core.logging import get_logger
+                get_logger(__name__).error(f"Distributed administrator login throttle is unavailable: {e}")
+                if is_json:
+                    return jsonify({"status": "failed", "error": "Authentication is temporarily unavailable."}), 503
+                flash("Authentication is temporarily unavailable. Please try again shortly.", "danger")
+                return render_template("admin/admin_login.html", next=next_url), 503
 
-            if locked:
+            if not login_attempt_allowed:
+                if is_json:
+                    return jsonify({"status": "failed", "error": "Account locked due to 5 consecutive failed login attempts. Please wait 15 minutes."}), 429
                 flash("Account locked due to 5 consecutive failed login attempts. Please wait 15 minutes.", "danger")
                 try:
                     audit_repo.log_event("AUTH", "ADMIN_LOGIN", "LOCKED_OUT", username=identifier, source_ip=client_ip, details="Attempt during lockout period")
@@ -128,14 +154,14 @@ def admin_login():
                     audit_repo.log_event("AUTH", "ADMIN_LOGIN_ERROR", "SERVICE_UNAVAILABLE", username=identifier, source_ip=client_ip, details="Database unavailable during administrator authentication")
                 except Exception:
                     pass
+                if is_json:
+                    return jsonify({"status": "failed", "error": "Database service temporarily unavailable."}), 503
                 flash("Database service temporarily unavailable. Please try again in a few moments.", "danger")
                 return render_template("admin/admin_login.html", next=next_url), 503
 
             if not user:
-                try:
-                    AdminSecurityManager.record_failed_attempt(client_ip, identifier)
-                except Exception:
-                    pass
+                if is_json:
+                    return jsonify({"status": "failed", "error": "Invalid administrator credentials."}), 401
                 flash("Invalid administrator credentials.", "danger")
                 try:
                     audit_repo.log_event("AUTH", "ADMIN_LOGIN", "FAILED", username=identifier, source_ip=client_ip, details="Invalid credentials")
@@ -146,10 +172,8 @@ def admin_login():
             # 4. Role Authorization Check: Admin role permitted
             user_role = user.get("role") or user.get("account_type") or "Admin"
             if str(user_role).lower() not in ("admin", "super admin", "administrator"):
-                try:
-                    AdminSecurityManager.record_failed_attempt(client_ip, identifier)
-                except Exception:
-                    pass
+                if is_json:
+                    return jsonify({"status": "failed", "error": "Access Denied: Standard user accounts cannot authenticate through the Administrator Portal."}), 403
                 flash("Access Denied: Standard user accounts cannot authenticate through the Administrator Portal.", "danger")
                 try:
                     audit_repo.log_event("AUTH", "ADMIN_LOGIN", "DENIED", username=user["username"], source_ip=client_ip, details=f"Non-admin role '{user_role}' attempted admin login")
@@ -204,6 +228,8 @@ def admin_login():
                     audit_repo.log_event("MFA", "OTP_GENERATED", "SUCCESS", username=user["username"], source_ip=client_ip, details=f"OTP code dispatched via Brevo (msg_id={msg_id})")
                 except Exception:
                     pass
+                if is_json:
+                    return jsonify({"status": "success", "mfa_required": True, "message": "Verification code sent to your registered email.", "redirect": "/admin/verify-otp"}), 200
                 flash("Verification code sent to your registered email.", "info")
                 return redirect(url_for("admin_ui.admin_verify_otp"))
             except Exception as e:
@@ -215,18 +241,24 @@ def admin_login():
                     audit_repo.log_event("MFA", "OTP_GENERATED", "DISPATCH_FAILED", username=user["username"], source_ip=client_ip, details=f"Failed to dispatch OTP email for admin '{user['username']}'")
                 except Exception:
                     pass
+                if is_json:
+                    return jsonify({"status": "failed", "error": "We couldn't send the verification code. Please try again or contact the administrator."}), 500
                 flash("We couldn't send the verification code. Please try again or contact the administrator.", "danger")
                 return render_template("admin/admin_login.html", next=next_url)
 
         raw_next_get = request.args.get("next", "")
         safe_next_get = raw_next_get if is_safe_internal_url(raw_next_get) else ""
-        return render_template("admin/admin_login.html", next=safe_next_get)
+        if request.args.get("legacy") == "1":
+            return render_template("admin/admin_login.html", next=safe_next_get)
+        return render_template("react_shell.html")
     except Exception as e:
         from src.core.logging import get_logger
         get_logger(__name__).error(f"Error rendering admin_login page: {e}")
         raw_next_err = request.args.get("next", "")
         safe_next_err = raw_next_err if is_safe_internal_url(raw_next_err) else ""
-        return render_template("admin/admin_login.html", next=safe_next_err)
+        if request.args.get("legacy") == "1":
+            return render_template("admin/admin_login.html", next=safe_next_err)
+        return render_template("react_shell.html")
 
 
 @admin_bp.route("/verify-otp", methods=["GET", "POST"])
@@ -280,10 +312,21 @@ def admin_verify_otp():
         return redirect(url_for("admin_ui.admin_login"))
 
     if request.method == "POST":
-        action = request.form.get("action", "").strip()
-        csrf_token = request.form.get("csrf_token", "").strip()
+        is_json = request.is_json or (request.headers.get("Accept") == "application/json" and request.get_json(silent=True) is not None)
+        json_data = request.get_json(silent=True) if is_json else None
+
+        if is_json and json_data:
+            action = (json_data.get("action") or "").strip()
+            csrf_token = (json_data.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or "").strip()
+            raw_code = (json_data.get("otp") or json_data.get("otp_code") or "").strip()
+        else:
+            action = request.form.get("action", "").strip()
+            csrf_token = (request.form.get("csrf_token") or request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token") or "").strip()
+            raw_code = request.form.get("otp_code", "")
 
         if not AdminSecurityManager.verify_csrf_token(session.get("admin_csrf_token"), csrf_token):
+            if is_json:
+                return jsonify({"status": "failed", "error": "CSRF validation failed."}), 400
             flash("CSRF validation failed.", "danger")
             return render_template("admin/admin_verify_otp.html", username=username)
 
@@ -292,6 +335,8 @@ def admin_verify_otp():
             last_resend = session.get("admin_last_resend_at", 0)
             if now - last_resend < 30:
                 cooldown_remaining = 30 - (now - last_resend)
+                if is_json:
+                    return jsonify({"status": "failed", "error": f"Please wait {cooldown_remaining} seconds before requesting a new code."}), 429
                 flash(f"Please wait {cooldown_remaining} seconds before requesting a new code.", "warning")
                 return render_template("admin/admin_verify_otp.html", username=username)
 
@@ -327,16 +372,19 @@ def admin_verify_otp():
                     audit_repo.log_event("MFA", "OTP_RESENT", "SUCCESS", username=username, source_ip=client_ip, details=f"New OTP code dispatched via Brevo (msg_id={msg_id})")
                 except Exception:
                     pass
+                if is_json:
+                    return jsonify({"status": "success", "message": "A new verification code has been sent to your registered email."}), 200
                 flash("A new verification code has been sent to your registered email.", "info")
             except Exception as e:
                 from src.core.logging import get_logger
                 get_logger(__name__).error(f"Failed to resend admin OTP: {e}")
+                if is_json:
+                    return jsonify({"status": "failed", "error": "We couldn't resend the verification code. Please try again later."}), 500
                 flash("We couldn't resend the verification code. Please try again later.", "danger")
 
             return render_template("admin/admin_verify_otp.html", username=username)
 
         # Standard OTP Verification
-        raw_code = request.form.get("otp_code", "")
         import re
         otp_code = re.sub(r"[\s\-\u200b\u00a0\ufeff]", "", raw_code.strip())
 
@@ -362,8 +410,15 @@ def admin_verify_otp():
 
             audit_repo.log_event("MFA", "OTP_VERIFIED", "SUCCESS", username=username, source_ip=client_ip, details=f"OTP verified successfully for admin '{username}'")
             audit_repo.log_event("AUTH", "ADMIN_LOGIN", "SUCCESS", username=username, source_ip=client_ip, details=f"Administrator MFA Session Established for '{username}'")
-            flash(f"MFA Verification Successful! Welcome to the Administrator Portal, {username}.", "success")
             safe_redirect = next_url if is_safe_internal_url(next_url) else url_for("admin_ui.admin_dashboard")
+            if is_json:
+                return jsonify({
+                    "status": "success",
+                    "message": f"MFA Verification Successful! Welcome to the Administrator Portal, {username}.",
+                    "admin_authenticated": True,
+                    "redirect": safe_redirect,
+                }), 200
+            flash(f"MFA Verification Successful! Welcome to the Administrator Portal, {username}.", "success")
             return redirect(safe_redirect)
         else:
             # ONLY increment attempts on failed verification!
@@ -372,22 +427,35 @@ def admin_verify_otp():
                 AdminSecurityManager.clear_pending_mfa(pending_token_str)
                 session.pop("admin_pending_token", None)
                 session.pop("admin_last_resend_at", None)
-                AdminSecurityManager.record_failed_attempt(client_ip, username)
                 audit_repo.log_event("MFA", "OTP_LOCKOUT", "FAILED", username=username, source_ip=client_ip, details=f"Exceeded 5 OTP attempts for admin '{username}'")
+                if is_json:
+                    return jsonify({"status": "failed", "error": "Maximum OTP verification attempts exceeded. Please log in again."}), 429
                 flash("Maximum OTP verification attempts exceeded. Please log in again.", "danger")
                 return redirect(url_for("admin_ui.admin_login"))
 
             remaining = max(0, 5 - attempts)
             audit_repo.log_event("MFA", "OTP_VERIFY_FAILED", "FAILED", username=username, source_ip=client_ip, details=f"Invalid OTP code (attempt {attempts}/5) for admin '{username}'")
+            if is_json:
+                return jsonify({"status": "failed", "error": f"Invalid verification code. {remaining} attempt(s) remaining."}), 401
             flash(f"Invalid verification code. {remaining} attempt(s) remaining.", "danger")
 
-    return render_template("admin/admin_verify_otp.html", username=username)
+    if request.args.get("legacy") == "1":
+        return render_template("admin/admin_verify_otp.html", username=username)
+    return render_template("react_shell.html")
 
 
-@admin_bp.route("/logout")
+@admin_bp.route("/logout", methods=["POST"])
 def admin_logout():
-    """Clears administrative session namespace and redirects to /admin/login."""
+    """Clears administrative session namespace using a CSRF-protected POST."""
     client_ip = get_client_ip(request)
+    submitted_csrf = (
+        request.headers.get("X-CSRF-Token")
+        or request.headers.get("X-CSRFToken")
+        or request.form.get("csrf_token", "")
+    )
+    expected_csrf = session.get("admin_csrf_token")
+    if not AdminSecurityManager.verify_csrf_token(expected_csrf, submitted_csrf.strip() if isinstance(submitted_csrf, str) else ""):
+        return jsonify({"status": "failed", "error": "CSRF validation failed."}), 400
     admin_user = session.get("admin_username")
 
     if admin_user:
@@ -406,6 +474,9 @@ def admin_logout():
 @admin_required
 def admin_dashboard():
     """Protected Admin Command Dashboard Overview."""
+    if request.args.get("legacy") != "1":
+        return render_template("react_shell.html")
+
     try:
         summary = dash_service.get_summary_stats()
     except Exception as e:
@@ -441,6 +512,42 @@ def admin_dashboard():
         get_logger(__name__).warning(f"Error querying audit logs in admin_dashboard: {e}")
         recent_audits = []
 
+    # Compile Phase B-G Staging and Free-Only Pipeline Metrics
+    staging_summary = {
+        "total_discovered": 0,
+        "total_extracted": 0,
+        "total_classified": 0,
+        "total_approved": 0,
+        "total_quarantined": 0,
+        "total_rejected": 0,
+        "newly_promoted": 0,
+    }
+    try:
+        from src.discovery.promotion_repository import PromotionRepository
+        import datetime
+        today_str = datetime.date.today().isoformat()
+        promo_repo = PromotionRepository(db_manager=admin_repo.db_manager)
+        stg_meta = promo_repo.get_daily_summary_counts(report_date=today_str)
+        staging_summary = {
+            "total_discovered": getattr(stg_meta, "total_discovered", 0),
+            "total_extracted": getattr(stg_meta, "total_extracted", 0),
+            "total_classified": getattr(stg_meta, "total_classified", 0),
+            "total_approved": getattr(stg_meta, "total_approved", 0),
+            "total_quarantined": getattr(stg_meta, "total_quarantined", 0),
+            "total_rejected": getattr(stg_meta, "total_rejected", 0),
+            "newly_promoted": getattr(stg_meta, "newly_promoted_count", 0),
+        }
+    except Exception as e:
+        from src.core.logging import get_logger
+        get_logger(__name__).debug(f"Could not load staging summary: {e}")
+
+    safety_flags = {
+        "promotion_enabled": os.getenv("PROMOTION_ENABLED", "false").lower() == "true",
+        "promotion_dry_run": os.getenv("PROMOTION_DRY_RUN", "true").lower() == "true",
+        "daily_report_enabled": os.getenv("DAILY_REPORT_ENABLED", "false").lower() == "true",
+        "email_delivery_enabled": os.getenv("EMAIL_DELIVERY_ENABLED", "false").lower() == "true",
+    }
+
     return render_template(
         "admin/admin_dashboard.html",
         active_page="admin_dashboard",
@@ -450,6 +557,8 @@ def admin_dashboard():
         source_distribution=src_dist,
         daily_trends=daily_trends,
         recent_audits=recent_audits,
+        staging_summary=staging_summary,
+        safety_flags=safety_flags,
     )
 
 
@@ -457,6 +566,9 @@ def admin_dashboard():
 @admin_required
 def admin_collectors():
     """Protected Collectors Overview & Controls."""
+    if request.args.get("legacy") != "1":
+        return render_template("react_shell.html")
+
     collectors_list = dash_service.get_collectors_status()
     return render_template(
         "admin/admin_collectors.html",
@@ -469,6 +581,9 @@ def admin_collectors():
 @admin_required
 def admin_scheduler():
     """Protected Scheduler Management & Control Panel."""
+    if request.args.get("legacy") != "1":
+        return render_template("react_shell.html")
+
     sched_status = api_service.get_scheduler_status()
     return render_template(
         "admin/admin_scheduler.html",
@@ -481,6 +596,9 @@ def admin_scheduler():
 @admin_required
 def admin_logs():
     """Protected App Logs & Audit Trail Control Center."""
+    if request.args.get("legacy") != "1":
+        return render_template("react_shell.html")
+
     level = request.args.get("level", "ALL")
     module = request.args.get("module", "ALL")
     search_q = request.args.get("q", "")
@@ -522,6 +640,9 @@ def admin_logs():
 @admin_required
 def admin_configuration():
     """Protected YAML Configuration Editor."""
+    if request.args.get("legacy") != "1":
+        return render_template("react_shell.html")
+
     configs = {}
     for yaml_file in CONFIG_DIR.glob("*.yaml"):
         try:
@@ -541,6 +662,9 @@ def admin_configuration():
 @admin_required
 def admin_users():
     """Protected User Management & Account Administration with full RBAC CRUD."""
+    if request.method == "GET" and request.args.get("legacy") != "1":
+        return render_template("react_shell.html")
+
     tab = request.args.get("tab", "users")
 
     if request.method == "POST":
@@ -674,6 +798,9 @@ def admin_users():
 @admin_required
 def admin_reports():
     """Protected Reports Center."""
+    if request.args.get("legacy") != "1":
+        return render_template("react_shell.html")
+
     reports = api_service.get_reports_list()
     return render_template(
         "admin/admin_reports.html",
@@ -697,6 +824,9 @@ def admin_download_report(filename):
 @admin_required
 def admin_diagnostics():
     """Protected System & Feed Diagnostics Control."""
+    if request.args.get("legacy") != "1":
+        return render_template("react_shell.html")
+
     diag_summary = RSSDiagnosticsManager().get_feed_diagnostics_summary()
     audit_repo.log_event("DIAGNOSTICS", "ACCESS_DIAGNOSTICS", "SUCCESS", username=session.get("admin_username"), source_ip=get_client_ip(request), details=f"Admin '{session.get('admin_username')}' viewed feed diagnostics")
     return render_template(
@@ -710,6 +840,9 @@ def admin_diagnostics():
 @admin_required
 def admin_system():
     """Protected System Specifications & Metadata."""
+    if request.args.get("legacy") != "1":
+        return render_template("react_shell.html")
+
     version_info = get_version_info()
     sys_specs = {
         "app_name": version_info.get("app_name", "CyberScout AI"),
@@ -731,6 +864,9 @@ def admin_system():
 @admin_required
 def admin_email():
     """Protected Email Provider Diagnostics & Notification Outbox Observability."""
+    if request.args.get("legacy") != "1":
+        return render_template("react_shell.html")
+
     res = api_service.check_smtp_health()
     outbox_stats = {}
     try:
@@ -1124,6 +1260,9 @@ def admin_profile():
 @admin_required
 def admin_source_health():
     """Admin-only Source Health Dashboard view displaying per-source status and metrics."""
+    if request.args.get("legacy") != "1":
+        return render_template("react_shell.html")
+
     from src.database.source_health_repository import SourceHealthRepository
     health_repo = SourceHealthRepository()
     records = health_repo.get_all_health_records()
@@ -1145,10 +1284,16 @@ def admin_source_health():
     )
 
 
-@admin_bp.route("/data-quality", methods=["GET"])
+@admin_bp.route("/data-quality", methods=["GET", "POST"])
 @admin_required
 def admin_data_quality():
     """Admin-only Data Quality Dashboard view displaying lifecycle counts, quarantine records, completeness metrics."""
+    if request.method == "POST":
+        return admin_quarantine_action()
+
+    if request.args.get("legacy") != "1":
+        return render_template("react_shell.html")
+
     from src.database.connection import DatabaseManager
     db = DatabaseManager()
 
@@ -1181,21 +1326,31 @@ def admin_data_quality():
             if status_name in metrics:
                 metrics[status_name] += cnt
 
-        # 3. Quarantined count
+        # 3. Quarantined count (Opportunities + DiscoveredCandidates)
         cursor.execute('SELECT COUNT(*) FROM "Opportunities" WHERE quality_status = \'quarantined\' OR status = \'quarantined\';')
         row = cursor.fetchone()
-        metrics["quarantined"] = int(row[0] if row else 0)
+        opp_quarantined = int(row[0] if row else 0)
 
-        # 4. Missing critical fields (e.g. title or url)
+        cand_quarantined = 0
+        try:
+            cursor.execute('SELECT COUNT(*) FROM "DiscoveredCandidates" WHERE free_only_decision = \'QUARANTINED\';')
+            crow = cursor.fetchone()
+            cand_quarantined = int(crow[0] if crow else 0)
+        except Exception:
+            pass
+
+        metrics["quarantined"] = opp_quarantined + cand_quarantined
+
+        # 4. Missing critical fields
         cursor.execute('SELECT COUNT(*) FROM "Opportunities" WHERE title IS NULL OR title = \'\' OR url IS NULL OR url = \'\';')
         row = cursor.fetchone()
         metrics["missing_critical"] = int(row[0] if row else 0)
 
-        # 5. Fetch recent quarantined records for inspection
+        # 5. Fetch recent quarantined records from Opportunities
         cursor.execute(
             'SELECT id, title, source_id, quarantine_reason, discovered_date, completeness_score '
             'FROM "Opportunities" WHERE quality_status = \'quarantined\' '
-            'ORDER BY discovered_date DESC LIMIT 50;'
+            'ORDER BY discovered_date DESC LIMIT 30;'
         )
         for r in cursor.fetchall():
             quarantined_samples.append({
@@ -1203,9 +1358,31 @@ def admin_data_quality():
                 "title": r[1] or "Untitled",
                 "source_id": r[2] or "unknown",
                 "quarantine_reason": r[3] or "Validation failure",
-                "discovered_date": r[4] or "",
+                "discovered_date": str(r[4] or "")[:10],
                 "completeness_score": round(float(r[5] or 0.0), 2),
+                "type": "Production Opportunity",
             })
+
+        # 6. Fetch staged quarantined records from DiscoveredCandidates
+        try:
+            cursor.execute(
+                'SELECT id, title, source_domain, verification_reason, discovered_at, category '
+                'FROM "DiscoveredCandidates" WHERE free_only_decision = \'QUARANTINED\' '
+                'ORDER BY discovered_at DESC LIMIT 30;'
+            )
+            for r in cursor.fetchall():
+                quarantined_samples.append({
+                    "id": r[0],
+                    "title": r[1] or "Untitled Candidate",
+                    "source_id": r[2] or "Tavily Discovery",
+                    "quarantine_reason": r[3] or "Pricing ambiguity / Free-Only quarantine",
+                    "discovered_date": str(r[4] or "")[:10],
+                    "completeness_score": 0.85,
+                    "type": "Staged Candidate",
+                })
+        except Exception:
+            pass
+
         cursor.close()
         conn.close()
     except Exception as e:
@@ -1227,33 +1404,79 @@ def admin_quarantine_action():
     """Admin-only action to approve or reject/archive quarantined records with CSRF and audit logging."""
     client_ip = get_client_ip(request)
     resolved_username = session.get("admin_username") or "admin"
-    csrf_token = request.form.get("csrf_token", "").strip()
+    json_payload = request.get_json(silent=True)
+    is_json = (
+        request.is_json
+        or request.headers.get("Accept") == "application/json"
+        or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    )
+    payload = json_payload if isinstance(json_payload, dict) else {}
+    raw_csrf_token = (
+        request.headers.get("X-CSRFToken")
+        or request.headers.get("X-CSRF-Token")
+        or payload.get("csrf_token")
+        or request.form.get("csrf_token", "")
+    )
+    csrf_token = raw_csrf_token.strip() if isinstance(raw_csrf_token, str) else ""
 
     if not AdminSecurityManager.verify_csrf_token(session.get("admin_csrf_token"), csrf_token):
+        if is_json:
+            return jsonify({"status": "failed", "error": "CSRF validation failed."}), 403
         flash("CSRF validation failed.", "danger")
         return redirect(url_for("admin_ui.admin_data_quality"))
 
-    action = request.form.get("action", "").strip().lower()
-    opportunity_id = request.form.get("opportunity_id", "").strip()
+    action_value = payload.get("action", request.form.get("action", ""))
+    id_value = payload.get("opportunity_id") or payload.get("item_id") or request.form.get("opportunity_id") or request.form.get("item_id", "")
+    record_type_value = payload.get("record_type") or payload.get("type") or request.form.get("record_type", "")
+    action = action_value.strip().lower() if isinstance(action_value, str) else ""
+    opportunity_id = id_value.strip() if isinstance(id_value, str) else ""
+    record_type = record_type_value.strip() if isinstance(record_type_value, str) else ""
 
-    if not opportunity_id or action not in {"approve", "reject"}:
+    if (
+        not opportunity_id
+        or action not in {"approve", "reject"}
+        or record_type not in {"", "Production Opportunity", "Staged Candidate"}
+    ):
+        if is_json:
+            return jsonify({"status": "failed", "error": "Invalid quarantine action parameters."}), 400
         flash("Invalid quarantine action parameters.", "danger")
         return redirect(url_for("admin_ui.admin_data_quality"))
 
     from src.database.connection import DatabaseManager
     db = DatabaseManager()
     try:
+        updated_count = 0
         with db.transaction() as cursor:
-            if action == "approve":
-                cursor.execute(
-                    'UPDATE "Opportunities" SET quality_status = \'passed\', is_rejected = FALSE, quarantine_reason = NULL WHERE id = %s;',
-                    (opportunity_id,)
-                )
-            else:
-                cursor.execute(
-                    'UPDATE "Opportunities" SET quality_status = \'rejected\', is_rejected = TRUE, lifecycle_status = \'removed\', status = \'archived\' WHERE id = %s;',
-                    (opportunity_id,)
-                )
+            if record_type != "Staged Candidate":
+                if action == "approve":
+                    cursor.execute(
+                        'UPDATE "Opportunities" SET quality_status = \'passed\', is_rejected = FALSE, quarantine_reason = NULL '
+                        'WHERE id = %s AND (quality_status = \'quarantined\' OR status = \'quarantined\');',
+                        (opportunity_id,)
+                    )
+                else:
+                    cursor.execute(
+                        'UPDATE "Opportunities" SET quality_status = \'rejected\', is_rejected = TRUE, lifecycle_status = \'removed\', status = \'archived\' '
+                        'WHERE id = %s AND (quality_status = \'quarantined\' OR status = \'quarantined\');',
+                        (opportunity_id,)
+                    )
+                updated_count += max(cursor.rowcount, 0)
+
+            if record_type != "Production Opportunity":
+                cursor.execute('SELECT to_regclass(%s);', ('public."DiscoveredCandidates"',))
+                if cursor.fetchone():
+                    candidate_decision = "APPROVED" if action == "approve" else "REJECTED"
+                    cursor.execute(
+                        'UPDATE "DiscoveredCandidates" SET free_only_decision = %s '
+                        'WHERE id = %s AND free_only_decision = \'QUARANTINED\';',
+                        (candidate_decision, opportunity_id)
+                    )
+                    updated_count += max(cursor.rowcount, 0)
+        if not updated_count:
+            if is_json:
+                return jsonify({"status": "failed", "error": "Record not found or already reviewed."}), 404
+            flash("Record not found or already reviewed.", "warning")
+            return redirect(url_for("admin_ui.admin_data_quality"))
 
         audit_repo.log_event(
             "DATA_QUALITY",
@@ -1263,9 +1486,15 @@ def admin_quarantine_action():
             source_ip=client_ip,
             details=f"Admin {resolved_username} performed '{action}' on opportunity {opportunity_id}",
         )
+        if is_json:
+            return jsonify({"status": "success", "action": action})
         flash(f"Quarantined record successfully updated ({action}).", "success")
     except Exception as e:
-        flash(f"Failed to execute quarantine action: {e}", "danger")
+        from src.core.logging import get_logger
+        get_logger(__name__).error(f"Failed to execute quarantine action: {e}")
+        if is_json:
+            return jsonify({"status": "failed", "error": "Failed to update the quarantined record."}), 500
+        flash("Failed to execute quarantine action.", "danger")
 
     return redirect(url_for("admin_ui.admin_data_quality"))
 
@@ -1278,6 +1507,9 @@ def admin_analytics():
     Displays platform-wide volume, source health, lifecycle & quality distributions,
     quarantine breakdown, and Phase 7 notification delivery rates.
     """
+    if request.args.get("legacy") != "1":
+        return render_template("react_shell.html")
+
     analytics_svc = AnalyticsService()
     admin_data = analytics_svc.get_admin_analytics()
 
@@ -1303,6 +1535,9 @@ def admin_reliability():
     Displays liveness/readiness telemetry, connection pool health, scan job state & recovery,
     notification outbox status, and local database backup verification status.
     """
+    if request.args.get("legacy") != "1":
+        return render_template("react_shell.html")
+
     from src.database.connection import DatabaseManager
     from src.maintenance.backup_manager import BackupManager
     from src.database.scan_job_repository import ScanJobRepository

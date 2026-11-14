@@ -1,15 +1,15 @@
 """
-Unit tests for Search Intelligence Layer (Phase 2).
+Unit tests for Search Intelligence Layer (Phase 2 & Phase B.1.1 Verification).
 """
 
 import unittest
 
-from src.intelligence.query_builder import QueryBuilder, SearchQuery
 from src.intelligence.taxonomy import KeywordTaxonomy
 
 
 class TestSearchIntelligence(unittest.TestCase):
     def test_keyword_taxonomy_matching(self):
+        """Verify domain knowledge and taxonomies remain fully functional."""
         taxonomy_cfg = {
             "categories": {
                 "offensive_security": ["pentest", "ctf", "exploit"],
@@ -22,35 +22,15 @@ class TestSearchIntelligence(unittest.TestCase):
         self.assertIn("ctf", tags)
         self.assertIn("pentest", tags)
 
-    def test_query_builder(self):
-        sources_cfg = {
-            "sources": [
-                {
-                    "id": "cisa_alerts",
-                    "collection_method": "rss",
-                    "url": "https://www.cisa.gov/cybersecurity-advisories/all.xml",
-                    "enabled": True,
-                    "default_category": "security_news",
-                },
-                {
-                    "id": "github_search",
-                    "collection_method": "api",
-                    "url": "https://api.github.com/search/repositories",
-                    "query_params": {"q": "topic:cybersecurity"},
-                    "enabled": True,
-                },
-            ]
-        }
-        qb = QueryBuilder(sources_config=sources_cfg)
-        queries = qb.build_all_queries()
-        self.assertEqual(len(queries), 2)
+    def test_query_builder_physically_removed(self):
+        """Verify legacy QueryBuilder module is physically deleted from repository."""
+        with self.assertRaises(ModuleNotFoundError):
+            import src.intelligence.query_builder  # noqa: F401
 
-        cisa_q = queries[0]
-        self.assertEqual(cisa_q.source_id, "cisa_alerts")
-        self.assertEqual(cisa_q.full_url(), "https://www.cisa.gov/cybersecurity-advisories/all.xml")
-
-        gh_q = queries[1]
-        self.assertIn("q=topic%3Acybersecurity", gh_q.full_url())
+    def test_search_planner_physically_removed(self):
+        """Verify legacy SearchPlanner module is physically deleted from repository."""
+        with self.assertRaises(ModuleNotFoundError):
+            import src.intelligence.search_planner  # noqa: F401
 
 
 if __name__ == "__main__":

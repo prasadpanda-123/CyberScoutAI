@@ -22,10 +22,13 @@ notifications_bp = Blueprint("notifications_ui", __name__)
 
 def _verify_csrf(req) -> bool:
     """Validates CSRF token from form, JSON body, or X-CSRF-Token header."""
-    if req.is_json and req.json:
-        submitted = req.json.get("csrf_token")
-    else:
-        submitted = req.form.get("csrf_token") or req.headers.get("X-CSRF-Token")
+    body = req.get_json(silent=True) if req.is_json else None
+    submitted = (
+        (body.get("csrf_token") if isinstance(body, dict) else None)
+        or req.form.get("csrf_token")
+        or req.headers.get("X-CSRF-Token")
+        or req.headers.get("X-CSRFToken")
+    )
     expected = session.get("user_csrf_token") or session.get("csrf_token")
     if not expected or not submitted:
         return False
@@ -43,7 +46,10 @@ def _get_client_ip(req) -> str:
 @notifications_bp.route("/notifications", methods=["GET"])
 @login_required
 def index():
-    """Renders user-facing notification preferences and in-app alerts inbox."""
+    """Renders user-facing notification preferences and in-app alerts inbox via React SPA or legacy SSR."""
+    if request.args.get("legacy") != "1":
+        return render_template("react_shell.html")
+
     user_id = session.get("user_id")
     if not user_id:
         return redirect(url_for("auth_ui.login"))
@@ -144,43 +150,69 @@ def mark_all_read():
     return redirect(url_for("notifications_ui.index"))
 
 
-@notifications_bp.route("/notifications/preferences", methods=["POST"])
+@notifications_bp.route("/notifications/preferences", methods=["GET", "POST"])
 @login_required
 def update_preferences():
-    """Updates user notification delivery preferences with server validation and CSRF protection."""
+    """Reads or updates user notification preferences with authentication and CSRF protection."""
+    user_id = session.get("user_id")
+    if not user_id:
+        if request.is_json or request.method == "GET":
+            return jsonify({"status": "failed", "error": "Authentication required"}), 401
+        return redirect(url_for("auth_ui.login"))
+
+    if request.method == "GET":
+        pref_repo = UserPreferencesRepository(db_manager=DatabaseManager())
+        preferences = pref_repo.get_preferences(user_id=user_id) or UserPreferencesDTO()
+        return jsonify({"status": "success", "preferences": preferences.to_dict()})
+
     if not _verify_csrf(request):
+        if request.is_json:
+            return jsonify({"status": "failed", "error": "CSRF verification failed"}), 403
         flash("Security validation failed (invalid CSRF token).", "danger")
         return redirect(url_for("notifications_ui.index"))
 
-    user_id = session.get("user_id")
-    if not user_id:
-        return redirect(url_for("auth_ui.login"))
+    if request.is_json:
+        preference_data = request.get_json(silent=True)
+        if not isinstance(preference_data, dict):
+            return jsonify({"status": "failed", "error": "A JSON preferences object is required"}), 400
+    else:
+        preference_data = request.form
 
-    db_mgr = DatabaseManager()
-    pref_repo = UserPreferencesRepository(db_manager=db_mgr)
+    pref_repo = UserPreferencesRepository(db_manager=DatabaseManager())
     audit_repo = AuditLogRepository()
 
     existing_prefs = pref_repo.get_preferences(user_id=user_id) or UserPreferencesDTO()
 
-    # Form values
-    email_enabled = request.form.get("email_notifications_enabled") == "on"
-    in_app_enabled = request.form.get("in_app_notifications_enabled") == "on"
-    notify_new = request.form.get("notify_new_opportunities") == "on"
-    notify_updated = request.form.get("notify_meaningful_updates") == "on"
-    notify_reopened = request.form.get("notify_reopened_opportunities") == "on"
+    def read_boolean(key, current_value):
+        if key not in preference_data:
+            return current_value if request.is_json else False
+        value = preference_data.get(key)
+        if isinstance(value, bool):
+            return value
+        return str(value).strip().lower() in ("1", "true", "on", "yes")
 
-    delivery_mode = request.form.get("delivery_mode", "IMMEDIATE").strip().upper()
+    email_enabled = read_boolean("email_notifications_enabled", existing_prefs.email_notifications_enabled)
+    in_app_enabled = read_boolean("in_app_notifications_enabled", existing_prefs.in_app_notifications_enabled)
+    notify_new = read_boolean("notify_new_opportunities", existing_prefs.notify_new_opportunities)
+    notify_updated = read_boolean("notify_meaningful_updates", existing_prefs.notify_meaningful_updates)
+    notify_reopened = read_boolean("notify_reopened_opportunities", existing_prefs.notify_reopened_opportunities)
+
+    delivery_mode = str(preference_data.get(
+        "delivery_mode", existing_prefs.delivery_mode if request.is_json else "IMMEDIATE"
+    )).strip().upper()
     if delivery_mode not in ("IMMEDIATE", "DIGEST"):
         delivery_mode = "IMMEDIATE"
 
-    digest_frequency = request.form.get("digest_frequency", "DAILY").strip().upper()
+    digest_frequency = str(preference_data.get(
+        "digest_frequency", existing_prefs.digest_frequency if request.is_json else "DAILY"
+    )).strip().upper()
     if digest_frequency not in ("DAILY", "WEEKLY"):
         digest_frequency = "DAILY"
 
-    quiet_hours_enabled = request.form.get("quiet_hours_enabled") == "on"
-    quiet_start = request.form.get("quiet_hours_start", "22:00").strip()
-    quiet_end = request.form.get("quiet_hours_end", "08:00").strip()
-    user_tz = request.form.get("timezone", "UTC").strip() or "UTC"
+    quiet_hours_enabled = read_boolean("quiet_hours_enabled", existing_prefs.quiet_hours_enabled)
+    quiet_start = str(preference_data.get("quiet_hours_start", existing_prefs.quiet_hours_start)).strip()
+    quiet_end = str(preference_data.get("quiet_hours_end", existing_prefs.quiet_hours_end)).strip()
+    user_tz = str(preference_data.get("timezone", existing_prefs.timezone)).strip() or "UTC"
 
     # Merge into UserPreferencesDTO preserving existing career preferences
     existing_prefs.email_notifications_enabled = email_enabled
@@ -188,15 +220,16 @@ def update_preferences():
     existing_prefs.notify_new_opportunities = notify_new
     existing_prefs.notify_meaningful_updates = notify_updated
     existing_prefs.notify_reopened_opportunities = notify_reopened
-    existing_prefs.delivery_mode = delivery_mode
-    existing_prefs.digest_frequency = digest_frequency
+    existing_prefs.delivery_mode = delivery_mode.lower()
+    existing_prefs.digest_frequency = digest_frequency.lower()
     existing_prefs.quiet_hours_enabled = quiet_hours_enabled
     existing_prefs.quiet_hours_start = quiet_start
     existing_prefs.quiet_hours_end = quiet_end
     existing_prefs.timezone = user_tz
 
     try:
-        pref_repo.save_preferences(user_id=user_id, preferences=existing_prefs)
+        if not pref_repo.save_preferences(user_id=user_id, preferences=existing_prefs):
+            raise RuntimeError("Preferences were not saved.")
         audit_repo.log_event(
             event_type="USER_PROFILE",
             action="NOTIFICATION_PREFERENCES_UPDATED",
@@ -206,9 +239,13 @@ def update_preferences():
             source_ip=_get_client_ip(request),
             details=f"Delivery mode: {delivery_mode}, Email: {email_enabled}, In-app: {in_app_enabled}",
         )
+        if request.is_json:
+            return jsonify({"status": "success", "preferences": existing_prefs.to_dict()})
         flash("Notification preferences updated successfully.", "success")
     except Exception as e:
         logger.error(f"Failed to update notification preferences for user {user_id}: {e}")
+        if request.is_json:
+            return jsonify({"status": "failed", "error": "Failed to save notification preferences."}), 500
         flash("Failed to update notification preferences.", "danger")
 
     return redirect(url_for("notifications_ui.index"))

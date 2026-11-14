@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CyberScout AI — Autonomous Cybersecurity Opportunity Discovery</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon/favicon.svg" />
+  <meta name="csrf-token" content="{{ csrf_token or session.get('user_csrf_token') or session.get('admin_csrf_token') or '' }}" />
+  <link rel="stylesheet" href="/static/react/assets/index.css" />
+</head>
+<body class="bg-background text-foreground antialiased min-h-screen">
+  <!-- Semantic user navigation for screen readers and accessibility -->
+  <nav class="sr-only" aria-label="Main User Navigation">
+    <a href="/dashboard">Dashboard</a>
+    <a href="/opportunities">Opportunities</a>
+    <a href="/saved">Saved</a>
+    <a href="/notifications">Notifications</a>
+  </nav>
+  <div id="root"></div>
+  <script type="module" nonce="{{ csp_nonce }}" src="/static/react/assets/index.js"></script>
+</body>
+</html>

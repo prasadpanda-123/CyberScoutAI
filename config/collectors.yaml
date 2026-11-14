@@ -18,9 +18,3 @@ collectors:
     description: "CTFtime API collector for CTF competitions"
     module: "src.collectors.ctftime_collector"
     class_name: "CtftimeCollector"
-
-  HtmlScraperCollector:
-    enabled: true
-    description: "Universal HTML BeautifulSoup scraper collector"
-    module: "src.collectors.html_collector"
-    class_name: "HtmlScraperCollector"

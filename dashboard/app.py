@@ -2,7 +2,10 @@
 Flask Application Factory for CyberScout AI Web Dashboard.
 """
 
+import gzip
+import hashlib
 import os
+import re
 import secrets
 from pathlib import Path
 from flask import Flask, Response, g, jsonify, redirect, request, session, url_for
@@ -31,6 +34,45 @@ from dashboard.routes import (
 )
 
 BASE_DIR = Path(__file__).resolve().parent
+FINGERPRINTED_ASSET = re.compile(r"/assets/[^/]+-[A-Za-z0-9_-]{8,}\.(?:js|css)$")
+
+
+def optimize_static_asset(response: Response) -> Response:
+    if not request.path.startswith("/static/") or response.mimetype not in {
+        "application/javascript",
+        "text/javascript",
+        "text/css",
+    }:
+        return response
+
+    vary = {value.strip() for value in response.headers.get("Vary", "").split(",") if value.strip()}
+    vary.add("Accept-Encoding")
+    response.headers["Vary"] = ", ".join(sorted(vary))
+
+    if FINGERPRINTED_ASSET.search(request.path):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+
+    accepts_gzip = request.accept_encodings["gzip"] > 0
+    if (
+        accepts_gzip
+        and response.status_code == 200
+        and response.headers.get("Content-Encoding") is None
+        and request.range is None
+    ):
+        response.direct_passthrough = False
+        original = response.get_data()
+        compressed = gzip.compress(original, compresslevel=6, mtime=0)
+        if len(compressed) < len(original):
+            response.set_data(compressed)
+            response.headers["Content-Encoding"] = "gzip"
+            etag = hashlib.sha256(compressed).hexdigest()
+            response.set_etag(etag)
+            if request.if_none_match.contains(etag):
+                response.status_code = 304
+                response.set_data(b"")
+                response.headers.pop("Content-Length", None)
+
+    return response
 
 
 def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
@@ -58,6 +100,7 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
                 "is missing or insecure in production. Application cannot start safely."
             )
 
+    db_connected = False
     if not app.config.get("TESTING"):
         db_connected = db_mgr.check_connection_with_backoff(max_retries=5)
         if db_connected:
@@ -73,7 +116,7 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
         from src.core.logging import DatabaseLogHandler
         import logging
         root_logger = logging.getLogger()
-        if not any(isinstance(h, DatabaseLogHandler) for h in root_logger.handlers):
+        if not app.config.get("TESTING") and not any(isinstance(h, DatabaseLogHandler) for h in root_logger.handlers):
             db_handler = DatabaseLogHandler()
             db_handler.setLevel(logging.INFO)
             root_logger.addHandler(db_handler)
@@ -100,11 +143,23 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
 
     # Server-Side Session Interface (PostgreSQL-backed opaque sessions)
     from dashboard.sessions import PostgresSessionInterface
-    app.session_interface = PostgresSessionInterface()
+    session_repo = None
+    if db_connected:
+        from src.database.session_repository import SessionRepository
+        session_repo = SessionRepository(db_mgr)
+    app.session_interface = PostgresSessionInterface(session_repo)
 
     # Reverse Proxy Header Handling (Render / Cloudflare / Nginx)
     from werkzeug.middleware.proxy_fix import ProxyFix
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+    from src.utils.ip_utils import get_trusted_proxy_count
+    trusted_proxy_count = get_trusted_proxy_count()
+    app.wsgi_app = ProxyFix(
+        app.wsgi_app,
+        x_for=trusted_proxy_count,
+        x_proto=1 if trusted_proxy_count else 0,
+        x_host=1 if trusted_proxy_count else 0,
+        x_prefix=1 if trusted_proxy_count else 0,
+    )
 
 
     # Register Blueprints
@@ -258,7 +313,7 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             f"script-src {script_src}; "
-            "style-src 'self' https://fonts.googleapis.com; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self' data: https:; "
             "connect-src 'self'; "
@@ -278,7 +333,7 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"
 
-        return response
+        return optimize_static_asset(response)
 
     @app.errorhandler(500)
     def handle_500_error(e):

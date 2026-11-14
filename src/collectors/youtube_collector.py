@@ -77,7 +77,7 @@ class YouTubeRSSCollector(BaseCollector):
         Executes YouTube RSS collection.
 
         Args:
-            task: SearchTask emitted by SearchPlanner.
+            task: Validated SearchTask instance.
 
         Returns:
             CollectorResult containing normalized Opportunity objects.

@@ -1,60 +1,91 @@
 {% extends "admin/admin_base.html" %}
 {% set active_page = "admin_configuration" %}
-
-{% block title %}Configuration Overview — Admin Portal{% endblock %}
+{% block title %}Configuration & Safety Flags — Admin Portal{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div style="display:flex;flex-direction:column;gap:22px;">
 
-  <!-- Header -->
-  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border-subtle">
+  <!-- Page Header -->
+  <div class="a-page-header">
     <div>
-      <h2 class="text-xl sm:text-2xl font-bold text-admin-accent tracking-tight flex items-center gap-2">
-        <span class="material-symbols-outlined text-admin-accent">tune</span>
-        <span>Configuration Overview</span>
+      <h2 class="a-page-title">
+        <span class="material-symbols-outlined">tune</span>
+        Configuration &amp; Environment Safety
       </h2>
-      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">Read-only view of runtime pipeline, classification, and source YAML configurations.</p>
+      <p class="a-page-subtitle">Inspect live runtime safety controls, search budgets, and active YAML specifications.</p>
     </div>
-    <div class="flex items-center gap-2">
-      <span class="text-xs font-mono text-text-muted bg-surface-container px-3 py-1.5 rounded-lg border border-border-subtle">
-        Files: <span class="font-bold text-primary">{{ configs|length }}</span>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="a-badge a-badge-primary">
+        <span class="material-symbols-outlined" style="font-size:14px;">description</span>
+        {{ configs|length }} Config Files Loaded
       </span>
     </div>
   </div>
 
-  <!-- Navigation Sub-Tabs -->
-  <div class="flex items-center gap-2 border-b border-border-subtle pb-2">
-    <a href="{{ url_for('admin_ui.admin_reliability') }}" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 text-text-secondary hover:text-text-primary hover:bg-surface-container">
-      <span class="material-symbols-outlined text-[16px]">health_and_safety</span>
-      <span>Reliability &amp; Telemetry</span>
-    </a>
-    <a href="{{ url_for('admin_ui.admin_system') }}" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 text-text-secondary hover:text-text-primary hover:bg-surface-container">
-      <span class="material-symbols-outlined text-[16px]">memory</span>
-      <span>Runtime Specs</span>
-    </a>
-    <a href="{{ url_for('admin_ui.admin_configuration') }}" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 bg-admin-accent/15 text-admin-accent border border-admin-accent/30">
-      <span class="material-symbols-outlined text-[16px]">tune</span>
-      <span>Configuration Specs</span>
-    </a>
+  <!-- Safety Switch Overview Cards -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:12px;">
+    <div class="a-card">
+      <div style="font-size:10.5px;font-weight:700;color:var(--a-text-4);text-transform:uppercase;">Promotion Gate</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
+        <span class="a-mono" style="font-size:13px;font-weight:700;color:var(--a-text-1);">PROMOTION_ENABLED</span>
+        <span class="a-badge a-badge-muted">FALSE (SAFETY)</span>
+      </div>
+      <div style="font-size:11px;color:var(--a-text-4);margin-top:4px;">Zero unvetted production writes</div>
+    </div>
+
+    <div class="a-card">
+      <div style="font-size:10.5px;font-weight:700;color:var(--a-text-4);text-transform:uppercase;">Dry-Run Mode</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
+        <span class="a-mono" style="font-size:13px;font-weight:700;color:var(--a-text-1);">PROMOTION_DRY_RUN</span>
+        <span class="a-badge a-badge-primary">TRUE (ARMED)</span>
+      </div>
+      <div style="font-size:11px;color:var(--a-text-4);margin-top:4px;">Staged simulation active</div>
+    </div>
+
+    <div class="a-card">
+      <div style="font-size:10.5px;font-weight:700;color:var(--a-text-4);text-transform:uppercase;">Excel Reporting</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
+        <span class="a-mono" style="font-size:13px;font-weight:700;color:var(--a-text-1);">DAILY_REPORT_ENABLED</span>
+        <span class="a-badge a-badge-muted">FALSE (ON-DEMAND)</span>
+      </div>
+      <div style="font-size:11px;color:var(--a-text-4);margin-top:4px;">Ready for manual triggers</div>
+    </div>
+
+    <div class="a-card">
+      <div style="font-size:10.5px;font-weight:700;color:var(--a-text-4);text-transform:uppercase;">Email Delivery</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
+        <span class="a-mono" style="font-size:13px;font-weight:700;color:var(--a-text-1);">EMAIL_DELIVERY_ENABLED</span>
+        <span class="a-badge a-badge-muted">FALSE (SIMULATED)</span>
+      </div>
+      <div style="font-size:11px;color:var(--a-text-4);margin-top:4px;">Zero live email leakage</div>
+    </div>
   </div>
 
-  <!-- YAML Files Accordion / Grid -->
-  <div class="space-y-4">
+  <!-- YAML Specifications List -->
+  {% if configs %}
     {% for filename, content in configs.items() %}
-      <div class="bg-surface rounded-xl border border-border-subtle overflow-hidden">
-        <div class="p-4 bg-surface-container-low border-b border-border-subtle flex justify-between items-center">
-          <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-primary text-[18px]">data_object</span>
-            <span class="font-mono text-xs font-bold text-text-primary">config/{{ filename }}</span>
+      <div class="a-table-wrap">
+        <div style="padding:12px 18px;border-bottom:1px solid var(--a-border-1);display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="material-symbols-outlined" style="color:var(--a-primary);font-size:18px;">code</span>
+            <span class="a-mono" style="font-size:13px;font-weight:700;color:var(--a-text-1);">config/{{ filename }}</span>
           </div>
-          <span class="text-[10px] font-mono text-text-muted uppercase">YAML SPEC</span>
+          <button onclick="navigator.clipboard.writeText(this.closest('.a-table-wrap').querySelector('code').textContent);alert('Copied to clipboard!');" class="a-btn a-btn-ghost a-btn-sm">
+            <span class="material-symbols-outlined" style="font-size:14px;">content_copy</span>
+            Copy
+          </button>
         </div>
-        <div class="p-4 bg-surface-container-lowest overflow-x-auto">
-          <pre class="font-mono text-xs text-text-secondary leading-relaxed"><code>{{ content }}</code></pre>
+        <div style="padding:0;background:#050811;overflow-x:auto;max-height:380px;overflow-y:auto;">
+          <pre class="a-mono" style="font-size:11.5px;color:var(--a-text-2);line-height:1.6;padding:16px;margin:0;white-space:pre-wrap;word-break:break-word;"><code>{{ content }}</code></pre>
         </div>
       </div>
     {% endfor %}
-  </div>
+  {% else %}
+    <div class="a-table-empty">
+      <span class="material-symbols-outlined" style="font-size:40px;color:var(--a-text-5);">settings</span>
+      <div style="font-size:13px;color:var(--a-text-4);margin-top:8px;">No configuration files found in config/ directory.</div>
+    </div>
+  {% endif %}
 
 </div>
 {% endblock %}

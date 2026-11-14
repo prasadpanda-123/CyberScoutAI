@@ -1,88 +1,105 @@
 {% extends "admin/admin_base.html" %}
 {% set active_page = "admin_reports" %}
-
-{% block title %}Reports & Bulletins — Admin Portal{% endblock %}
+{% block title %}Reports & Daily Excel — Admin Portal{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div style="display:flex;flex-direction:column;gap:22px;">
 
-  <!-- Header -->
-  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border-subtle">
+  <!-- Page Header -->
+  <div class="a-page-header">
     <div>
-      <h2 class="text-xl sm:text-2xl font-bold text-admin-accent tracking-tight flex items-center gap-2">
-        <span class="material-symbols-outlined text-admin-accent">folder</span>
-        <span>Administrative Reports Center</span>
+      <h2 class="a-page-title">
+        <span class="material-symbols-outlined">table_view</span>
+        Reports &amp; Daily Excel Digests
       </h2>
-      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">Direct administrative access and download center for all system intelligence bulletins.</p>
+      <p class="a-page-subtitle">Download standardized 17-column opportunity workbooks and manage delivery archives.</p>
     </div>
-    <div class="flex items-center gap-3">
-      <span class="text-xs font-mono text-text-muted bg-surface-container px-3 py-1.5 rounded-lg border border-border-subtle">
-        Total Files: <span class="font-bold text-primary">{{ reports|length }}</span>
-      </span>
-      <button type="button" id="btnGenReport" onclick="triggerDailyReport()" class="bg-primary hover:bg-primary/90 text-on-primary text-xs font-bold px-3.5 py-2 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
-        <span class="material-symbols-outlined text-[16px]">send</span>
-        <span>Generate &amp; Dispatch Digest</span>
-      </button>
+    <button id="btnGenerateReport" onclick="generateReportNow()" class="a-btn a-btn-primary">
+      <span class="material-symbols-outlined" style="font-size:16px;">post_add</span>
+      Generate Excel Digest Now
+    </button>
+  </div>
+
+  <!-- Stats Grid -->
+  <div class="a-kpi-grid">
+    <div class="a-kpi">
+      <div class="a-kpi-head"><div class="a-kpi-label">Stored Reports</div><div class="a-kpi-icon" style="background:var(--a-blue-dim);color:var(--a-blue);"><span class="material-symbols-outlined">description</span></div></div>
+      <div class="a-kpi-val">{{ reports|length }}</div>
+      <div class="a-kpi-sub">Available for download</div>
+    </div>
+
+    <div class="a-kpi">
+      <div class="a-kpi-head"><div class="a-kpi-label">Report Schema</div><div class="a-kpi-icon" style="background:var(--a-green-dim);color:var(--a-green);"><span class="material-symbols-outlined">dataset</span></div></div>
+      <div class="a-kpi-val" style="color:var(--a-green);">17 Columns</div>
+      <div class="a-kpi-sub">Phase F standardized layout</div>
+    </div>
+
+    <div class="a-kpi">
+      <div class="a-kpi-head"><div class="a-kpi-label">Formula Defense</div><div class="a-kpi-icon" style="background:var(--a-cyan-dim);color:var(--a-cyan);"><span class="material-symbols-outlined">security</span></div></div>
+      <div class="a-kpi-val" style="color:var(--a-cyan);">OWASP Safe</div>
+      <div class="a-kpi-sub">escape_formula_injection()</div>
+    </div>
+
+    <div class="a-kpi">
+      <div class="a-kpi-head"><div class="a-kpi-label">Engine</div><div class="a-kpi-icon" style="background:var(--a-purple-dim);color:var(--a-purple);"><span class="material-symbols-outlined">memory</span></div></div>
+      <div class="a-kpi-val" style="color:var(--a-purple);font-size:18px;">OpenPyXL</div>
+      <div class="a-kpi-sub">Memory stream (BytesIO)</div>
     </div>
   </div>
 
-  <div id="reportFeedback" class="hidden p-4 rounded-xl border text-xs font-mono"></div>
-
   <!-- Reports Table -->
-  <div class="bg-surface rounded-xl border border-border-subtle overflow-hidden shadow-sm">
-    <div class="hidden md:grid md:grid-cols-[1fr_120px_160px_100px_120px] gap-4 p-3.5 border-b border-border-subtle bg-surface-container-low text-[11px] font-bold uppercase tracking-wider text-text-muted">
-      <div>Report Document</div>
-      <div>Format</div>
-      <div>Generated Date</div>
-      <div>Size</div>
-      <div class="text-right">Download</div>
+  <div class="a-table-wrap">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--a-border-1);display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="material-symbols-outlined" style="font-size:18px;color:var(--a-primary);">folder_open</span>
+        <h3 style="font-size:13px;font-weight:700;color:var(--a-text-1);">Generated Opportunity Reports</h3>
+      </div>
+      <span class="a-badge a-badge-primary">{{ reports|length }} files</span>
     </div>
 
-    <div class="divide-y divide-border-subtle">
-      {% for rep in reports %}
-        <div class="p-4 hover:bg-bg-card-hover transition-colors flex flex-col md:grid md:grid-cols-[1fr_120px_160px_100px_120px] gap-3 md:gap-4 items-start md:items-center">
-          <div class="flex items-center gap-3 w-full">
-            <div class="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 {% if rep.file_type == 'DOCX' %}bg-primary/10 text-primary border border-primary/20{% else %}bg-success/10 text-success border border-success/20{% endif %}">
-              <span class="material-symbols-outlined text-[20px]">
-                {% if rep.file_type == 'DOCX' %}description{% else %}table_view{% endif %}
-              </span>
-            </div>
-            <div class="overflow-hidden">
-              <div class="text-sm font-bold text-text-primary truncate">{{ rep.filename }}</div>
-              <div class="text-[11px] text-text-muted">System Intelligence Export</div>
+    {% if reports %}
+      <div class="a-table-header-row" style="grid-template-columns:3fr 110px 110px 140px 110px;">
+        <div>Filename</div>
+        <div>Format</div>
+        <div>Size</div>
+        <div>Generated Date</div>
+        <div style="text-align:right;">Actions</div>
+      </div>
+      {% for r in reports %}
+        <div class="a-table-row" style="grid-template-columns:3fr 110px 110px 140px 110px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="material-symbols-outlined" style="font-size:22px;color:var(--a-green);">description</span>
+            <div>
+              <div style="font-weight:600;color:var(--a-text-1);font-size:12.5px;">{{ r.filename }}</div>
+              <div style="font-size:10.5px;color:var(--a-text-4);">Excel Opportunity Digest</div>
             </div>
           </div>
-
-          <div class="w-full md:w-auto">
-            <span class="md:hidden text-text-muted text-[11px] uppercase mr-1">Type:</span>
-            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded {% if rep.file_type == 'DOCX' %}bg-primary/15 text-primary border border-primary/30{% else %}bg-success/15 text-success border border-success/30{% endif %}">
-              {{ rep.file_type }}
+          <div>
+            <span class="a-badge a-badge-green" style="font-size:9.5px;">
+              {{ r.format|default('XLSX')|upper }}
             </span>
           </div>
-
-          <div class="text-xs text-text-muted font-mono w-full md:w-auto">
-            <span class="md:hidden text-text-muted text-[11px] uppercase mr-1">Generated:</span>
-            <span>{{ rep.created_at }}</span>
+          <div class="a-mono" style="font-size:11.5px;color:var(--a-text-3);">
+            {{ r.size_human|default(r.size_kb|string + ' KB') if r.size_kb else '—' }}
           </div>
-
-          <div class="text-xs text-text-secondary font-mono w-full md:w-auto">
-            <span class="md:hidden text-text-muted text-[11px] uppercase mr-1">Size:</span>
-            <span>{{ rep.size_kb }} KB</span>
+          <div class="a-mono" style="font-size:11px;color:var(--a-text-4);">
+            {{ r.created_at|string|truncate(10,True,'') }}
           </div>
-
-          <div class="w-full md:w-auto flex justify-end">
-            <a href="{{ url_for('admin_ui.admin_download_report', filename=rep.filename) }}" class="bg-danger/10 hover:bg-danger text-danger hover:text-white text-xs font-bold px-3.5 py-1.5 rounded-lg border border-danger/30 transition-all flex items-center gap-1.5">
-              <span class="material-symbols-outlined text-[15px]">download</span>
-              <span>Download</span>
+          <div style="display:flex;justify-content:flex-end;align-items:center;gap:6px;">
+            <a href="{{ url_for('admin_ui.admin_download_report', filename=r.filename) }}" class="a-btn a-btn-primary a-btn-sm" title="Download Report">
+              <span class="material-symbols-outlined" style="font-size:14px;">download</span>
+              Download
             </a>
           </div>
         </div>
-      {% else %}
-        <div class="p-12 text-center text-text-muted text-xs">
-          No reports generated in storage yet.
-        </div>
       {% endfor %}
-    </div>
+    {% else %}
+      <div class="a-table-empty">
+        <span class="material-symbols-outlined" style="font-size:40px;color:var(--a-text-5);">folder_open</span>
+        <div style="font-size:13.5px;font-weight:600;color:var(--a-text-3);margin-top:8px;">No reports generated yet</div>
+        <div style="font-size:11.5px;color:var(--a-text-4);margin-top:2px;">Click "Generate Excel Digest Now" to compile today's verified opportunities.</div>
+      </div>
+    {% endif %}
   </div>
 
 </div>
@@ -90,41 +107,30 @@
 
 {% block extra_scripts %}
 <script nonce="{{ csp_nonce }}">
-  async function triggerDailyReport() {
-    const btn = document.getElementById('btnGenReport');
-    const feedback = document.getElementById('reportFeedback');
-
+  function generateReportNow() {
+    const btn = document.getElementById('btnGenerateReport');
     btn.disabled = true;
-    btn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span><span>Generating...</span>`;
-    feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-surface-container border-border-subtle text-text-primary flex items-center gap-2';
-    feedback.innerHTML = `<span class="material-symbols-outlined text-base animate-spin">sync</span><span>Generating and dispatching intelligence report...</span>`;
-    feedback.classList.remove('hidden');
+    btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">autorenew</span> Generating...';
 
-    try {
-      const res = await fetch('/admin/api/report/trigger', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-          'X-CSRF-Token': '{{ csrf_token }}'
-        }
-      });
-      const data = await res.json();
-      if (res.ok && data.status !== 'failed') {
-        feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-success/10 border-success/30 text-success flex items-center gap-2';
-        feedback.innerHTML = `<span class="material-symbols-outlined text-base">check_circle</span><span><strong>Success:</strong> ${data.message || 'Report generated successfully.'} Refresh page to view in catalog.</span>`;
-      } else {
-        feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
-        feedback.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Error:</strong> ${data.error || 'Failed to dispatch report.'}</span>`;
-      }
-    } catch(err) {
-      feedback.className = 'p-4 rounded-xl border text-xs font-mono bg-danger/10 border-danger/30 text-danger flex items-center gap-2';
-      feedback.innerHTML = `<span class="material-symbols-outlined text-base">error</span><span><strong>Network Error:</strong> ${err.message}</span>`;
-    } finally {
+    const csrf = "{{ session.get('admin_csrf_token', '') }}";
+
+    fetch('/admin/api/report/trigger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+      body: JSON.stringify({ csrf_token: csrf })
+    })
+    .then(r => r.json())
+    .then(data => {
       btn.disabled = false;
-      btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">send</span><span>Generate &amp; Dispatch Digest</span>`;
-    }
+      btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">post_add</span> Generate Excel Digest Now';
+      alert(data.message || 'Report generated successfully.');
+      window.location.reload();
+    })
+    .catch(err => {
+      btn.disabled = false;
+      btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">post_add</span> Generate Excel Digest Now';
+      alert('Error triggering report: ' + err.message);
+    });
   }
 </script>
 {% endblock %}

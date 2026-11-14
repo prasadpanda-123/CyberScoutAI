@@ -5,7 +5,10 @@
   "description": "CyberScout AI — Frontend Asset Pipeline",
   "scripts": {
     "build:css": "tailwindcss -i ./dashboard/static/css/tailwind-input.css -o ./dashboard/static/css/tailwind.css --minify",
-    "watch:css": "tailwindcss -i ./dashboard/static/css/tailwind-input.css -o ./dashboard/static/css/tailwind.css --watch"
+    "watch:css": "tailwindcss -i ./dashboard/static/css/tailwind-input.css -o ./dashboard/static/css/tailwind.css --watch",
+    "build:react": "npm --prefix frontend run build",
+    "build": "npm run build:css && npm run build:react",
+    "dev:react": "npm --prefix frontend run dev"
   },
   "devDependencies": {
     "@tailwindcss/container-queries": "^0.1.1",

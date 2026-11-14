@@ -55,19 +55,14 @@ class OpportunityService:
         """
         raw_items, total_count, facet_counts = self.repo.query_opportunities(filter_dto)
 
-        # Determine saved status for current user if authenticated
-        saved_ids: Set[str] = set()
-        if filter_dto.user_id and raw_items:
-            item_ids = [str(item["id"]) for item in raw_items]
-            saved_ids = self.repo.get_saved_ids_for_user(filter_dto.user_id, item_ids)
-
         # Load personalization signals if user is authenticated
         user_prefs: Optional[UserPreferencesDTO] = None
         user_behavior: Optional[Tuple[List[str], List[str]]] = None
         if filter_dto.user_id:
             try:
-                user_prefs = self.user_prefs_repo.get_preferences(filter_dto.user_id)
-                user_behavior = self.user_prefs_repo.get_user_behavior_profile(filter_dto.user_id)
+                user_prefs, user_behavior = self.user_prefs_repo.get_personalization_data(
+                    filter_dto.user_id
+                )
             except Exception as pe:
                 logger.warning(f"Could not load preferences for user {filter_dto.user_id}: {pe}")
 
@@ -123,7 +118,7 @@ class OpportunityService:
             )
 
             # Is saved
-            is_saved = item_id in saved_ids or filter_dto.saved_only
+            is_saved = bool(item.get("is_saved")) or filter_dto.saved_only
 
             # Evaluate scoring, explanation, and eligibility
             try:
@@ -173,7 +168,7 @@ class OpportunityService:
                 remote=bool(item.get("remote")),
                 location=item.get("location"),
                 pricing_type=item.get("pricing_type"),
-                is_free=bool(item.get("is_free")),
+                is_free=item.get("is_free"),
                 stipend_type=stipend_type if stipend_type != "unknown" else None,
                 has_stipend=has_stipend,
                 difficulty=item.get("difficulty"),
@@ -326,7 +321,7 @@ class OpportunityService:
             remote=opp.remote,
             location=opp.location,
             pricing_type=opp.pricing_type.value if hasattr(opp.pricing_type, "value") else (opp.pricing_type or "unknown"),
-            is_free=bool(opp.is_free),
+            is_free=opp.is_free,
             stipend_type=stipend_type_val if stipend_type_val != "unknown" else None,
             stipend_amount=opp.stipend_amount,
             currency=opp.stipend_currency or opp.currency or "USD",
@@ -502,7 +497,7 @@ class OpportunityService:
                 remote=bool(item.get("remote")),
                 location=item.get("location"),
                 pricing_type=item.get("pricing_type"),
-                is_free=bool(item.get("is_free")),
+                is_free=item.get("is_free"),
                 stipend_type=stipend_type if stipend_type != "unknown" else None,
                 has_stipend=has_stipend,
                 difficulty=item.get("difficulty"),

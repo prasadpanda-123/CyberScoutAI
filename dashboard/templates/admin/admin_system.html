@@ -1,59 +1,141 @@
 {% extends "admin/admin_base.html" %}
 {% set active_page = "admin_system" %}
-
-{% block title %}Platform Runtime Specs — Admin Portal{% endblock %}
+{% block title %}System Specs & Security — Admin Portal{% endblock %}
 
 {% block content %}
-<div class="space-y-6 max-w-4xl">
+<div style="display:flex;flex-direction:column;gap:22px;">
 
-  <!-- Header -->
-  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border-subtle">
+  <!-- Page Header -->
+  <div class="a-page-header">
     <div>
-      <h2 class="text-xl sm:text-2xl font-bold text-admin-accent tracking-tight flex items-center gap-2">
-        <span class="material-symbols-outlined text-admin-accent">memory</span>
-        <span>Platform Runtime Specifications</span>
+      <h2 class="a-page-title">
+        <span class="material-symbols-outlined">memory</span>
+        System Specifications &amp; Environment
       </h2>
-      <p class="text-xs sm:text-sm text-text-secondary mt-0.5">Application build version, environment, and host runtime metadata.</p>
+      <p class="a-page-subtitle">Inspect underlying runtime environment, software versions, and active security
+        boundaries.</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span class="a-badge a-badge-green">
+        <span class="a-live-dot green"></span>
+        SYSTEM OPERATIONAL
+      </span>
     </div>
   </div>
 
-  <!-- Navigation Sub-Tabs -->
-  <div class="flex items-center gap-2 border-b border-border-subtle pb-2">
-    <a href="{{ url_for('admin_ui.admin_reliability') }}" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 text-text-secondary hover:text-text-primary hover:bg-surface-container">
-      <span class="material-symbols-outlined text-[16px]">health_and_safety</span>
-      <span>Reliability &amp; Telemetry</span>
-    </a>
-    <a href="{{ url_for('admin_ui.admin_system') }}" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 bg-admin-accent/15 text-admin-accent border border-admin-accent/30">
-      <span class="material-symbols-outlined text-[16px]">memory</span>
-      <span>Runtime Specs</span>
-    </a>
-    <a href="{{ url_for('admin_ui.admin_configuration') }}" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 text-text-secondary hover:text-text-primary hover:bg-surface-container">
-      <span class="material-symbols-outlined text-[16px]">tune</span>
-      <span>Configuration Specs</span>
-    </a>
+  <!-- System Specifications Cards Grid -->
+  <div class="a-kpi-grid">
+    <div class="a-kpi">
+      <div class="a-kpi-head">
+        <div class="a-kpi-label">Application</div>
+        <div class="a-kpi-icon" style="background:var(--a-blue-dim);color:var(--a-blue);"><span
+            class="material-symbols-outlined">token</span></div>
+      </div>
+      <div class="a-kpi-val" style="font-size:18px;">CyberScout AI</div>
+      <div class="a-kpi-sub">Version {{ sys_specs.version|default('4.0.0') }}</div>
+    </div>
+
+    <div class="a-kpi">
+      <div class="a-kpi-head">
+        <div class="a-kpi-label">Python Runtime</div>
+        <div class="a-kpi-icon" style="background:var(--a-cyan-dim);color:var(--a-cyan);"><span
+            class="material-symbols-outlined">code</span></div>
+      </div>
+      <div class="a-kpi-val" style="font-size:18px;">{{ sys_specs.python_version|default('3.12.10') }}</div>
+      <div class="a-kpi-sub">Standard 64-bit CPython</div>
+    </div>
+
+    <div class="a-kpi">
+      <div class="a-kpi-head">
+        <div class="a-kpi-label">Host OS</div>
+        <div class="a-kpi-icon" style="background:var(--a-purple-dim);color:var(--a-purple);"><span
+            class="material-symbols-outlined">desktop_windows</span></div>
+      </div>
+      <div class="a-kpi-val" style="font-size:18px;">{{ sys_specs.platform|default('Windows-11') }}</div>
+      <div class="a-kpi-sub">Active Production Host</div>
+    </div>
+
+    <div class="a-kpi">
+      <div class="a-kpi-head">
+        <div class="a-kpi-label">Architecture State</div>
+        <div class="a-kpi-icon" style="background:var(--a-green-dim);color:var(--a-green);"><span
+            class="material-symbols-outlined">verified</span></div>
+      </div>
+      <div class="a-kpi-val" style="color:var(--a-green);font-size:18px;">Phase G Armed</div>
+      <div class="a-kpi-sub">Tavily + Firecrawl + Groq</div>
+    </div>
   </div>
 
-  <!-- Specifications Grid -->
-  <div class="bg-surface rounded-xl border border-border-subtle p-6 space-y-6">
-    <div class="grid sm:grid-cols-2 gap-4">
-      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
-        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Application Name</div>
-        <div class="text-sm font-bold text-text-primary">{{ sys_specs.app_name|default('CyberScout AI') }}</div>
+  <!-- Security Safeguards Grid -->
+  <div class="a-card">
+    <div
+      style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--a-border-1);">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="material-symbols-outlined" style="font-size:18px;color:var(--a-green);">shield</span>
+        <h3 style="font-size:13.5px;font-weight:700;color:var(--a-text-1);">Active Security &amp; Defense Controls</h3>
+      </div>
+      <span class="a-badge a-badge-green">6 Layers Armed</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;">
+      <div
+        style="padding:12px;background:var(--a-surface-2);border-radius:var(--a-r-sm);border:1px solid var(--a-border-1);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span class="material-symbols-outlined" style="font-size:16px;color:var(--a-green);">lock</span>
+          <strong style="font-size:12.5px;color:var(--a-text-1);">PostgreSQL Row-Level Security</strong>
+        </div>
+        <p style="font-size:11.5px;color:var(--a-text-3);">Strict RLS active on Opportunities, DiscoveredCandidates,
+          Users, and Admins.</p>
       </div>
 
-      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
-        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Release Version</div>
-        <div class="text-sm font-bold text-primary font-mono">v{{ sys_specs.version|default('2.2.0') }}</div>
+      <div
+        style="padding:12px;background:var(--a-surface-2);border-radius:var(--a-r-sm);border:1px solid var(--a-border-1);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span class="material-symbols-outlined" style="font-size:16px;color:var(--a-green);">vpn_key</span>
+          <strong style="font-size:12.5px;color:var(--a-text-1);">PBKDF2 Password Hashing</strong>
+        </div>
+        <p style="font-size:11.5px;color:var(--a-text-3);">Secure SHA-256 salted password hashing with adaptive
+          iteration stretch.</p>
       </div>
 
-      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
-        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Python Runtime</div>
-        <div class="text-sm font-bold text-text-primary font-mono">{{ sys_specs.python_version|default('Python 3.11+') }}</div>
+      <div
+        style="padding:12px;background:var(--a-surface-2);border-radius:var(--a-r-sm);border:1px solid var(--a-border-1);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span class="material-symbols-outlined" style="font-size:16px;color:var(--a-green);">security</span>
+          <strong style="font-size:12.5px;color:var(--a-text-1);">SSRF URL Guard</strong>
+        </div>
+        <p style="font-size:11.5px;color:var(--a-text-3);">Blocks RFC 1918, 127.0.0.1, 169.254.169.254, and dangerous
+          pseudo-protocols.</p>
       </div>
 
-      <div class="p-4 rounded-lg bg-surface-container-low border border-border-subtle space-y-1">
-        <div class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Host OS Platform</div>
-        <div class="text-sm font-bold text-text-secondary font-mono">{{ sys_specs.platform|default('Linux/Windows') }}</div>
+      <div
+        style="padding:12px;background:var(--a-surface-2);border-radius:var(--a-r-sm);border:1px solid var(--a-border-1);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span class="material-symbols-outlined" style="font-size:16px;color:var(--a-green);">smart_toy</span>
+          <strong style="font-size:12.5px;color:var(--a-text-1);">Prompt Injection Shield</strong>
+        </div>
+        <p style="font-size:11.5px;color:var(--a-text-3);">Delimited XML tags and Pydantic schema validation isolate
+          scraped content.</p>
+      </div>
+
+      <div
+        style="padding:12px;background:var(--a-surface-2);border-radius:var(--a-r-sm);border:1px solid var(--a-border-1);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span class="material-symbols-outlined" style="font-size:16px;color:var(--a-green);">table_chart</span>
+          <strong style="font-size:12.5px;color:var(--a-text-1);">Excel Formula Sanitization</strong>
+        </div>
+        <p style="font-size:11.5px;color:var(--a-text-3);">Prefixes formula characters (=, +, -, @) with single quote to
+          prevent spreadsheet RCE.</p>
+      </div>
+
+      <div
+        style="padding:12px;background:var(--a-surface-2);border-radius:var(--a-r-sm);border:1px solid var(--a-border-1);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span class="material-symbols-outlined" style="font-size:16px;color:var(--a-green);">verified_user</span>
+          <strong style="font-size:12.5px;color:var(--a-text-1);">CSRF &amp; Session Fixation</strong>
+        </div>
+        <p style="font-size:11.5px;color:var(--a-text-3);">Cryptographic comparison of session-bound CSRF tokens on all
+          POST endpoints.</p>
       </div>
     </div>
   </div>

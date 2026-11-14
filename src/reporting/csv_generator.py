@@ -14,6 +14,16 @@ from src.reporting.report_models import ReportPayload
 logger = get_logger(__name__)
 
 
+def _spreadsheet_safe(value):
+    """Prefixes spreadsheet formula triggers so exported user content is treated as text."""
+    if not isinstance(value, str):
+        return value
+    probe = value.lstrip(" \t\r\n")
+    if value.startswith(("\t", "\r", "\n")) or probe.startswith(("=", "+", "-", "@")):
+        return "'" + value
+    return value
+
+
 class CSVReportGenerator:
     """
     Generates CyberScout_Report_YYYY_MM_DD.csv adhering to the 15-column schema.
@@ -78,7 +88,7 @@ class CSVReportGenerator:
                     
                     # Extract skills & tags
                     tags_list = opp.tags if isinstance(opp.tags, list) else []
-                    tags_str = ", ".join(tags_list)
+                    tags_str = ", ".join(str(tag) for tag in tags_list if tag is not None)
                     skills_str = raw_data.get("skills", tags_str)
                     source = opp.source_id or "CyberScout Collector"
                     url = opp.url or ""
@@ -100,7 +110,7 @@ class CSVReportGenerator:
                         source,
                         url,
                     ]
-                    writer.writerow(row)
+                    writer.writerow([_spreadsheet_safe(cell) for cell in row])
                     rows_count += 1
 
             file_size_kb = round(filepath.stat().st_size / 1024, 2)
