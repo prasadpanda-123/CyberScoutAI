@@ -13,6 +13,7 @@ from dashboard.services.statistics_service import StatisticsService
 from src.auth.admin_auth import AdminSecurityManager
 from src.auth.decorators import admin_required, login_required, roles_required
 from src.core.constants import REPORTS_DIR
+from src.core.logging import get_logger
 from src.core.version import get_version_info
 from src.database.audit_log_repository import AuditLogRepository
 from src.database.notification_repository import NotificationRepository
@@ -21,6 +22,8 @@ from src.models.query_filter_dto import QueryFilterDTO
 from src.services.opportunity_service import OpportunityService
 from src.utils.ip_utils import get_client_ip
 from src.utils.pagination_utils import parse_pagination
+
+logger = get_logger(__name__)
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -70,23 +73,38 @@ def get_charts():
 def get_opportunities():
     """GET /api/opportunities — Return validated, user-aware paginated opportunity cards."""
     user_id = session.get("user_id") or session.get("admin_user_id")
-    filters = QueryFilterDTO.from_request_args(
-        request.args,
-        user_id=str(user_id) if user_id else None,
-    )
-    result = OpportunityService().search_opportunities(filters)
-    opportunities = [dataclasses.asdict(item) for item in result.items]
-    return jsonify({
-        "status": "success",
-        "count": len(opportunities),
-        "total": result.total_count,
-        "opportunities": opportunities,
-        "page": result.page,
-        "per_page": result.per_page,
-        "total_pages": result.total_pages,
-        "has_next": result.has_next,
-        "has_prev": result.has_prev,
-    })
+    try:
+        filters = QueryFilterDTO.from_request_args(
+            request.args,
+            user_id=str(user_id) if user_id else None,
+        )
+        result = OpportunityService().search_opportunities(filters)
+        opportunities = [dataclasses.asdict(item) for item in result.items]
+        return jsonify({
+            "status": "success",
+            "count": len(opportunities),
+            "total": result.total_count,
+            "opportunities": opportunities,
+            "page": result.page,
+            "per_page": result.per_page,
+            "total_pages": result.total_pages,
+            "has_next": result.has_next,
+            "has_prev": result.has_prev,
+        })
+    except Exception as e:
+        logger.error(f"Failed to fetch opportunities: {e}", exc_info=True)
+        return jsonify({
+            "status": "failed",
+            "error": "Failed to fetch opportunities from database. Please try again.",
+            "opportunities": [],
+            "count": 0,
+            "total": 0,
+            "page": 1,
+            "per_page": 9,
+            "total_pages": 0,
+            "has_next": False,
+            "has_prev": False,
+        }), 500
 
 
 @api_bp.route("/analytics", methods=["GET"])

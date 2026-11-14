@@ -85,7 +85,10 @@ class PgCursorAdapter:
                     raw_conn.rollback()
             except Exception:
                 pass
-        self._cursor.execute(sql, parameters)
+        if parameters:
+            self._cursor.execute(sql, parameters)
+        else:
+            self._cursor.execute(sql)
         return self
 
     def executemany(self, sql: str, seq_of_parameters=()):
@@ -173,9 +176,11 @@ class PgConnectionAdapter:
         cursor = PgCursorAdapter(self._conn.cursor())
         # Treat ordinary repository access as trusted server work. User-scoped
         # repository methods must replace this with user_context before querying.
-        cursor.execute("SET LOCAL app.current_user_id = '';")
-        cursor.execute("SET LOCAL app.is_admin = 'false';")
-        cursor.execute("SET LOCAL app.service_context = 'true';")
+        cursor.execute(
+            "SELECT set_config('app.current_user_id', '', true), "
+            "set_config('app.is_admin', 'false', true), "
+            "set_config('app.service_context', 'true', true);"
+        )
         return cursor
 
     def commit(self):
@@ -634,18 +639,23 @@ class DatabaseManager:
         Ensures queries are restricted strictly to user_id when active.
         """
         with self.transaction() as cursor:
-            cursor.execute("SET LOCAL app.current_user_id = %s;", (str(user_id or ""),))
-            cursor.execute("SET LOCAL app.is_admin = 'false';")
-            cursor.execute("SET LOCAL app.service_context = 'false';")
+            cursor.execute(
+                "SELECT set_config('app.current_user_id', %s, true), "
+                "set_config('app.is_admin', 'false', true), "
+                "set_config('app.service_context', 'false', true);",
+                (str(user_id or ""),),
+            )
             yield cursor
 
     @contextmanager
     def service_context(self) -> Generator[Any, None, None]:
         """Allows trusted background jobs to process user-owned rows explicitly."""
         with self.transaction() as cursor:
-            cursor.execute("SET LOCAL app.current_user_id = '';")
-            cursor.execute("SET LOCAL app.is_admin = 'false';")
-            cursor.execute("SET LOCAL app.service_context = 'true';")
+            cursor.execute(
+                "SELECT set_config('app.current_user_id', '', true), "
+                "set_config('app.is_admin', 'false', true), "
+                "set_config('app.service_context', 'true', true);"
+            )
             yield cursor
 
     def check_connection_with_backoff(self, max_retries: int = 5) -> bool:

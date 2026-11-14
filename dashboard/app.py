@@ -187,7 +187,11 @@ def create_app(config_class=DashboardConfig, db_manager=None) -> Flask:
     def assign_request_id():
         """Extracts and validates X-Request-ID or generates a unique correlation ID."""
         import re
-        req_id = request.headers.get("X-Request-ID") or request.headers.get("X-Correlation-ID")
+        req_id = (
+            request.headers.get("Rndr-Id")
+            or request.headers.get("X-Request-ID")
+            or request.headers.get("X-Correlation-ID")
+        )
         if req_id and isinstance(req_id, str):
             clean_id = re.sub(r"[^a-zA-Z0-9_-]", "", req_id.strip())[:64]
             g.request_id = clean_id if clean_id else secrets.token_hex(16)

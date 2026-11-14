@@ -1146,9 +1146,12 @@ class OpportunityRepository(BaseRepository[Opportunity], IOpportunityRepository)
         try:
             cursor = conn.cursor()
             if filter_dto.user_id:
-                cursor.execute("SET LOCAL app.current_user_id = %s;", (str(filter_dto.user_id),))
-                cursor.execute("SET LOCAL app.is_admin = 'false';")
-                cursor.execute("SET LOCAL app.service_context = 'false';")
+                cursor.execute(
+                    "SELECT set_config('app.current_user_id', %s, true), "
+                    "set_config('app.is_admin', 'false', true), "
+                    "set_config('app.service_context', 'false', true);",
+                    (str(filter_dto.user_id),),
+                )
             # rank_param is needed because the rank expression precedes WHERE parameters.
             full_query_params = tuple(rank_param + join_params + params + [limit, offset])
             cursor.execute(query_sql, full_query_params)
