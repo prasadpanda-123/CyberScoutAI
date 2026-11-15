@@ -71,7 +71,7 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "flex flex-col border-r border-border/80 bg-card h-full transition-all duration-300 z-30 select-none shadow-[1px_0_4px_rgba(16,24,40,0.03)]",
+        "flex flex-col border-r border-border/80 bg-card h-full transition-all duration-300 z-30 select-none shadow-[1px_0_12px_rgba(0,0,0,0.18)]",
         collapsed ? "w-16" : "w-64"
       )}
     >

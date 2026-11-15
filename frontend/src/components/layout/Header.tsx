@@ -48,7 +48,7 @@ export function Header({ onOpenMobile }: HeaderProps) {
   const currentTitle = routeTitles[location.pathname] || "CyberScout AI"
 
   return (
-    <header className="h-16 border-b border-border/80 bg-card/95 backdrop-blur px-4 md:px-7 flex items-center justify-between sticky top-0 z-20 shadow-[0_1px_3px_rgba(16,24,40,0.03)]">
+    <header className="h-16 border-b border-border/80 bg-card/95 backdrop-blur px-4 md:px-7 flex items-center justify-between sticky top-0 z-20 shadow-[0_1px_8px_rgba(0,0,0,0.2)]">
       <div className="flex items-center space-x-3">
         <Button
           variant="ghost"

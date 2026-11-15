@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Bookmark, Search, Trash2, Calendar, MapPin, AlertCircle } from "lucide-react"
+import { Bookmark, Search, Trash2, Calendar, MapPin, AlertCircle, ExternalLink } from "lucide-react"
 import { opportunitiesApi } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,6 +8,7 @@ import { CategoryBadge } from "@/components/ui/badge"
 import { OpportunityCardSkeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/ui/empty-state"
 import { useToast } from "@/components/ui/toast"
+import { getSafeExternalUrl } from "@/lib/utils"
 
 export function SavedOpportunities() {
   const navigate = useNavigate()
@@ -119,7 +120,9 @@ export function SavedOpportunities() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map((opp) => (
+          {filtered.map((opp) => {
+            const sourceUrl = getSafeExternalUrl(opp.url || opp.source_url)
+            return (
             <article
               key={opp.id}
               className="group rounded-xl border bg-card p-5 shadow-sm hover:border-cyber-blue/40 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
@@ -154,20 +157,34 @@ export function SavedOpportunities() {
                 </Link>
               </div>
 
-              <div className="border-t pt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  {opp.location || opp.remote ? <MapPin className="h-3 w-3 shrink-0" /> : null}
-                  <span>{opp.location || (opp.remote ? "Remote" : "Location not listed")}</span>
-                </div>
-                {opp.deadline && (
-                  <div className="flex items-center gap-1 font-medium text-amber-600">
-                    <Calendar className="h-3 w-3" />
-                    <span>{new Date(opp.deadline).toLocaleDateString()}</span>
+              <div className="border-t pt-3 space-y-3 text-xs text-muted-foreground">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-1">
+                    {opp.location || opp.remote ? <MapPin className="h-3 w-3 shrink-0" /> : null}
+                    <span>{opp.location || (opp.remote ? "Remote" : "Location not listed")}</span>
                   </div>
+                  {opp.deadline && (
+                    <div className="flex items-center gap-1 font-medium text-amber-600">
+                      <Calendar className="h-3 w-3" />
+                      <span>{new Date(opp.deadline).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                </div>
+                {sourceUrl && (
+                  <a
+                    href={sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Open the original listing for ${opp.title} in a new tab`}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-primary/25 bg-primary/10 px-3 py-2 font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    View original listing <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
                 )}
               </div>
             </article>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

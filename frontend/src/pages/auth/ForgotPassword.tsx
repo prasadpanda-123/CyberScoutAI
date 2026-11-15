@@ -31,7 +31,7 @@ export function ForgotPassword() {
     <main className="min-h-screen bg-background px-4 py-10 sm:px-8">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-[440px] flex-col justify-center">
         <Link to="/" className="mb-8 flex items-center justify-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
             <Shield className="h-7 w-7" />
           </div>
           <span className="text-lg font-bold tracking-tight text-foreground">
@@ -39,7 +39,7 @@ export function ForgotPassword() {
           </span>
         </Link>
 
-        <Card className="border-border/80 shadow-[0_12px_40px_rgba(16,24,40,0.07)]">
+        <Card className="border-border/80 shadow-[0_12px_40px_rgba(0,0,0,0.32)]">
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-xl">Reset your password</CardTitle>
             <CardDescription>

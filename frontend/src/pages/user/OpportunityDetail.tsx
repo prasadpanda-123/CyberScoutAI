@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button"
 import { CategoryBadge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { getSafeExternalUrl } from "@/lib/utils"
 
 export function OpportunityDetail() {
   const { id } = useParams<{ id: string }>()
@@ -56,6 +57,8 @@ export function OpportunityDetail() {
       console.error(err)
     }
   }
+
+  const sourceUrl = getSafeExternalUrl(opp?.url || opp?.source_url)
 
   if (loading) {
     return (
@@ -106,13 +109,13 @@ export function OpportunityDetail() {
             {opp.is_saved ? "Saved" : "Save"}
           </Button>
 
-          {opp.source_url && (
+          {sourceUrl && (
             <Button
               asChild
               className="bg-cyber-blue hover:bg-cyber-blue-light text-white text-xs shadow-sm"
               size="sm"
             >
-              <a href={opp.source_url} target="_blank" rel="noopener noreferrer">
+              <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
                 Apply Directly <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
               </a>
             </Button>
@@ -268,14 +271,14 @@ export function OpportunityDetail() {
           </Card>
 
           {/* Quick Apply CTA Box */}
-          {opp.source_url && (
+          {sourceUrl && (
             <Card className="p-5 text-center space-y-3">
               <h4 className="text-sm font-semibold text-foreground">Ready to participate?</h4>
               <p className="text-xs text-muted-foreground">
                 Apply directly on the host website through the verified source URL.
               </p>
               <Button asChild className="w-full bg-cyber-blue hover:bg-cyber-blue-light text-white text-xs">
-                <a href={opp.source_url} target="_blank" rel="noopener noreferrer">
+                <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
                   Go to Host Application <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
                 </a>
               </Button>

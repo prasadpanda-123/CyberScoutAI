@@ -109,7 +109,7 @@ export function Login() {
       <section className="flex min-h-screen items-center justify-center px-4 py-10 sm:px-8">
         <div className="w-full max-w-[440px]">
           <Link to="/" className="mb-8 flex items-center justify-center gap-2 lg:hidden">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
               <Shield className="h-5 w-5" />
             </span>
             <span className="text-lg font-bold tracking-tight">
@@ -131,7 +131,7 @@ export function Login() {
             </p>
           </div>
 
-          <Card className="border-border/80 shadow-[0_12px_40px_rgba(16,24,40,0.07)]">
+          <Card className="border-border/80 shadow-[0_12px_40px_rgba(0,0,0,0.32)]">
             <CardHeader className="space-y-1 pb-4">
               <CardTitle className="text-base">
                 {isAdmin ? "Administrative access" : "Account credentials"}

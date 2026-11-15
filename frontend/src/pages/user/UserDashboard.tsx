@@ -8,6 +8,7 @@ import {
   ArrowRight,
   ShieldCheck,
   CheckCircle,
+  ExternalLink,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { opportunitiesApi, dashboardApi } from "@/lib/api"
@@ -15,6 +16,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CategoryBadge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { getSafeExternalUrl } from "@/lib/utils"
 
 export function UserDashboard() {
   const { user } = useAuth()
@@ -208,7 +210,9 @@ export function UserDashboard() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {recentOpps.map((opp) => (
+              {recentOpps.map((opp) => {
+                const sourceUrl = getSafeExternalUrl(opp.url || opp.source_url)
+                return (
                 <div
                   key={opp.id}
                   onClick={() => navigate(`/app/opportunities/${opp.id}`)}
@@ -257,9 +261,22 @@ export function UserDashboard() {
                     >
                       Details
                     </Button>
+                    {sourceUrl && (
+                      <a
+                        href={sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Open the original listing for ${opp.title} in a new tab`}
+                        onClick={(event) => event.stopPropagation()}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-primary/25 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        Source <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    )}
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -298,21 +315,37 @@ export function UserDashboard() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {savedOpps.map((opp) => (
+              {savedOpps.map((opp) => {
+                const sourceUrl = getSafeExternalUrl(opp.url || opp.source_url)
+                return (
                 <div
                   key={opp.id}
                   onClick={() => navigate(`/app/opportunities/${opp.id}`)}
                   className="p-3.5 rounded-lg border bg-card hover:border-purple-500/40 transition-colors cursor-pointer space-y-1"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-purple-600">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-purple-300">
                       {opp.category || "Opportunity"}
                     </span>
-                    {opp.deadline && (
-                      <span className="text-[10px] text-muted-foreground">
-                        {new Date(opp.deadline).toLocaleDateString()}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {opp.deadline && (
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(opp.deadline).toLocaleDateString()}
+                        </span>
+                      )}
+                      {sourceUrl && (
+                        <a
+                          href={sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`Open the original listing for ${opp.title} in a new tab`}
+                          onClick={(event) => event.stopPropagation()}
+                          className="rounded p-1 text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      )}
+                    </div>
                   </div>
                   <h5 className="text-xs font-medium text-foreground line-clamp-1 hover:text-purple-600">
                     {opp.title}
@@ -321,7 +354,8 @@ export function UserDashboard() {
                     {opp.organization || opp.company || opp.provider || "Organization not listed"}
                   </p>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

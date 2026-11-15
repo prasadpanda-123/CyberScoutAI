@@ -9,6 +9,7 @@ import {
   MapPin,
   Calendar,
   Globe,
+  ExternalLink,
   SlidersHorizontal,
   AlertCircle,
 } from "lucide-react"
@@ -19,6 +20,7 @@ import { CategoryBadge } from "@/components/ui/badge"
 import { OpportunityCardSkeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/ui/empty-state"
 import { useToast } from "@/components/ui/toast"
+import { getSafeExternalUrl } from "@/lib/utils"
 
 const categories = [
   "All",
@@ -175,7 +177,7 @@ export function ExploreOpportunities() {
                 setRemoteOnly(e.target.checked)
                 setPage(1)
               }}
-              className="rounded border-gray-300 text-cyber-blue focus:ring-cyber-blue"
+              className="rounded border-input text-primary focus:ring-ring"
             />
             <Globe className="h-3.5 w-3.5 text-muted-foreground" />
             <span>Remote Only</span>
@@ -189,7 +191,7 @@ export function ExploreOpportunities() {
                 setFreeOnly(e.target.checked)
                 setPage(1)
               }}
-              className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-600"
+              className="rounded border-input text-emerald-600 focus:ring-emerald-500"
             />
             <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
             <span>100% Free Only</span>
@@ -253,7 +255,9 @@ export function ExploreOpportunities() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {data.opportunities.map((opp: any) => (
+          {data.opportunities.map((opp: any) => {
+            const sourceUrl = getSafeExternalUrl(opp.url || opp.source_url)
+            return (
             <article
               key={opp.id}
               className="group rounded-xl border bg-card p-5 shadow-sm hover:border-cyber-blue/50 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
@@ -349,9 +353,22 @@ export function ExploreOpportunities() {
                     </div>
                   </div>
                 )}
+
+                {sourceUrl && (
+                  <a
+                    href={sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Open the original listing for ${opp.title} in a new tab`}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-primary/25 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    View original listing <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
               </div>
             </article>
-          ))}
+            )
+          })}
         </div>
       )}
 

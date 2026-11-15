@@ -4,36 +4,39 @@
 
 @layer base {
   :root {
-    --background: 216 30% 97%;
-    --foreground: 222 38% 13%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 38% 13%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 38% 13%;
-    --primary: 216 78% 43%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 214 27% 94%;
-    --secondary-foreground: 222 38% 16%;
-    --muted: 216 26% 95%;
-    --muted-foreground: 215 14% 43%;
-    --accent: 214 30% 94%;
-    --accent-foreground: 222 38% 16%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 216 21% 88%;
-    --input: 216 21% 86%;
-    --ring: 216 78% 43%;
+    color-scheme: dark;
+    --background: 222 47% 7%;
+    --foreground: 213 32% 94%;
+    --card: 222 39% 10%;
+    --card-foreground: 213 32% 94%;
+    --popover: 222 39% 11%;
+    --popover-foreground: 213 32% 94%;
+    --primary: 201 91% 67%;
+    --primary-foreground: 222 47% 9%;
+    --secondary: 218 30% 17%;
+    --secondary-foreground: 213 32% 92%;
+    --muted: 218 30% 15%;
+    --muted-foreground: 215 18% 66%;
+    --accent: 216 30% 19%;
+    --accent-foreground: 213 32% 94%;
+    --destructive: 0 68% 53%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 218 26% 21%;
+    --input: 218 26% 25%;
+    --ring: 201 91% 67%;
     --radius: 0.75rem;
   }
 
   * {
     @apply border-border;
+    --tw-ring-offset-color: hsl(var(--background));
   }
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     min-width: 320px;
+    min-height: 100vh;
   }
 
   html {
@@ -42,6 +45,52 @@
 
   :focus:not(:focus-visible) {
     outline: none;
+  }
+
+  ::selection {
+    color: hsl(var(--foreground));
+    background: hsl(var(--primary) / 0.28);
+  }
+
+  option {
+    color: hsl(var(--foreground));
+    background: hsl(var(--popover));
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    color: hsl(var(--primary));
+    background-color: hsl(var(--background));
+    border-color: hsl(var(--input));
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-text-fill-color: hsl(var(--foreground));
+    box-shadow: 0 0 0 1000px hsl(var(--background)) inset;
+    transition: background-color 9999s ease-out;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border: 2px solid hsl(var(--background));
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -70,6 +119,26 @@
 
   .page-enter {
     animation: page-enter 0.24s ease-out both;
+  }
+}
+
+@layer utilities {
+  .dark .text-cyber-blue {
+    color: #7dd3fc;
+  }
+
+  .text-emerald-600,
+  .text-emerald-700 {
+    color: #34d399;
+  }
+
+  .text-amber-600,
+  .text-amber-700 {
+    color: #fbbf24;
+  }
+
+  .text-purple-700 {
+    color: #c4b5fd;
   }
 }
 

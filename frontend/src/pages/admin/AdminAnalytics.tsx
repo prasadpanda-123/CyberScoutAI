@@ -98,14 +98,15 @@ export function AdminAnalytics() {
               <div className="h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                    <XAxis dataKey="day" stroke="#888888" fontSize={11} />
-                    <YAxis stroke="#888888" fontSize={11} allowDecimals={false} />
+                    <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" />
+                    <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" tick={{ fill: "hsl(var(--muted-foreground))" }} fontSize={11} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fill: "hsl(var(--muted-foreground))" }} fontSize={11} allowDecimals={false} />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: "hsl(var(--card))",
                         borderColor: "hsl(var(--border))",
                         borderRadius: "0.5rem",
+                        color: "hsl(var(--foreground))",
                         fontSize: "12px",
                       }}
                     />
@@ -113,7 +114,7 @@ export function AdminAnalytics() {
                       type="monotone"
                       dataKey="discovered"
                       name="Discoveries"
-                      stroke="hsl(221, 83%, 53%)"
+                      stroke="hsl(var(--primary))"
                       strokeWidth={2}
                       dot={{ r: 3 }}
                     />
@@ -139,18 +140,19 @@ export function AdminAnalytics() {
               <div className="h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={catData}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                    <XAxis dataKey="name" stroke="#888888" fontSize={10} interval={0} angle={-25} textAnchor="end" height={45} />
-                    <YAxis stroke="#888888" fontSize={11} allowDecimals={false} />
+                    <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" />
+                    <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" tick={{ fill: "hsl(var(--muted-foreground))" }} fontSize={10} interval={0} angle={-25} textAnchor="end" height={45} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fill: "hsl(var(--muted-foreground))" }} fontSize={11} allowDecimals={false} />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: "hsl(var(--card))",
                         borderColor: "hsl(var(--border))",
                         borderRadius: "0.5rem",
+                        color: "hsl(var(--foreground))",
                         fontSize: "12px",
                       }}
                     />
-                    <Bar dataKey="count" name="Opportunities" fill="hsl(221, 83%, 53%)" radius={[4, 4, 0, 0]}>
+                    <Bar dataKey="count" name="Opportunities" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]}>
                       {catData.map((entry, index) => (
                         <Cell key={`${entry.name}-${index}`} fill={`hsl(${221 + index * 17}, 70%, 52%)`} />
                       ))}

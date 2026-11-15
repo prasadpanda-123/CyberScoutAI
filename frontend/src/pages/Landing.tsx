@@ -129,8 +129,8 @@ export function Landing() {
             </div>
 
             <div className="relative mx-auto w-full max-w-xl">
-              <div className="absolute -inset-5 -z-10 rounded-[2rem] bg-gradient-to-br from-blue-100/70 via-white to-cyan-100/70 blur-2xl" />
-              <div className="rounded-2xl border border-white/80 bg-white/90 p-5 shadow-[0_24px_70px_rgba(27,52,89,0.12)] ring-1 ring-slate-900/5 backdrop-blur sm:p-7">
+              <div className="absolute -inset-5 -z-10 rounded-[2rem] bg-gradient-to-br from-blue-500/15 via-transparent to-cyan-400/10 blur-2xl" />
+              <div className="rounded-2xl border border-border/80 bg-card/95 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.35)] ring-1 ring-white/5 backdrop-blur sm:p-7">
                 <div className="flex items-start justify-between gap-4 border-b border-border/80 pb-5">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
@@ -164,9 +164,9 @@ export function Landing() {
                   ))}
                 </div>
 
-                <div className="flex items-start gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/80 p-4">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
-                  <p className="text-xs leading-5 text-emerald-950">
+                <div className="flex items-start gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                  <p className="text-xs leading-5 text-emerald-100">
                     Review status and application details stay visible, so you can make an informed
                     choice before leaving the platform.
                   </p>
@@ -194,7 +194,7 @@ export function Landing() {
             {capabilities.map(({ icon: Icon, title, description }, index) => (
               <article
                 key={title}
-                className="rounded-2xl border border-border/80 bg-card p-6 shadow-[0_1px_3px_rgba(16,24,40,0.04)] transition-all hover:-translate-y-0.5 hover:shadow-md"
+                className="rounded-2xl border border-border/80 bg-card p-6 shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-md"
               >
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/8 text-primary">
                   <Icon className="h-5 w-5" />
@@ -209,7 +209,7 @@ export function Landing() {
           </div>
         </section>
 
-        <section id="for-you" className="border-y border-border/70 bg-white/70">
+        <section id="for-you" className="border-y border-border/70 bg-card/55">
           <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-8 px-4 py-12 sm:px-6 md:flex-row md:items-center lg:px-8">
             <div className="max-w-2xl">
               <div className="flex items-center gap-2 text-primary">

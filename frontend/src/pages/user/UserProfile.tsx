@@ -255,7 +255,7 @@ export function UserProfile() {
                         type="checkbox"
                         checked={notificationPrefs.email_notifications_enabled}
                         onChange={(e) => setNotificationPrefs((current) => current ? { ...current, email_notifications_enabled: e.target.checked } : current)}
-                        className="rounded border-gray-300 text-cyber-blue focus:ring-cyber-blue"
+                        className="rounded border-input text-primary focus:ring-ring"
                       />
                     </label>
                     <label className="flex items-center justify-between gap-4 p-3 rounded-lg border hover:bg-muted/30 cursor-pointer">
@@ -267,7 +267,7 @@ export function UserProfile() {
                         type="checkbox"
                         checked={notificationPrefs.in_app_notifications_enabled}
                         onChange={(e) => setNotificationPrefs((current) => current ? { ...current, in_app_notifications_enabled: e.target.checked } : current)}
-                        className="rounded border-gray-300 text-cyber-blue focus:ring-cyber-blue"
+                        className="rounded border-input text-primary focus:ring-ring"
                       />
                     </label>
                     <label className="flex items-center justify-between gap-4 p-3 rounded-lg border hover:bg-muted/30 cursor-pointer">
@@ -279,7 +279,7 @@ export function UserProfile() {
                         type="checkbox"
                         checked={notificationPrefs.notify_new_opportunities}
                         onChange={(e) => setNotificationPrefs((current) => current ? { ...current, notify_new_opportunities: e.target.checked } : current)}
-                        className="rounded border-gray-300 text-cyber-blue focus:ring-cyber-blue"
+                        className="rounded border-input text-primary focus:ring-ring"
                       />
                     </label>
                     <label className="flex items-center justify-between gap-4 p-3 rounded-lg border hover:bg-muted/30 cursor-pointer">
@@ -295,7 +295,7 @@ export function UserProfile() {
                           delivery_mode: e.target.checked ? "digest" : "immediate",
                           digest_frequency: e.target.checked ? "weekly" : current.digest_frequency,
                         } : current)}
-                        className="rounded border-gray-300 text-cyber-blue focus:ring-cyber-blue"
+                        className="rounded border-input text-primary focus:ring-ring"
                       />
                     </label>
                   </>

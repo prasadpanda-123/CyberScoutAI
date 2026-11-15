@@ -49,6 +49,7 @@ export interface Opportunity {
   is_free?: boolean;
   free_only_decision?: FreeOnlyDecision;
   pricing_verified?: boolean;
+  url?: string;
   source_url?: string;
   priority_score?: number;
   created_at?: string;
