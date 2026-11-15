@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { Bell, Compass, Menu, ShieldCheck, User } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 const routeTitles: Record<string, string> = {
   "/": "Overview",
@@ -72,6 +73,8 @@ export function Header({ onOpenMobile }: HeaderProps) {
       </div>
 
       <div className="flex items-center space-x-2 sm:space-x-4">
+        <ThemeToggle />
+
         <button
           onClick={() => navigate(location.pathname.startsWith("/app") ? "/app/opportunities" : "/opportunities")}
           className="hidden sm:flex items-center space-x-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground hover:bg-muted transition-colors w-44 md:w-56"

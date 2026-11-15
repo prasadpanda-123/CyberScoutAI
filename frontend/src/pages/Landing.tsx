@@ -9,6 +9,7 @@ import {
   Target,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 const reviewSteps = [
   {
@@ -76,6 +77,7 @@ export function Landing() {
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             <Button asChild variant="ghost" size="sm">
               <Link to="/login">Sign in</Link>
             </Button>
@@ -164,9 +166,9 @@ export function Landing() {
                   ))}
                 </div>
 
-                <div className="flex items-start gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
-                  <p className="text-xs leading-5 text-emerald-100">
+                <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-500/25 dark:bg-emerald-500/10">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <p className="text-xs leading-5 text-emerald-900 dark:text-emerald-100">
                     Review status and application details stay visible, so you can make an informed
                     choice before leaving the platform.
                   </p>

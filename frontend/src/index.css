@@ -27,6 +27,29 @@
     --radius: 0.75rem;
   }
 
+  :root:not(.dark) {
+    color-scheme: light;
+    --background: 216 30% 97%;
+    --foreground: 222 38% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 38% 13%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 38% 13%;
+    --primary: 216 78% 43%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 214 27% 94%;
+    --secondary-foreground: 222 38% 16%;
+    --muted: 216 26% 95%;
+    --muted-foreground: 215 14% 43%;
+    --accent: 214 30% 94%;
+    --accent-foreground: 222 38% 16%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 216 21% 88%;
+    --input: 216 21% 86%;
+    --ring: 216 78% 43%;
+  }
+
   * {
     @apply border-border;
     --tw-ring-offset-color: hsl(var(--background));
@@ -127,17 +150,17 @@
     color: #7dd3fc;
   }
 
-  .text-emerald-600,
-  .text-emerald-700 {
+  .dark .text-emerald-600,
+  .dark .text-emerald-700 {
     color: #34d399;
   }
 
-  .text-amber-600,
-  .text-amber-700 {
+  .dark .text-amber-600,
+  .dark .text-amber-700 {
     color: #fbbf24;
   }
 
-  .text-purple-700 {
+  .dark .text-purple-700 {
     color: #c4b5fd;
   }
 }
