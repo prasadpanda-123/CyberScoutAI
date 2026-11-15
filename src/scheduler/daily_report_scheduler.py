@@ -183,11 +183,12 @@ class DailyReportScheduler:
         items_coll = pipe_result.get("items_collected", 0)
         items_new = pipe_result.get("items_new", 0)
         items_upd = pipe_result.get("items_updated", 0)
+        items_reopened = pipe_result.get("items_reopened", 0)
         items_unch = pipe_result.get("items_unchanged", 0)
         items_dup = pipe_result.get("duplicates", 0)
         logger.info(
             f"[Scheduler] Pipeline Finished. Collected: {items_coll}, New: {items_new}, "
-            f"Updated: {items_upd}, Unchanged: {items_unch}, Duplicates: {items_dup}"
+            f"Updated: {items_upd}, Reopened: {items_reopened}, Unchanged: {items_unch}, Duplicates: {items_dup}"
         )
 
         # Step 2: STRICT PERSISTENCE VERIFICATION BEFORE EMAIL
@@ -208,12 +209,15 @@ class DailyReportScheduler:
         # Step 3: Email Generation & Dispatch (Only after successful persistence)
         email_result = {"status": "skipped"}
         if not dry_run:
-            if items_new == 0 and items_upd == 0 and not self.send_empty_report:
+            if items_new == 0 and items_upd == 0 and items_reopened == 0 and not self.send_empty_report:
                 logger.info("[Scheduler] Email notification skipped: No new or updated opportunities discovered.")
                 email_result = {"status": "skipped", "reason": "No new or updated opportunities"}
             else:
                 logger.info("[Scheduler] Generating and dispatching email report...")
-                email_result = self.email_client.send_daily_digest(send_empty=self.send_empty_report)
+                email_result = self.email_client.send_daily_digest(
+                    send_empty=self.send_empty_report,
+                    scan_opportunity_ids=pipe_result.get("email_opportunity_ids", []),
+                )
 
         email_status = email_result.get("status")
 
@@ -304,4 +308,3 @@ class DailyReportScheduler:
             "trigger_endpoint": "/api/external/scheduler/trigger",
             "status_badge": "External Trigger Active",
         }
-

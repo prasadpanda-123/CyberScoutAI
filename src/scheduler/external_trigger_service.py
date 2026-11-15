@@ -423,7 +423,10 @@ class ExternalTriggerService:
                 details="Server-side Brevo email digest dispatch initiated",
             )
             try:
-                email_result = self.email_client.send_daily_digest(send_empty=send_empty_report)
+                email_result = self.email_client.send_daily_digest(
+                    send_empty=send_empty_report,
+                    scan_opportunity_ids=scan_result.get("email_opportunity_ids", []),
+                )
                 email_status = email_result.get("status") if isinstance(email_result, dict) else "failed"
 
                 if email_status == "success":

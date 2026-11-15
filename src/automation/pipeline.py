@@ -447,8 +447,21 @@ def run_pipeline_once(
 
     new_count = getattr(persist_res, "new_count", 0) if persist_res else 0
     updated_count = getattr(persist_res, "updated_count", 0) if persist_res else 0
+    reopened_count = getattr(persist_res, "reopened_count", 0) if persist_res else 0
     unchanged_count = getattr(persist_res, "unchanged_count", 0) if persist_res else 0
     batch_dups = getattr(persist_res, "duplicate_count", 0) if persist_res else 0
+    scan_opportunities = []
+    if persist_res:
+        scan_opportunities = [
+            opportunity
+            for field in ("new_items", "updated_items", "reopened_items")
+            for opportunity in getattr(persist_res, field, [])
+        ]
+    email_opportunity_ids = list(dict.fromkeys(
+        str(opportunity.id)
+        for opportunity in scan_opportunities
+        if getattr(opportunity, "id", None)
+    ))
 
     # 8. Notifications Phase
     notify_start = time.time()
@@ -463,8 +476,8 @@ def run_pipeline_once(
             logger.error("Email notification cancelled: Database connection unreachable.")
             email_sent = False
             email_error = "Database connection unreachable"
-        elif new_count == 0 and updated_count == 0:
-            logger.info("[Pipeline] Email notification skipped: 0 new or updated opportunities discovered.")
+        elif not scan_opportunities:
+            logger.info("[Pipeline] Email notification skipped: no new, updated, or reopened opportunities discovered.")
             email_sent = False
             email_error = None
         else:
@@ -476,7 +489,7 @@ def run_pipeline_once(
                 except Exception as nse:
                     logger.error(f"[Pipeline] Notification outbox dispatch error: {nse}")
 
-                email_res = ec.send_daily_digest()
+                email_res = ec.send_daily_digest(scan_opportunities=scan_opportunities)
                 email_sent = email_res.get("status") == "success"
                 if not email_sent:
                     email_error = email_res.get("error") or "Email sending failed"
@@ -508,7 +521,7 @@ def run_pipeline_once(
             with db.transaction() as cursor:
                 cursor.execute(
                     sql_update_hist,
-                    (finished_iso, hist_status, len(raw_items), len(ranked_items), new_count if email_sent else 0, hist_errors, run_id),
+                    (finished_iso, hist_status, len(raw_items), len(ranked_items), len(scan_opportunities) if email_sent else 0, hist_errors, run_id),
                 )
         except Exception as e:
             logger.error(f"Failed to update final SearchHistory record: {e}")
@@ -593,7 +606,9 @@ def run_pipeline_once(
         "duplicates": duplicates_removed + batch_dups,
         "items_new": new_count,
         "items_updated": updated_count,
+        "items_reopened": reopened_count,
         "items_unchanged": unchanged_count,
+        "email_opportunity_ids": email_opportunity_ids,
         "accepted": len(accepted_items),
         "items_quality_accepted": len(accepted_items),
         "rejected": len(rejected_items),

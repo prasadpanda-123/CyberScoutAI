@@ -1,13 +1,14 @@
 """
 Notification Client Facade for CyberScout AI.
 
-Generates DOCX/CSV report attachments and delivers a concise summary email via Brevo API.
+Generates report files and delivers a scan-scoped summary with a single CSV attachment via Brevo API.
 """
 
 from datetime import datetime, timezone
+from html import escape as html_escape
 from pathlib import Path
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from src.database.connection import DatabaseManager
 from src.database.opportunity_repository import OpportunityRepository
@@ -19,8 +20,8 @@ from src.reporting.report_manager import ReportManager
 
 class EmailClient:
     """
-    Unified manager client coordinating report generation, concise summary email rendering,
-    and delivering email notifications with DOCX & CSV attachments via Brevo API.
+    Unified manager client coordinating report generation, concise summary rendering,
+    and delivering scan-scoped email notifications with one CSV attachment.
     """
 
     def __init__(
@@ -48,217 +49,209 @@ class EmailClient:
         return self.email_sender.check_health()
 
     def generate_summary_body(self, payload: Any, date_str: str) -> tuple[str, str]:
-        """
-        Generates text & HTML email report body including category summary breakdown
-        and detailed opportunity list according to Phase 12.3 requirements.
-
-        Returns:
-            Tuple of (html_body, plain_text_body)
-        """
-        s = getattr(payload, "summary", payload)
+        """Render a clean, email-client-friendly report for the current scan."""
+        summary = getattr(payload, "summary", payload)
         opportunities = getattr(payload, "all_opportunities", [])
         date_formatted = date_str.replace("_", "-")
+        total = getattr(summary, "total_opportunities", 0)
 
-        # Build Plaintext Summary & List
-        plain_lines = [
-            "Hello,\n",
-            "CyberScout AI Daily Intelligence Report",
-            f"Date: {date_formatted}\n",
-            "===========================================================",
-            "SUMMARY",
-            "===========================================================",
-            f"Total Opportunities : {getattr(s, 'total_opportunities', 0)}",
-            f"Internships         : {getattr(s, 'internships', 0)}",
-            f"Courses             : {getattr(s, 'courses', 0)}",
-            f"Certifications      : {getattr(s, 'certifications', 0)}",
-            f"Scholarships        : {getattr(s, 'scholarships', 0)}",
-            f"Hackathons          : {getattr(s, 'hackathons', 0)}",
-            f"CTFs                : {getattr(s, 'ctfs', 0)}",
-            f"GitHub Repositories : {getattr(s, 'github_projects', 0)}",
-            f"News                : {getattr(s, 'security_news', 0)}",
-            f"Research            : {getattr(s, 'research', 0)}",
-            f"Tools               : {getattr(s, 'tools', 0)}",
-            "===========================================================\n",
+        category_rows = [
+            ("Internships", "internships"),
+            ("Courses", "courses"),
+            ("Certifications", "certifications"),
+            ("Scholarships", "scholarships"),
+            ("Hackathons", "hackathons"),
+            ("CTFs", "ctfs"),
+            ("GitHub Repositories", "github_projects"),
+            ("News", "security_news"),
+            ("Research", "research"),
+            ("Tools", "tools"),
         ]
 
+        plain_lines = [
+            "CyberScout AI Daily Intelligence Report",
+            f"Scan date: {date_formatted}",
+            f"{total} new or changed opportunities in this scan.",
+            "",
+            "SUMMARY BREAKDOWN",
+        ]
+        for label, attr in category_rows:
+            plain_lines.append(f"{label}: {getattr(summary, attr, 0)}")
+
+        esc = lambda value: html_escape(str(value or ""), quote=True)
+        category_html_rows = []
+        for index in range(0, len(category_rows), 2):
+            left_label, left_attr = category_rows[index]
+            right_label, right_attr = category_rows[index + 1]
+            category_html_rows.append(f"""
+              <tr>
+                <td style="width:50%;padding:9px 12px;border-bottom:1px solid #e8edf3;color:#526174;">{left_label}</td>
+                <td style="width:50%;padding:9px 12px;border-bottom:1px solid #e8edf3;text-align:right;font-weight:700;color:#172b4d;">{getattr(summary, left_attr, 0)}</td>
+              </tr>
+              <tr>
+                <td style="padding:9px 12px;border-bottom:1px solid #e8edf3;color:#526174;">{right_label}</td>
+                <td style="padding:9px 12px;border-bottom:1px solid #e8edf3;text-align:right;font-weight:700;color:#172b4d;">{getattr(summary, right_attr, 0)}</td>
+              </tr>""")
+
+        opportunity_rows = []
         if opportunities:
-            plain_lines.append("OPPORTUNITIES LIST")
-            plain_lines.append("-----------------------------------------------------------")
-            for idx, opp in enumerate(opportunities[:50], 1):
-                company_str = opp.company or opp.provider or "N/A"
-                loc_str = opp.location or ("Remote" if opp.remote else "Offline")
-                mode_str = "Remote" if opp.remote else "Offline"
-                deadline_str = str(opp.deadline) if opp.deadline else "N/A"
-                conf_str = f"{getattr(opp, 'confidence_score', 0.0):.1f}/100"
-                disc_str = str(opp.discovered_date) if opp.discovered_date else "N/A"
+            plain_lines.extend(["", "OPPORTUNITIES FROM THIS SCAN"])
+        for index, opportunity in enumerate(opportunities[:50], 1):
+            organization = opportunity.company or opportunity.provider or "N/A"
+            location = opportunity.location or ("Remote" if opportunity.remote else "On-site")
+            deadline = opportunity.deadline or "Open / rolling"
+            source_name = opportunity.source_id or "N/A"
+            confidence = getattr(opportunity, "confidence_score", 0.0) or 0.0
+            raw_url = str(opportunity.url or "")
+            safe_url = html_escape(raw_url, quote=True)
+            title = esc(opportunity.title or "Untitled opportunity")
+            title_html = (
+                f'<a href="{safe_url}" style="color:#087eaa;text-decoration:none;font-weight:700;">{title}</a>'
+                if raw_url.lower().startswith(("https://", "http://"))
+                else title
+            )
+            plain_lines.extend([
+                "",
+                f"{index}. {opportunity.title}",
+                f"   {organization} | {opportunity.category} | {location}",
+                f"   Deadline: {deadline}",
+                f"   Source: {source_name}",
+                f"   Confidence: {confidence:.1f}/100",
+                f"   Apply: {raw_url}",
+            ])
+            opportunity_rows.append(f"""
+              <tr>
+                <td style="padding:13px 12px;border-bottom:1px solid #e8edf3;vertical-align:top;">{title_html}<br>
+                  <span style="font-size:12px;color:#718096;">{esc(organization)} &middot; {esc(opportunity.category)}</span></td>
+                <td style="padding:13px 10px;border-bottom:1px solid #e8edf3;vertical-align:top;color:#526174;">{esc(location)}</td>
+                <td style="padding:13px 10px;border-bottom:1px solid #e8edf3;vertical-align:top;color:#526174;">{esc(deadline)}</td>
+                <td style="padding:13px 10px;border-bottom:1px solid #e8edf3;vertical-align:top;color:#526174;">{esc(source_name)}</td>
+                <td style="padding:13px 10px;border-bottom:1px solid #e8edf3;vertical-align:top;text-align:right;color:#07866f;font-weight:700;">{confidence:.1f}</td>
+              </tr>""")
 
-                plain_lines.append(f"{idx}. {opp.title}")
-                plain_lines.append(f"   Organization : {company_str}")
-                plain_lines.append(f"   Category     : {opp.category}")
-                plain_lines.append(f"   Location     : {loc_str} ({mode_str})")
-                plain_lines.append(f"   Deadline     : {deadline_str}")
-                plain_lines.append(f"   Source       : {opp.source_id}")
-                plain_lines.append(f"   Link         : {opp.url}")
-                plain_lines.append(f"   Confidence   : {conf_str}")
-                plain_lines.append(f"   Date         : {disc_str}")
-                plain_lines.append("")
-
-        plain_lines.append("Thank you.\nCyberScout AI\nNever Miss a Cybersecurity Opportunity Again.")
+        plain_lines.extend(["", "CyberScout AI | Never Miss a Cybersecurity Opportunity Again."])
         plain_text = "\n".join(plain_lines)
 
-        # Build HTML Summary & List
-        opp_html_rows = []
-        for opp in opportunities[:50]:
-            company_str = opp.company or opp.provider or "N/A"
-            loc_str = opp.location or ("Remote" if opp.remote else "Offline")
-            mode_str = "Remote" if opp.remote else "Offline"
-            deadline_str = str(opp.deadline) if opp.deadline else "N/A"
-            conf_str = f"{getattr(opp, 'confidence_score', 0.0):.1f}"
-            disc_str = str(opp.discovered_date) if opp.discovered_date else "N/A"
-
-            opp_html_rows.append(f"""
-            <tr style="border-bottom: 1px solid #E2E8F0;">
-              <td style="padding: 10px 8px;">
-                <a href="{opp.url}" target="_blank" style="color: #0284C7; font-weight: bold; text-decoration: none;">{opp.title}</a><br>
-                <span style="font-size: 12px; color: #64748B;">{company_str} &bull; {opp.category}</span>
-              </td>
-              <td style="padding: 10px 8px; font-size: 13px;">{loc_str}<br><span style="font-size: 11px; color: #64748B;">{mode_str}</span></td>
-              <td style="padding: 10px 8px; font-size: 13px;">{deadline_str}</td>
-              <td style="padding: 10px 8px; font-size: 13px;">{opp.source_id}</td>
-              <td style="padding: 10px 8px; font-size: 13px; font-weight: bold; color: #059669;">{conf_str}</td>
-              <td style="padding: 10px 8px; font-size: 12px; color: #64748B;">{disc_str}</td>
-            </tr>""")
-
-        opp_table_html = f"""
-        <h3 style="color: #0F172A; margin-top: 24px; margin-bottom: 12px;">Discovered Opportunities</h3>
-        <table style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: left;">
-          <thead>
-            <tr style="background-color: #F1F5F9; color: #334155; font-size: 12px; text-transform: uppercase;">
-              <th style="padding: 8px;">Opportunity</th>
-              <th style="padding: 8px;">Location</th>
-              <th style="padding: 8px;">Deadline</th>
-              <th style="padding: 8px;">Source</th>
-              <th style="padding: 8px;">Confidence</th>
-              <th style="padding: 8px;">Collected</th>
-            </tr>
-          </thead>
-          <tbody>
-            {''.join(opp_html_rows)}
-          </tbody>
-        </table>""" if opp_html_rows else ""
+        if opportunity_rows:
+            opportunity_section = f"""
+          <h2 style="margin:28px 0 12px;color:#172b4d;font-size:17px;">Opportunities from this scan</h2>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;font-size:13px;">
+            <thead><tr style="background:#f2f6fa;color:#526174;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;">
+              <th style="padding:10px 12px;">Opportunity</th><th style="padding:10px;">Location</th><th style="padding:10px;">Deadline</th><th style="padding:10px;">Source</th><th style="padding:10px;text-align:right;">Confidence</th>
+            </tr></thead><tbody>{''.join(opportunity_rows)}</tbody>
+          </table>"""
+        else:
+            opportunity_section = """
+          <div style="margin-top:24px;padding:18px;background:#f5f8fb;border:1px solid #e8edf3;border-radius:6px;color:#526174;">
+            No new or updated opportunities were found in this scan.
+          </div>"""
 
         html_text = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family: Arial, sans-serif; color: #1E293B; line-height: 1.5; padding: 20px; max-width: 800px; margin: 0 auto;">
-  <div style="background-color: #0F172A; padding: 16px 24px; border-radius: 8px 8px 0 0; color: #FFFFFF;">
-    <h2 style="margin: 0; font-size: 20px; color: #38BDF8;">CyberScout AI — Daily Intelligence Report</h2>
-    <p style="margin: 4px 0 0 0; font-size: 13px; color: #94A3B8;">Date: {date_formatted}</p>
-  </div>
-  <div style="border: 1px solid #E2E8F0; border-top: none; padding: 24px; border-radius: 0 0 8px 8px;">
-    <h3 style="color: #0F172A; margin-top: 0; margin-bottom: 12px;">Summary Breakdown</h3>
-    <table style="border-collapse: collapse; font-size: 14px; width: 100%; max-width: 400px; margin-bottom: 20px;">
-      <tr><td style="padding: 4px 0;"><strong>Internships</strong></td><td style="text-align: right;">{getattr(s, 'internships', 0)}</td></tr>
-      <tr><td style="padding: 4px 0;"><strong>Courses</strong></td><td style="text-align: right;">{getattr(s, 'courses', 0)}</td></tr>
-      <tr><td style="padding: 4px 0;"><strong>Certifications</strong></td><td style="text-align: right;">{getattr(s, 'certifications', 0)}</td></tr>
-      <tr><td style="padding: 4px 0;"><strong>Scholarships</strong></td><td style="text-align: right;">{getattr(s, 'scholarships', 0)}</td></tr>
-      <tr><td style="padding: 4px 0;"><strong>Hackathons</strong></td><td style="text-align: right;">{getattr(s, 'hackathons', 0)}</td></tr>
-      <tr><td style="padding: 4px 0;"><strong>CTFs</strong></td><td style="text-align: right;">{getattr(s, 'ctfs', 0)}</td></tr>
-      <tr><td style="padding: 4px 0;"><strong>GitHub Repositories</strong></td><td style="text-align: right;">{getattr(s, 'github_projects', 0)}</td></tr>
-      <tr><td style="padding: 4px 0;"><strong>News</strong></td><td style="text-align: right;">{getattr(s, 'security_news', 0)}</td></tr>
-      <tr><td style="padding: 4px 0;"><strong>Research</strong></td><td style="text-align: right;">{getattr(s, 'research', 0)}</td></tr>
-      <tr><td style="padding: 4px 0;"><strong>Tools</strong></td><td style="text-align: right;">{getattr(s, 'tools', 0)}</td></tr>
-      <tr style="border-top: 2px solid #CBD5E1; font-weight: bold;"><td style="padding: 8px 0; font-size: 15px;">Total Opportunities</td><td style="text-align: right; color: #0284C7; font-size: 15px;">{getattr(s, 'total_opportunities', 0)}</td></tr>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:24px 12px;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#243247;line-height:1.5;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td align="center">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:760px;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+      <tr><td style="padding:25px 30px;background:#10233f;border-bottom:4px solid #12a6c7;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#75d5e7;">CyberScout AI &nbsp; / &nbsp; Scan report</div>
+        <h1 style="margin:8px 0 2px;font-size:23px;line-height:1.3;color:#ffffff;">Daily Intelligence Report</h1>
+        <p style="margin:4px 0 0;color:#c5d2e2;font-size:13px;">{date_formatted} &nbsp;&middot;&nbsp; {total} new or changed opportunities</p>
+      </td></tr>
+      <tr><td style="padding:24px 30px 8px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:20px;background:#f2f8fb;border:1px solid #dcebf1;border-radius:6px;">
+          <tr><td style="padding:16px 18px;width:25%;border-right:1px solid #dcebf1;">
+            <div style="font-size:26px;font-weight:700;color:#087eaa;">{total}</div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#65758b;">In this scan</div>
+          </td><td style="padding:16px 18px;">
+            <div style="font-size:15px;font-weight:700;color:#172b4d;">Fresh scan results</div><div style="font-size:12px;color:#65758b;">This report contains only opportunities found or changed in this scan.</div>
+          </td></tr>
+        </table>
+        <h2 style="margin:0 0 10px;color:#172b4d;font-size:17px;">Summary breakdown</h2>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #e8edf3;border-collapse:collapse;font-size:13px;">
+          {''.join(category_html_rows)}
+          <tr style="background:#f7f9fb;"><td style="padding:11px 12px;font-weight:700;color:#172b4d;">Total opportunities</td><td style="padding:11px 12px;text-align:right;font-size:15px;font-weight:700;color:#087eaa;">{total}</td></tr>
+        </table>
+        {opportunity_section}
+        <p style="margin:20px 0 0;padding:13px 15px;background:#f7f9fb;border-left:3px solid #12a6c7;color:#526174;font-size:12px;">The attached CSV contains the same new and changed opportunities shown in this report.</p>
+      </td></tr>
+      <tr><td style="padding:17px 30px;border-top:1px solid #e8edf3;color:#718096;font-size:12px;">
+        <strong style="color:#526174;">CyberScout AI</strong> &nbsp;&middot;&nbsp; Never Miss a Cybersecurity Opportunity Again.
+      </td></tr>
     </table>
-
-    {opp_table_html}
-
-    <p style="margin-top: 24px; font-size: 13px; color: #64748B;">Please find the attached complete CSV & DOCX reports for details.</p>
-    <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;">
-    <p style="margin: 0; font-size: 13px; color: #64748B;">
-      <strong>CyberScout AI</strong> &bull; <em>Never Miss a Cybersecurity Opportunity Again.</em>
-    </p>
-  </div>
-</body>
-</html>"""
-
+  </td></tr></table>
+</body></html>"""
         return html_text, plain_text
 
-    def send_daily_digest(self, send_empty: bool = False) -> Dict[str, Any]:
+
+    def send_daily_digest(
+        self,
+        send_empty: bool = False,
+        scan_opportunities: Optional[List[Any]] = None,
+        scan_opportunity_ids: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
         """
-        Retrieves active data, generates DOCX & CSV report files, and sends a summary email with attachments.
-        Safely catches all configuration, database, and notification errors returning a JSON outcome dictionary.
-
-        Args:
-            send_empty: If True, dispatches an empty report email when no active opportunities exist.
-
-        Returns:
-            Outcome summary dictionary containing status and delivery logs.
+        Send a fresh CSV digest. Scan-scoped inputs prevent older active records
+        from leaking into email sent after a scan.
         """
         try:
-            # 1. Fetch active opportunities from database
-            all_active = self.opp_repo.get_active_opportunities(limit=200)
+            if scan_opportunities is not None:
+                opportunities = list(scan_opportunities)
+            elif scan_opportunity_ids is not None:
+                opportunities = [
+                    opportunity
+                    for opportunity_id in dict.fromkeys(scan_opportunity_ids)
+                    if (opportunity := self.opp_repo.get_by_id(opportunity_id)) is not None
+                ]
+            else:
+                # Keep the manual digest command compatible when no scan context exists.
+                opportunities = self.opp_repo.get_active_opportunities(limit=200)
+
             date_str = datetime.now(timezone.utc).strftime("%Y_%m_%d")
             date_formatted = date_str.replace("_", "-")
-
-            if not all_active:
-                if send_empty:
-                    subject = f"CyberScout AI Daily Intelligence Report - {date_formatted}"
-                    plain_content = f"Hello,\n\nNo new cybersecurity opportunities were discovered today ({date_formatted}).\n\nCyberScout AI"
-                    html_content = f"""<!DOCTYPE html><html><body style="font-family: Arial, sans-serif; padding: 20px;">
-                    <h3>CyberScout AI Daily Intelligence Report</h3>
-                    <p>No new cybersecurity opportunities were discovered today ({date_formatted}).</p>
-                    <p>Thank you.<br>CyberScout AI</p></body></html>"""
-                    msg_id = self.email_sender.send_email(
-                        html_content=html_content,
-                        plain_content=plain_content,
-                        subject=subject,
-                        attachments=[],
-                    )
-                    return {"status": "success", "message": "Empty report email sent successfully.", "message_id": msg_id}
-                return {"status": "skipped", "message": "No active opportunities found to send."}
-
-            # 2. Generate DOCX & CSV report attachments via ReportManager
-            report_res = self.report_manager.generate_reports(all_active, date_str=date_str)
-            payload = self.report_manager.prepare_payload(all_active, date_str=date_str)
+            payload = self.report_manager.prepare_payload(opportunities, date_str=date_str)
 
             if payload.summary.total_opportunities == 0:
-                if send_empty:
-                    subject = f"CyberScout AI Daily Intelligence Report - {date_formatted}"
-                    plain_content = f"Hello,\n\nNo new cybersecurity opportunities were discovered today ({date_formatted}).\n\nCyberScout AI"
-                    html_content = f"""<!DOCTYPE html><html><body style="font-family: Arial, sans-serif; padding: 20px;">
-                    <h3>CyberScout AI Daily Intelligence Report</h3>
-                    <p>No new cybersecurity opportunities were discovered today ({date_formatted}).</p>
-                    <p>Thank you.<br>CyberScout AI</p></body></html>"""
-                    msg_id = self.email_sender.send_email(
-                        html_content=html_content,
-                        plain_content=plain_content,
-                        subject=subject,
-                        attachments=[],
-                    )
-                    return {"status": "success", "message": "Empty report email sent successfully.", "message_id": msg_id}
-                return {"status": "skipped", "message": "No accepted opportunities found to send."}
+                if not send_empty:
+                    return {"status": "skipped", "message": "No new or updated opportunities found in this scan."}
 
-            # 3. Render summary & opportunity list body
+                html_content, plain_content = self.generate_summary_body(payload, date_str=date_str)
+                subject = f"CyberScout AI Daily Intelligence Report - {date_formatted} [No New Opportunities]"
+                msg_id = self.email_sender.send_email(
+                    html_content=html_content,
+                    plain_content=plain_content,
+                    subject=subject,
+                    attachments=[],
+                )
+                return {
+                    "status": "success",
+                    "message": "Empty report email sent successfully.",
+                    "message_id": msg_id,
+                    "attachments_sent": [],
+                }
+
+            # Generate this run's reports from only the supplied scan results.
+            report_res = self.report_manager.generate_reports(
+                payload.all_opportunities,
+                date_str=date_str,
+            )
+            if not report_res.csv_path or not report_res.csv_path.is_file():
+                raise RuntimeError("Fresh CSV report generation failed; refusing to send an outdated or incomplete attachment.")
+
             render_start = time.time()
             html, text = self.generate_summary_body(payload, date_str=date_str)
             self.metrics.record_render(time.time() - render_start)
 
-            # 4. Transmit email via EmailSender with attachments
             send_start = time.time()
-            subject = f"CyberScout AI Daily Intelligence Report - {date_formatted}"
+            subject = f"CyberScout AI Daily Intelligence Report - {date_formatted} ({payload.summary.total_opportunities} New or Changed)"
             run_id = f"email-run-{int(time.time())}"
+            email_attachments = [report_res.csv_path]
 
             msg_id = self.email_sender.send_email(
                 html_content=html,
                 plain_content=text,
                 subject=subject,
-                attachments=report_res.attachment_paths,
+                attachments=email_attachments,
             )
-            send_duration = time.time() - send_start
-            self.metrics.record_sent(send_duration)
+            self.metrics.record_sent(time.time() - send_start)
 
-            # Record delivery history for sent opportunities in a single bulk transaction
             opp_ids = [opp.id for opp in payload.all_opportunities if getattr(opp, "id", None)]
             if opp_ids:
                 self.history_tracker.log_deliveries_batch(opp_ids, email_run_id=run_id)
@@ -267,7 +260,7 @@ class EmailClient:
                 "status": "success",
                 "message_id": msg_id,
                 "opportunities_sent": payload.summary.total_opportunities,
-                "attachments_sent": [p.name for p in report_res.attachment_paths],
+                "attachments_sent": [path.name for path in email_attachments],
                 "report_generation_time_sec": report_res.generation_time_sec,
                 "metrics": self.metrics.get_summary(),
             }
