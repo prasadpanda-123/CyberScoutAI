@@ -5,7 +5,6 @@ import { authApi } from "@/lib/api"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 export function ForgotPassword() {
   const [email, setEmail] = useState("")
@@ -30,7 +29,6 @@ export function ForgotPassword() {
 
   return (
     <main className="min-h-screen bg-background px-4 py-10 sm:px-8">
-      <ThemeToggle className="fixed right-4 top-4 z-50" />
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-[440px] flex-col justify-center">
         <Link to="/" className="mb-8 flex items-center justify-center gap-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">

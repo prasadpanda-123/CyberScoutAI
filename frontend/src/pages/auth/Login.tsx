@@ -6,7 +6,6 @@ import { useAuth } from "@/lib/auth-context"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 export function Login() {
   const navigate = useNavigate()
@@ -61,7 +60,6 @@ export function Login() {
 
   return (
     <main className="min-h-screen bg-background lg:grid lg:grid-cols-[1.05fr_0.95fr]">
-      <ThemeToggle className="fixed right-4 top-4 z-50" />
       <section className="relative hidden min-h-screen overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 px-10 py-12 text-white lg:flex lg:flex-col lg:justify-between xl:px-16">
         <div className="pointer-events-none absolute -right-32 top-20 h-96 w-96 rounded-full bg-blue-500/15 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-36 -left-20 h-96 w-96 rounded-full bg-cyan-400/10 blur-3xl" />

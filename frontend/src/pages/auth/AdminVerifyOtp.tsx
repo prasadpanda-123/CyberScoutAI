@@ -6,7 +6,6 @@ import { useAuth } from "@/lib/auth-context"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 export function AdminVerifyOtp() {
   const navigate = useNavigate()
@@ -50,7 +49,6 @@ export function AdminVerifyOtp() {
 
   return (
     <div className="min-h-screen bg-muted/20 flex flex-col justify-center items-center p-4">
-      <ThemeToggle className="fixed right-4 top-4 z-50" />
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <div className="h-12 w-12 rounded-xl bg-cyber-blue text-white flex items-center justify-center font-bold mx-auto shadow-md">

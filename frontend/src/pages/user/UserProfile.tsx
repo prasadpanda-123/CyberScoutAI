@@ -5,6 +5,7 @@ import { authApi, notificationsApi, type NotificationPreferences } from "@/lib/a
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 export function UserProfile() {
   const { user } = useAuth()
@@ -116,35 +117,50 @@ export function UserProfile() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-base">Profile details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-col items-center text-center space-y-2 pb-4 border-b">
-              <div className="h-16 w-16 rounded-full bg-cyber-blue/15 text-cyber-blue flex items-center justify-center font-bold text-2xl">
-                {user?.username?.substring(0, 2).toUpperCase() || "US"}
-              </div>
-              <h3 className="font-semibold text-foreground">{user?.username}</h3>
-              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-mono font-medium text-muted-foreground">
-                <Shield className="h-3 w-3" /> {user?.role || "Viewer"}
-              </span>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              <div>
-                <span className="text-muted-foreground block text-[11px]">Email Address</span>
-                <span className="font-medium text-foreground">{user?.email || "Not specified"}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block text-[11px]">Admin Access</span>
-                <span className="font-semibold text-foreground">
-                  {user?.is_admin ? "Enabled (Administrator)" : "Standard User"}
+        <div className="md:col-span-1 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Profile details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col items-center text-center space-y-2 pb-4 border-b">
+                <div className="h-16 w-16 rounded-full bg-cyber-blue/15 text-cyber-blue flex items-center justify-center font-bold text-2xl">
+                  {user?.username?.substring(0, 2).toUpperCase() || "US"}
+                </div>
+                <h3 className="font-semibold text-foreground">{user?.username}</h3>
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-mono font-medium text-muted-foreground">
+                  <Shield className="h-3 w-3" /> {user?.role || "Viewer"}
                 </span>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+
+              <div className="space-y-2 text-xs">
+                <div>
+                  <span className="text-muted-foreground block text-[11px]">Email Address</span>
+                  <span className="font-medium text-foreground">{user?.email || "Not specified"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[11px]">Admin Access</span>
+                  <span className="font-semibold text-foreground">
+                    {user?.is_admin ? "Enabled (Administrator)" : "Standard User"}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Appearance</CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-foreground">Color theme</p>
+                <p className="mt-1 text-xs text-muted-foreground">Choose light or dark mode for CyberScout.</p>
+              </div>
+              <ThemeToggle />
+            </CardContent>
+          </Card>
+        </div>
 
         <div className="md:col-span-2 space-y-6">
           <Card>
